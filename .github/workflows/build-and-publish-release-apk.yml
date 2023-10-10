@@ -27,13 +27,14 @@ jobs:
         run: ./gradlew assembleFdroidRelease --stacktrace
 
       - name: Sign APK using key store from repo secrets
-        uses: r0adkll/sign-android-release@v1
+        uses: kevin-david/zipalign-sign-android-release@v1.1.1
         id: sign_app
         with:
           releaseDirectory: app/build/outputs/apk/fdroid/release
           signingKeyBase64: ${{ secrets.APK_SIGNING_KEYSTORE_FILE }}
           alias: mykey
           keyStorePassword: ${{ secrets.APK_SIGNING_KEYSTORE_PASSWORD }}
+          zipAlign: true
 
       - name: Publish APK as a Github release artifact
         uses: softprops/action-gh-release@v1
