@@ -1,4 +1,4 @@
-name: Build and publish F-Droid pre-release debug APK
+name: Build and publish pre-release debug APK
 
 on:
   # Trigger by pushing a version tag (which are protected)
@@ -22,11 +22,18 @@ jobs:
           distribution: 'zulu'
           java-version: '11'
 
-      - name: Generate F-Droid debug APK
-        run: ./gradlew assembleFdroidDebug --stacktrace
+      - name: Generate debug APK
+        run: ./gradlew assemblePremiumDebug --stacktrace
+
+      - name: Get version name from git tag
+        run: echo "VERSION=${GITHUB_REF#refs/tags/v}" >> $GITHUB_ENV
+
+      - name: Rename APK file
+        run: mv app/build/outputs/apk/premium/debug/app-premium-debug.apk orgzly-revived-${{ env.VERSION }}-debug.apk
 
       - name: Publish APK as a Github pre-release artifact
         uses: softprops/action-gh-release@v1
         with:
-          files: '**/*.apk'
+          files: '*.apk'
           prerelease: true
+          draft: true
