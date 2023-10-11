@@ -25,11 +25,20 @@ jobs:
       - name: Generate debug APK
         run: ./gradlew assemblePremiumDebug --stacktrace
 
+      - name: Sign APK using key store from repo secrets
+        uses: kevin-david/zipalign-sign-android-release@v1.1.1
+        id: sign_apk
+        with:
+          releaseDirectory: app/build/outputs/apk/premium/debug
+          signingKeyBase64: ${{ secrets.APK_SIGNING_KEYSTORE_FILE }}
+          alias: mykey
+          keyStorePassword: ${{ secrets.APK_SIGNING_KEYSTORE_PASSWORD }}
+
       - name: Get version name from git tag
         run: echo "VERSION=${GITHUB_REF#refs/tags/v}" >> $GITHUB_ENV
 
       - name: Rename APK file
-        run: mv app/build/outputs/apk/premium/debug/app-premium-debug.apk orgzly-revived-${{ env.VERSION }}-debug.apk
+        run: mv ${{steps.sign_apk.outputs.signedReleaseFile}} orgzly-revived-${{ env.VERSION }}-debug.apk
 
       - name: Publish APK as a Github pre-release artifact
         uses: softprops/action-gh-release@v1
