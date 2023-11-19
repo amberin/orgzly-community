@@ -11,7 +11,7 @@ android {
     defaultConfig {
         minSdkVersion 21 // Lollipop (5.0)
         targetSdkVersion 32 // Android 12L
-        applicationId "com.orgzlyrevived"
+        applicationId "com.orgzlyreviveddev"
         versionCode 177
         versionName "1.8.12"
 
