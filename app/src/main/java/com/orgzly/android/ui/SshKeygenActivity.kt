@@ -127,7 +127,7 @@ class SshKeygenActivity : CommonActivity() {
         result.fold(
             onSuccess = { ShowSshKeyDialogFragment().show(supportFragmentManager, "public_key") },
             onFailure = { e ->
-                Log.e(TAG, getString(R.string.error_generate_ssh_key), e)
+                Log.e(TAG, "Error while generating SSH key:", e)
                 MaterialAlertDialogBuilder(this)
                     .setTitle(getString(R.string.error_generate_ssh_key))
                     .setMessage(getString(R.string.ssh_key_error_dialog_text) + e.message)
