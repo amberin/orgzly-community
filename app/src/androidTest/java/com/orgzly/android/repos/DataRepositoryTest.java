@@ -51,7 +51,7 @@ public class DataRepositoryTest extends OrgzlyTest {
         testUtils.setupBook("local-book-1", "");
 
         assertEquals("Local books", 1, dataRepository.getBooks().size());
-        assertEquals("Remote books", 3, SyncUtils.getBooksFromAllRepos(dataRepository, null).size());
+        assertEquals("Remote books", 3, SyncUtils.getBooksFromRegularSyncRepos(dataRepository, null).size());
     }
 
     @Test
@@ -61,7 +61,7 @@ public class DataRepositoryTest extends OrgzlyTest {
         testUtils.setupRook(repo, "mock://repo-a/remote-book-2.org", "", "1abcdef", 1300067156000L);
         testUtils.setupRook(repo, "mock://repo-a/remote-book-3.org", "", "2abcdef", 1200067156000L);
 
-        VersionedRook vrook = SyncUtils.getBooksFromAllRepos(dataRepository, null).get(0);
+        VersionedRook vrook = SyncUtils.getBooksFromRegularSyncRepos(dataRepository, null).get(0);
 
         dataRepository.loadBookFromRepo(vrook);
 
@@ -79,7 +79,7 @@ public class DataRepositoryTest extends OrgzlyTest {
     public void testCompareWithEmptyRepo() throws IOException {
         assertEquals("Starting with empty shelf", 0, dataRepository.getBooks().size());
 
-        Map<String, BookNamesake> nameGroups = SyncUtils.groupAllNotebooksByName(dataRepository);
+        Map<String, BookNamesake> nameGroups = SyncUtils.groupNotebooksByName(dataRepository);
 
         assertEquals(0, nameGroups.size());
     }
@@ -92,7 +92,7 @@ public class DataRepositoryTest extends OrgzlyTest {
         testUtils.setupRook(repo, "mock://repo-a/remote-book-2.org", "", "1abcdef", 1400412756);
         testUtils.setupRook(repo, "mock://repo-a/remote-book-3.org", "", "2abcdef", 1400671956);
 
-        Map<String, BookNamesake> groups = SyncUtils.groupAllNotebooksByName(dataRepository);
+        Map<String, BookNamesake> groups = SyncUtils.groupNotebooksByName(dataRepository);
 
         assertEquals(3, groups.size());
 
@@ -132,7 +132,7 @@ public class DataRepositoryTest extends OrgzlyTest {
         testUtils.setupRook(repo, "mock://repo-a/common-book-2.org", "", "3abcdef", 1400671956000L);
         testUtils.setupRook(repo, "mock://repo-a/remote-book-1.org", "", "0abcdef", 1400067156000L);
 
-        Map<String, BookNamesake> groups = SyncUtils.groupAllNotebooksByName(dataRepository);
+        Map<String, BookNamesake> groups = SyncUtils.groupNotebooksByName(dataRepository);
 
         assertEquals(5, groups.size());
 

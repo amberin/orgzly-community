@@ -58,6 +58,25 @@ object SyncNotifications {
         context.getNotificationManager().notify(Notifications.SYNC_FAILED_ID, builder.build())
     }
 
+    fun showSyncDurationNotification(context: Context, text: String) {
+        val openAppPendingIntent =
+            PendingIntent.getActivity(
+                context,
+                0,
+                Intent(context, MainActivity::class.java),
+                immutable(PendingIntent.FLAG_UPDATE_CURRENT))
+
+        val builder = NotificationCompat.Builder(context, NotificationChannels.SYNC_FAILED)
+            .setAutoCancel(true)
+            .setSmallIcon(R.drawable.cic_logo_for_notification)
+            .setContentTitle("Sync duration")
+            .setColor(ContextCompat.getColor(context, R.color.notification))
+            .setContentIntent(openAppPendingIntent)
+            .setContentText("$text milliseconds")
+            .setStyle(NotificationCompat.BigTextStyle().bigText(text))
+
+        context.getNotificationManager().notify(Notifications.SYNC_FAILED_ID, builder.build())
+    }
     fun cancelSyncFailedNotification(context: Context) {
         context.getNotificationManager().cancel(Notifications.SYNC_FAILED_ID)
     }

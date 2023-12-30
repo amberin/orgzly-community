@@ -19,6 +19,7 @@ enum class BookSyncStatus {
     CONFLICT_BOTH_BOOK_AND_ROOK_MODIFIED,
     CONFLICT_BOOK_WITH_LINK_AND_ROOK_BUT_NEVER_SYNCED_BEFORE,
     CONFLICT_LAST_SYNCED_ROOK_AND_LATEST_ROOK_ARE_DIFFERENT,
+    CONFLICT_STAYING_ON_TEMPORARY_BRANCH,
 
     /* Book can be loaded. */
     NO_BOOK_ONE_ROOK, // TODO: Can this happen? We always load dummy.
@@ -62,6 +63,9 @@ enum class BookSyncStatus {
 
             CONFLICT_BOTH_BOOK_AND_ROOK_MODIFIED ->
                 return "Both local and remote notebook have been modified"
+
+            CONFLICT_STAYING_ON_TEMPORARY_BRANCH ->
+                return "Merge conflict; saved to $arg"
 
             CONFLICT_BOOK_WITH_LINK_AND_ROOK_BUT_NEVER_SYNCED_BEFORE ->
                 return "Link and remote notebook exist but notebook hasn't been synced before"

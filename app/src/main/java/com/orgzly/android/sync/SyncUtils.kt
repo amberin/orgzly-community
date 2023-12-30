@@ -10,7 +10,7 @@ import com.orgzly.android.db.entity.BookAction
 import com.orgzly.android.db.entity.Repo
 import com.orgzly.android.repos.GitRepo
 import com.orgzly.android.repos.SyncRepo
-import com.orgzly.android.repos.TwoWaySyncRepo
+import com.orgzly.android.repos.IntegrallySyncedRepo
 import com.orgzly.android.repos.VersionedRook
 import com.orgzly.android.util.LogUtils
 import java.io.IOException
@@ -19,28 +19,17 @@ object SyncUtils {
     private val TAG: String = SyncUtils::class.java.name
 
     /**
-     * Goes through each repository and collects all books from each one.
+     * Goes through each regular SyncRepo (i.e. not IntegrallySyncedRepos) and collects
+     * all books from each one.
      */
     @Throws(IOException::class)
     @JvmStatic
-    fun getBooksFromAllRepos(dataRepository: DataRepository, repos: List<SyncRepo>? = null): List<VersionedRook> {
+    fun getBooksFromRegularSyncRepos(dataRepository: DataRepository): List<VersionedRook> {
         val result = ArrayList<VersionedRook>()
 
-        val repoList = repos ?: dataRepository.getSyncRepos()
+        val repoList = dataRepository.getRegularSyncRepos()
 
         for (repo in repoList) {
-            if (repo is GitRepo && repo.isUnchanged) {
-                for (book in dataRepository.getBooks()) {
-                    if (book.hasLink()) {
-                        if (book.linkRepo!!.url == repo.uri.toString()) {
-                            result.add(book.syncedTo!!)
-                        }
-                    }
-                }
-                if (result.isNotEmpty()) {
-                    continue
-                }
-            }
             val libBooks = repo.books
             /* Each book in repository. */
             result.addAll(libBooks)
@@ -49,23 +38,25 @@ object SyncUtils {
     }
 
     /**
-     * Compares every local book with every remote one and calculates the syncStatus for each link.
+     * Compares remote books with their local equivalent and calculates the syncStatus for each link.
+     *
+     * Acts only on regular SyncRepos, NOT on IntegrallySyncedRepos.
      *
      * @return number of links (unique book names)
      * @throws IOException
      */
     @Throws(IOException::class)
     @JvmStatic
-    fun groupAllNotebooksByName(dataRepository: DataRepository): Map<String, BookNamesake> {
-        if (BuildConfig.LOG_DEBUG) LogUtils.d(TAG, "Collecting all local and remote books ...")
+    fun groupNotebooksByName(dataRepository: DataRepository): Map<String, BookNamesake> {
+        if (BuildConfig.LOG_DEBUG) LogUtils.d(TAG, "Collecting local and remote books ...")
 
-        val repos = dataRepository.getSyncRepos()
+        val repos = dataRepository.getRepos()
 
         val localBooks = dataRepository.getBooks()
-        val versionedRooks = getBooksFromAllRepos(dataRepository, repos)
+        val versionedRooks = getBooksFromRegularSyncRepos(dataRepository)
 
         /* Group local and remote books by name. */
-        val namesakes = BookNamesake.getAll(
+        val namesakes = BookNamesake.getFromVrooks(
             App.getAppContext(), localBooks, versionedRooks)
 
         /* If there is no local book, create empty "dummy" one. */
@@ -93,23 +84,6 @@ object SyncUtils {
         val fileName: String
         var bookAction: BookAction? = null
 
-        // FIXME: This is a pretty nasty hack that completely circumvents the existing code path
-        if (namesake.rooks.isNotEmpty()) {
-            val rook = namesake.rooks[0]
-            if (rook != null && namesake.status !== BookSyncStatus.NO_CHANGE) {
-                val repo = dataRepository.getRepoInstance(
-                    rook.repoId, rook.repoType, rook.repoUri.toString())
-                if (repo is GitRepo) {
-                    if (!handleTwoWaySync(dataRepository, repo as TwoWaySyncRepo, namesake)) {
-                        throw Exception("Merge conflict; saved to temporary branch.")
-                    }
-                    return BookAction.forNow(
-                        BookAction.Type.INFO,
-                        namesake.status.msg(String.format("branch '%s'", repo.currentBranch)))
-                }
-            }
-        }
-
         when (namesake.status!!) {
             BookSyncStatus.NO_CHANGE ->
                 bookAction = BookAction.forNow(BookAction.Type.INFO, namesake.status.msg())
@@ -123,7 +97,8 @@ object SyncUtils {
             BookSyncStatus.CONFLICT_BOOK_WITH_LINK_AND_ROOK_BUT_NEVER_SYNCED_BEFORE,
             BookSyncStatus.CONFLICT_LAST_SYNCED_ROOK_AND_LATEST_ROOK_ARE_DIFFERENT,
             BookSyncStatus.ROOK_AND_VROOK_HAVE_DIFFERENT_REPOS,
-            BookSyncStatus.ONLY_DUMMY ->
+            BookSyncStatus.ONLY_DUMMY,
+            BookSyncStatus.CONFLICT_STAYING_ON_TEMPORARY_BRANCH ->
                 bookAction = BookAction.forNow(BookAction.Type.ERROR, namesake.status.msg())
 
             /* Load remote book. */
@@ -172,46 +147,5 @@ object SyncUtils {
         // if (BuildConfig.LOG_DEBUG) LogUtils.d(TAG, "Syncing $namesake: $bookAction")
 
         return bookAction
-    }
-
-    @Throws(IOException::class)
-    private fun handleTwoWaySync(dataRepository: DataRepository, repo: TwoWaySyncRepo, namesake: BookNamesake): Boolean {
-        val (book, _, _, currentRook) = namesake.book
-        val someRook = currentRook ?: namesake.rooks[0]
-        val newRook: VersionedRook?
-        var noNewMergeConflicts = true
-        // If there are only local changes, the GitRepo.syncBook method is overly complicated.
-        if (namesake.status == BookSyncStatus.BOOK_WITH_LINK_LOCAL_MODIFIED) {
-            val fileName = BookName.getFileName(App.getAppContext(), namesake.book.syncedTo!!.uri)
-            dataRepository.saveBookToRepo(namesake.book.linkRepo!!, fileName, namesake.book, BookFormat.ORG)
-        } else {
-            val dbFile = dataRepository.getTempBookFile()
-            try {
-                NotesOrgExporter(dataRepository).exportBook(book, dbFile)
-                val (newRook1, merged, loadFile) =
-                    repo.syncBook(someRook.uri, currentRook, dbFile)
-                noNewMergeConflicts = merged
-                newRook = newRook1
-                // We only need to write it if syncback is needed
-                if (loadFile != null) {
-                    val fileName = BookName.getFileName(App.getAppContext(), newRook.uri)
-                    val bookName = BookName.fromFileName(fileName)
-                    if (BuildConfig.LOG_DEBUG) LogUtils.d(TAG, "Loading from file '$loadFile'")
-                    dataRepository.loadBookFromFile(
-                        bookName.name,
-                        bookName.format,
-                        loadFile,
-                        newRook)
-                    // TODO: db.book().updateIsModified(bookView.book.id, false)
-                    // Instead of:
-                    // dataRepository.updateBookMtime(loadedBook.getBook().getId(), 0);
-                }
-            } finally {
-                /* Delete temporary files. */
-                dbFile.delete()
-            }
-            dataRepository.updateBookLinkAndSync(book.id, newRook!!)
-        }
-        return noNewMergeConflicts
     }
 }

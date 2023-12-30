@@ -215,4 +215,8 @@ public class DirectoryRepo implements SyncRepo {
     public String toString() {
         return repoUri.toString();
     }
+
+    public void sync() {
+        return;
+    }
 }

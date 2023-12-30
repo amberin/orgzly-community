@@ -200,6 +200,7 @@ class SyncFragment : Fragment() {
 
                 SyncState.Type.AUTO_SYNC_NOT_STARTED,
                 SyncState.Type.FINISHED,
+                SyncState.Type.FINISHED_WITH_CONFLICTS,
                 SyncState.Type.CANCELED,
                 SyncState.Type.FAILED_NO_REPOS,
                 SyncState.Type.FAILED_NO_CONNECTION,

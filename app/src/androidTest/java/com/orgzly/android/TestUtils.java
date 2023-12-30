@@ -133,7 +133,7 @@ public class TestUtils {
 
     public Map<String, BookNamesake> sync() {
         try {
-            Map<String, BookNamesake> nameGroups = SyncUtils.groupAllNotebooksByName(dataRepository);
+            Map<String, BookNamesake> nameGroups = SyncUtils.groupNotebooksByName(dataRepository);
 
             for (BookNamesake group : nameGroups.values()) {
                 BookAction action = SyncUtils.syncNamesake(dataRepository, group);

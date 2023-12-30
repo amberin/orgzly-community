@@ -57,6 +57,7 @@ import java.util.*
 import java.util.concurrent.Callable
 import javax.inject.Inject
 import javax.inject.Singleton
+import kotlin.collections.ArrayList
 
 // TODO: Split
 @Singleton
@@ -2325,7 +2326,39 @@ class DataRepository @Inject constructor(
         val list = ArrayList<SyncRepo>()
         for ((id, type, url) in getRepos()) {
             try {
-                list.add(getRepoInstance(id, type, url))
+                val repo = getRepoInstance(id, type, url)
+                list.add(repo)
+            } catch (e: Exception) {
+                e.printStackTrace()
+            }
+        }
+        return list
+    }
+
+    fun getRegularSyncRepos(): List<SyncRepo> {
+        val list = ArrayList<SyncRepo>()
+        for ((id, type, url) in getRepos()) {
+            try {
+                val repo = getRepoInstance(id, type, url)
+                if (repo !is IntegrallySyncedRepo) {
+                    list.add(repo)
+                }
+            } catch (e: Exception) {
+                e.printStackTrace()
+            }
+
+        }
+        return list
+    }
+
+    fun getIntegrallySyncedRepos(): List<IntegrallySyncedRepo> {
+        val list = ArrayList<IntegrallySyncedRepo>()
+        for ((id, type, url) in getRepos()) {
+            try {
+                val repo = getRepoInstance(id, type, url)
+                if (repo is IntegrallySyncedRepo) {
+                    list.add(repo)
+                }
             } catch (e: Exception) {
                 e.printStackTrace()
             }

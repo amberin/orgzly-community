@@ -12,7 +12,7 @@ import java.io.File
  * current contents of the notebook are up to date.
  * @param onMainBranch Boolean indicating whether the sync resulted in a commit on the main branch,
  * or on a temporary branch.
- * @see GitRepo Which implements [TwoWaySyncRepo]
- * @see TwoWaySyncRepo
+ * @see GitRepo Which implements [IntegrallySyncedRepo]
+ * @see IntegrallySyncedRepo
  */
 data class TwoWaySyncResult(val newRook: @NotNull VersionedRook, val onMainBranch: Boolean, val loadFile: @Nullable File?)

@@ -4,20 +4,32 @@ import android.content.Context;
 import android.net.Uri;
 import android.util.Log;
 
+import androidx.annotation.NonNull;
+import androidx.annotation.Nullable;
+
 import com.orgzly.BuildConfig;
+import com.orgzly.R;
+import com.orgzly.android.BookFormat;
 import com.orgzly.android.BookName;
+import com.orgzly.android.data.DataRepository;
+import com.orgzly.android.db.entity.BookAction;
+import com.orgzly.android.db.entity.BookView;
 import com.orgzly.android.db.entity.Repo;
 import com.orgzly.android.git.GitFileSynchronizer;
 import com.orgzly.android.git.GitPreferences;
 import com.orgzly.android.git.GitPreferencesFromRepoPrefs;
 import com.orgzly.android.git.GitTransportSetter;
 import com.orgzly.android.prefs.RepoPreferences;
+import com.orgzly.android.sync.BookNamesake;
+import com.orgzly.android.sync.BookSyncStatus;
+import com.orgzly.android.sync.SyncState;
 import com.orgzly.android.util.LogUtils;
 
 import org.eclipse.jgit.api.CloneCommand;
 import org.eclipse.jgit.api.Git;
 import org.eclipse.jgit.api.errors.GitAPIException;
 import org.eclipse.jgit.api.errors.JGitInternalException;
+import org.eclipse.jgit.diff.DiffEntry;
 import org.eclipse.jgit.ignore.IgnoreNode;
 import org.eclipse.jgit.lib.FileMode;
 import org.eclipse.jgit.lib.ObjectId;
@@ -35,9 +47,13 @@ import java.io.FileInputStream;
 import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Map;
+import java.util.Objects;
 
-public class GitRepo implements SyncRepo, TwoWaySyncRepo {
+public class GitRepo implements SyncRepo, IntegrallySyncedRepo {
     private final static String TAG = GitRepo.class.getName();
     private final long repoId;
 
@@ -50,6 +66,10 @@ public class GitRepo implements SyncRepo, TwoWaySyncRepo {
         DirectoryNotEmpty(File dir) {
             this.dir = dir;
         }
+    }
+
+    private String mainBranch() {
+        return preferences.branchName();
     }
 
     public static GitRepo getInstance(RepoWithProps props, Context context) throws IOException {
@@ -190,7 +210,6 @@ public class GitRepo implements SyncRepo, TwoWaySyncRepo {
         } else {
             synchronizer.addAndCommitNewFile(file, fileName);
         }
-        synchronizer.tryPush();
         return currentVersionedRook(Uri.EMPTY.buildUpon().appendPath(fileName).build());
     }
 
@@ -208,7 +227,7 @@ public class GitRepo implements SyncRepo, TwoWaySyncRepo {
         Uri sourceUri = Uri.parse(fileName);
 
         // Ensure our repo copy is up-to-date. This is necessary when force-loading a book.
-        synchronizer.mergeWithRemote();
+        synchronizer.pull();
 
         synchronizer.retrieveLatestVersionOfFile(sourceUri.getPath(), destination);
 
@@ -240,13 +259,6 @@ public class GitRepo implements SyncRepo, TwoWaySyncRepo {
             }
         }
         return ignores;
-    }
-
-    public boolean isUnchanged() throws IOException {
-        // Check if the current head is unchanged.
-        // If so, we can read all the VersionedRooks from the database.
-        synchronizer.setBranchAndGetLatest();
-        return synchronizer.currentHead().equals(synchronizer.getCommit("orgzly-pre-sync-marker"));
     }
 
     public List<VersionedRook> getBooks() throws IOException {
@@ -331,7 +343,7 @@ public class GitRepo implements SyncRepo, TwoWaySyncRepo {
                 // Our change was successfully merged. Make an attempt
                 // to return to the main branch, if we are not on it.
                 if (!git.getRepository().getBranch().equals(preferences.branchName())) {
-                    synchronizer.attemptReturnToMainBranch();
+                    synchronizer.attemptReturnToBranch(mainBranch());
                 }
             }
         } else {
@@ -347,7 +359,447 @@ public class GitRepo implements SyncRepo, TwoWaySyncRepo {
         synchronizer.tryPushIfHeadDiffersFromRemote();
     }
 
-    public String getCurrentBranch() throws IOException {
+    private String currentBranch() throws IOException {
         return git.getRepository().getBranch();
+    }
+
+    @Override
+    public @Nullable SyncState syncRepo(@NonNull Context context, @NonNull DataRepository dataRepository) throws IOException {
+        /*
+        - remoteHasChanges = fetch()
+        - if remoteHasChanges:
+            - Check out a temp sync branch.
+        - for rook : this.getBooks():
+            - if there is no local book, loadBookFromRepo and update shown status
+            - if corresponding local BookView is out of sync or has no sync:
+                - saveBookToRepo
+                - store status "local changes"
+                - add to list of books with local changes
+            - else: store status NO_CHANGE
+            - updateDataRepositoryFromStatus
+        - if remoteHasChanges:
+            - attempt merge with the remote starting branch
+            - if we are not on the main branch, attempt a return to it
+            - if any merge succeeded:
+                - Create a merge diff and loop over the changes:
+                    - MODIFY:
+                        - loadBookFromRepo
+                        - if local book status is not NO_CHANGE, set it to "changes on
+                        both sides"
+                        - otherwise, set status ROOK_MODIFIED
+                    - ADD:
+                        - loadBookFromRepo
+                        - set status "loaded from ..."
+                    - DELETE:
+                        - delete local book
+            - else:
+                - for each book with local changes:
+                    - set status "merge conflict"
+            - updateDataRepositoryFromStatus
+        - for each dataRepository.getBooks():
+            - if book has no repo link:
+                - saveBookToRepo(getDefaultRepo)
+                - set status
+            - elif book has repo link but no syncedTo:
+                - saveBookToRepo
+                - set status
+            - updateDataRepositoryFromStatus
+        - tryPushIfHeadDiffersFromRemote
+        */
+        SyncState syncStateToReturn = null;
+        String startingBranch = currentBranch();
+        boolean remoteHasChanges = false;
+        HashSet<BookView> booksWithLocalChanges = new HashSet<>();
+        try {
+            if (synchronizer.fetch()) {
+                remoteHasChanges = true;
+                synchronizer.switchToTempSyncBranch();
+            }
+        } catch (Exception e) {
+            Log.e(TAG, e.getMessage(), e);
+            throw new RuntimeException(e);
+        }
+        for (VersionedRook rook : getBooks()) {
+            String fileName = BookName.getFileName(context, rook.uri);
+            BookView bookView = dataRepository.getBookView(BookName.getInstance(context, rook).getName());
+            BookSyncStatus status;
+            if (bookView == null) {
+                bookView = dataRepository.loadBookFromRepo(rook);
+                status = BookSyncStatus.NO_BOOK_ONE_ROOK;
+            } else {
+                if (bookView.isOutOfSync() || !bookView.hasSync()) {
+                    dataRepository.saveBookToRepo(Objects.requireNonNull(dataRepository.getRepo(repoId)), fileName, bookView, BookFormat.ORG);
+                    status = BookSyncStatus.BOOK_WITH_LINK_LOCAL_MODIFIED;
+                    booksWithLocalChanges.add(bookView);
+                } else {
+                    status = BookSyncStatus.NO_CHANGE;
+                }
+            }
+            updateBookStatusInDataRepository(dataRepository, bookView, status);
+        }
+        if (remoteHasChanges) {
+            RevCommit headBeforeMerge = synchronizer.currentHead();
+            boolean mergeSucceeded = true;
+            try {
+                /* If there are changes on the remote side, we have always switched to a temp
+                branch at this point. Try to return to the main branch first, and if that fails,
+                try to go to the starting branch, in case we started from a temp branch. */
+                if (!synchronizer.attemptReturnToBranch(mainBranch())) {
+                    mergeSucceeded = synchronizer.attemptReturnToBranch(startingBranch);
+                }
+            } catch (Exception e) {
+                Log.e(TAG, e.getMessage(), e);
+                throw new RuntimeException(e);
+            }
+            if (mergeSucceeded) {
+                List<DiffEntry> mergeDiff;
+                try {
+                    mergeDiff = synchronizer.getCommitDiff(headBeforeMerge, synchronizer.currentHead());
+                } catch (GitAPIException e) {
+                    Log.e(TAG, e.getMessage(), e);
+                    throw new RuntimeException(e);
+                }
+                for (DiffEntry changedFile : mergeDiff) {
+                    BookSyncStatus status = null;
+                    Rook rook;
+                    BookView bookView = null;
+                    switch (changedFile.getChangeType()) {
+                        case MODIFY: {
+                            rook = currentVersionedRook(Uri.parse(changedFile.getNewPath()));
+                            bookView = dataRepository.loadBookFromRepo(rook);
+                            if (booksWithLocalChanges.contains(bookView)) {
+                                status = BookSyncStatus.CONFLICT_BOTH_BOOK_AND_ROOK_MODIFIED;
+                            } else {
+                                status = BookSyncStatus.BOOK_WITH_LINK_AND_ROOK_MODIFIED;
+                            }
+                            break;
+                        }
+                        case ADD: {
+                            if (BookName.isSupportedFormatFileName(changedFile.getNewPath())) {
+                                rook = currentVersionedRook(Uri.parse(changedFile.getNewPath()));
+                                bookView = dataRepository.loadBookFromRepo(rook);
+                                status = BookSyncStatus.NO_BOOK_ONE_ROOK;
+                            }
+                            break;
+                        }
+                        case DELETE: {
+                            String fileName = changedFile.getOldPath();
+                            bookView =
+                                    dataRepository.getBookView(BookName.fromFileName(fileName).getName());
+                            if (bookView != null) {
+                                dataRepository.deleteBook(bookView, false);
+                            }
+                            break;
+                        }
+                        // TODO: Handle RENAME, COPY
+                        default:
+                            throw new IOException("Unsupported remote change in Git repo (file renamed or copied)");
+                    }
+                    if (status != null && bookView != null) {
+                        updateBookStatusInDataRepository(dataRepository, bookView, status);
+                    }
+                }
+            } else {
+                for (BookView bookView : booksWithLocalChanges) {
+                    updateBookStatusInDataRepository(dataRepository, bookView,
+                            BookSyncStatus.CONFLICT_STAYING_ON_TEMPORARY_BRANCH);
+                    syncStateToReturn = SyncState.getInstance(
+                            SyncState.Type.FINISHED_WITH_CONFLICTS,
+                            "Merge conflict; staying on temporary branch.");  // TODO: String resource
+                }
+            }
+        }
+        for (BookView bookView : dataRepository.getBooks()) {
+            BookSyncStatus status = null;
+            if (!bookView.hasLink()) {
+                if (dataRepository.getRepos().size() > 1) {
+                    status = BookSyncStatus.ONLY_BOOK_WITHOUT_LINK_AND_MULTIPLE_REPOS;
+                } else {
+                    String fileName = BookName.getFileName(context, bookView);
+                    dataRepository.saveBookToRepo(Objects.requireNonNull(
+                            dataRepository.getRepo(repoId)), fileName, bookView, BookFormat.ORG);
+                    status = BookSyncStatus.ONLY_BOOK_WITHOUT_LINK_AND_ONE_REPO;
+                }
+            } else if (!bookView.hasSync()) {
+                status = BookSyncStatus.ONLY_BOOK_WITH_LINK;
+            }
+            if (status != null) {
+                updateBookStatusInDataRepository(dataRepository, bookView, status);
+            }
+        }
+        tryPushIfHeadDiffersFromRemote();
+        return syncStateToReturn;
+    }
+
+    private void updateBookStatusInDataRepository(DataRepository dataRepository,
+                                                  BookView bookView,
+                                                  BookSyncStatus status) throws IOException {
+        BookAction.Type actionType = BookAction.Type.INFO;
+        String actionMessageArgument = "";
+        switch (status) {
+            case ONLY_BOOK_WITHOUT_LINK_AND_ONE_REPO:
+            case NO_BOOK_ONE_ROOK:
+            case BOOK_WITH_LINK_LOCAL_MODIFIED:
+            case BOOK_WITH_LINK_AND_ROOK_MODIFIED:
+            case ONLY_BOOK_WITH_LINK:
+                actionMessageArgument = String.format("branch \"%s\"", currentBranch());
+                break;
+            case ONLY_BOOK_WITHOUT_LINK_AND_MULTIPLE_REPOS:
+                actionType = BookAction.Type.ERROR;
+                break;
+            case CONFLICT_STAYING_ON_TEMPORARY_BRANCH:
+                actionType = BookAction.Type.ERROR;
+                actionMessageArgument = String.format("branch \"%s\"", currentBranch());
+                break;
+        }
+        BookAction action = BookAction.forNow(actionType, status.msg(actionMessageArgument));
+        dataRepository.setBookLastActionAndSyncStatus(bookView.getBook().getId(),
+                action,
+                status.toString());
+    }
+
+//    @Override
+    public @Nullable SyncState syncRepo1(@NonNull Context context, DataRepository dataRepository) throws IOException {
+        /*
+        Loop over all local books and set their BookSyncStatus based on their local state.
+            Check if each book has a repo link pointing to the current repo.
+                If not, the book is linked to the repo if there is only one.
+            Check if book has been synced, and if it is out of sync.
+
+        Loop over all out of sync local books and commit their changes to a temp branch.
+
+        Run "git fetch" and note if there are remote changes.
+
+        If there are remote or local changes:
+            If we are not on the starting branch, attempt to merge with the fetched starting branch.
+            Otherwise, attempt to merge with the remote head.
+            Attempt to merge with main branch, if we are not already there.
+            If any merge succeeded:
+                Get the diff between before and after merges.
+                Loop over changes in the diff and note which files should be loaded from the
+                repo, and which files have been deleted.
+                Loop over locally modified books and update their status to show which branch they
+                were saved to.
+                If there are remote changes:
+                    Loop over files with remote changes:
+                        Load books from the repo, creating local books if they do not already exist
+                        and the file name is valid.
+                        Update the status to show from which branch the book was loaded.
+                Loop over deleted files and delete the corresponding local book.
+            If no merge succeeded:
+                Loop over locally modified books and update their status.
+
+        If no linked local books were found, loop over the result of getBooks() and create local
+        namesakes for all repo books.
+
+        Loop over untouched local books and update their status to "unchanged".
+
+        Push to remote unless the local head of the current branch is identical with the remote
+        equivalent.
+         */
+        SyncState syncStateToReturn = null;
+        HashSet<String> filesToLoad = new HashSet<>();
+        HashSet<String> filesToDelete = new HashSet<>();
+        List<BookNamesake> namesakesWithRepoLink = new ArrayList<>();
+        HashMap<Uri, BookNamesake> syncedNamesakes = new HashMap<>();
+        HashMap<Uri, BookNamesake> namesakesToSync = new HashMap<>();
+        HashMap<Uri, BookNamesake> untouchedNamesakes = new HashMap<>();
+        String startingBranch = currentBranch();
+        for (BookView localBook : dataRepository.getBooks()) {
+            BookNamesake namesake = new BookNamesake(localBook.getBook().getName());
+            if (!localBook.hasLink()) {
+                if (dataRepository.getRepos().size() > 1) {
+                    namesake.setStatus(BookSyncStatus.ONLY_BOOK_WITHOUT_LINK_AND_MULTIPLE_REPOS);
+                    dataRepository.setBookLastActionAndSyncStatus(localBook.getBook().getId(), BookAction.forNow(BookAction.Type.ERROR, namesake.getStatus().msg()));
+                } else {
+                    namesake.setBook(localBook);
+                    namesake.setStatus(BookSyncStatus.ONLY_BOOK_WITHOUT_LINK_AND_ONE_REPO);
+                    namesakesToSync.put(Uri.parse(BookName.getFileName(context, localBook)), namesake);
+                }
+            } else if (localBook.getLinkRepo().getId() == repoId) {
+                Uri uri = Uri.parse(BookName.getFileName(context, localBook));
+                namesake.setBook(localBook);
+                namesakesWithRepoLink.add(namesake);
+                if (!localBook.hasSync()) {
+                    namesake.setStatus(BookSyncStatus.ONLY_BOOK_WITH_LINK);
+                    namesakesToSync.put(uri, namesake);
+                } else {
+                    syncedNamesakes.put(uri, namesake);
+                    if (localBook.isOutOfSync()) {
+                        namesake.setStatus(BookSyncStatus.BOOK_WITH_LINK_LOCAL_MODIFIED);
+                        namesakesToSync.put(uri, namesake);
+                    } else {
+                        namesake.setStatus(BookSyncStatus.NO_CHANGE);
+                        untouchedNamesakes.put(uri, namesake);
+                    }
+                }
+            }
+        }
+        if (namesakesToSync.size() > 0) {
+            // There are local changes. Let's commit them on a temporary branch.
+            try {
+                synchronizer.switchToTempSyncBranch();
+            } catch (GitAPIException e) {
+                throw new IOException(e);
+            }
+            // Commit all files with changes.
+            for (Map.Entry<Uri, BookNamesake> entry : namesakesToSync.entrySet()) {
+                BookNamesake ns = entry.getValue();
+                BookView localBook = ns.getBook();
+                long bookId = localBook.getBook().getId();
+                dataRepository.setBookLastActionAndSyncStatus(bookId,
+                        BookAction.forNow(BookAction.Type.PROGRESS, context.getString(R.string.syncing_in_progress)));
+                // Save to repo and update notebook in DB
+                dataRepository.saveBookToRepo(
+                        dataRepository.getRepos().iterator().next(),
+                        BookName.getFileName(context, localBook),
+                        localBook,
+                        BookFormat.ORG);
+                untouchedNamesakes.remove(entry.getKey());
+            }
+        }
+        boolean remoteHasChanges;
+        try {
+            remoteHasChanges = synchronizer.fetch();
+        } catch (Exception e) {
+            Log.e(TAG, e.getMessage(), e);
+            throw new RuntimeException(e);
+        }
+        if (namesakesToSync.size() > 0 || remoteHasChanges) {
+            // Try to merge current branch with a suitable remote head
+            RevCommit headBeforeMerge = synchronizer.currentHead();
+            boolean mergeSucceeded;
+            try {
+                if (currentBranch().equals(startingBranch)) {
+                    mergeSucceeded = synchronizer.mergeWithRemoteEquivalent();
+                } else {
+                    mergeSucceeded = synchronizer.attemptReturnToBranch(startingBranch);
+                }
+                if (!currentBranch().equals(mainBranch())) {
+                    if (synchronizer.attemptReturnToBranch(mainBranch())) {
+                        mergeSucceeded = true;
+                    }
+                }
+            } catch (Exception e) {
+                Log.e(TAG, e.getMessage(), e);
+                throw new RuntimeException(e);
+            }
+            if (mergeSucceeded) {
+                List<DiffEntry> mergeDiff;
+                try {
+                    mergeDiff = synchronizer.getCommitDiff(headBeforeMerge, synchronizer.currentHead());
+                } catch (GitAPIException e) {
+                    Log.e(TAG, e.getMessage(), e);
+                    throw new RuntimeException(e);
+                }
+                for (DiffEntry diff : mergeDiff) {
+                    switch (diff.getChangeType()) {
+                        case MODIFY:
+                        case ADD: {
+                            filesToLoad.add(diff.getNewPath());
+                            break;
+                        }
+                        case DELETE: {
+                            filesToDelete.add(diff.getOldPath());
+                            break;
+                        }
+                        // TODO: Handle RENAME, COPY
+                        default:
+                            throw new IOException("Unsupported remote change in Git repo (file renamed or copied)");
+                    }
+                }
+                if (namesakesToSync.size() > 0) {
+                    // Local changes have been successfully merged. Updated book statuses to reflect this.
+                    for (BookNamesake namesake : namesakesToSync.values()) {
+                        BookAction action = BookAction.forNow(BookAction.Type.INFO, namesake.getStatus().msg(String.format("branch '%s'", this.currentBranch())));
+                        dataRepository.setBookLastActionAndSyncStatus(namesake.getBook().getBook().getId(), action, namesake.getStatus().toString());
+                    }
+                }
+                // Reload any files with changes on remote.
+                for (String filePath : filesToLoad) {
+                    BookNamesake namesake;
+                    VersionedRook vrook = currentVersionedRook(Uri.parse(filePath));
+                    if (syncedNamesakes.containsKey(vrook.uri)) {
+                        // This remote book has a corresponding local book. Update its sync status.
+                        namesake = syncedNamesakes.get(vrook.uri);
+                        dataRepository.setBookLastActionAndSyncStatus(
+                                namesake.getBook().getBook().getId(),
+                                BookAction.forNow(
+                                        BookAction.Type.PROGRESS,
+                                        context.getString(R.string.syncing_in_progress)));
+                        if (namesakesToSync.containsKey(vrook.uri)) {
+                            namesake.setStatus(BookSyncStatus.CONFLICT_BOTH_BOOK_AND_ROOK_MODIFIED);
+                        } else {
+                            // File only has remote changes
+                            namesake.setStatus(BookSyncStatus.BOOK_WITH_LINK_AND_ROOK_MODIFIED);
+                            untouchedNamesakes.remove(vrook.uri);
+                        }
+                    } else if (BookName.isSupportedFormatFileName(filePath)) {
+                        // This remote book does not yet have a corresponding local book. Create
+                        // a minimal namesake and set its sync status.
+                        namesake = new BookNamesake(BookName.getInstance(context, vrook).getName());
+                        namesake.setStatus(BookSyncStatus.NO_BOOK_ONE_ROOK);
+                        namesakesWithRepoLink.add(namesake);
+                    } else continue;
+                    BookView bv = dataRepository.loadBookFromRepo(vrook);
+                    long localBookId = bv.getBook().getId();
+                    dataRepository.updateBookLinkAndSync(localBookId, vrook);
+                    BookAction action = BookAction.forNow(BookAction.Type.INFO, namesake.getStatus().msg(String.format("branch '%s'", this.currentBranch())));
+                    dataRepository.setBookLastActionAndSyncStatus(localBookId, action, namesake.getStatus().toString());
+                }
+                for (String path : filesToDelete) {
+                    Uri uri = Uri.parse(path);
+                    if (syncedNamesakes.containsKey(uri)) {
+                        dataRepository.deleteBook(syncedNamesakes.get(uri).getBook(), false);
+                    }
+                }
+            } else {
+                for (BookNamesake namesake : namesakesToSync.values()) {
+                    namesake.setStatus(BookSyncStatus.CONFLICT_STAYING_ON_TEMPORARY_BRANCH);
+                    BookAction action = BookAction.forNow(BookAction.Type.ERROR, namesake.getStatus().msg());
+                    dataRepository.setBookLastActionAndSyncStatus(namesake.getBook().getBook().getId(), action);
+                }
+                syncStateToReturn = SyncState.getInstance(
+                        SyncState.Type.FINISHED_WITH_CONFLICTS,
+                        "Merge conflict; staying on temporary branch.");  // TODO: String resource
+            }
+        }
+        if (namesakesWithRepoLink.isEmpty()) {
+            /* We have no local books from this repo. This may be the first time syncing the
+            repo. */
+            for (VersionedRook vrook : getBooks()) {
+                String fileName = BookName.getFileName(context, vrook.uri);
+                String namesakeName = BookName.fromFileName(fileName).getName();
+                BookNamesake namesake = new BookNamesake(namesakeName);
+                namesake.addRook(vrook);
+                BookView localBook = dataRepository.loadBookFromRepo(vrook);
+                if (localBook == null)
+                    throw new RuntimeException("Failed to load book " + vrook.uri.toString() + " " +
+                            "from repo");
+                namesake.setBook(localBook);
+                namesake.setStatus(BookSyncStatus.NO_BOOK_ONE_ROOK);
+                syncedNamesakes.put(vrook.uri, namesake);
+                BookAction action = BookAction.forNow(
+                        BookAction.Type.INFO,
+                        namesake.getStatus().msg(
+                                String.format("branch '%s'", this.currentBranch())));
+                dataRepository.setBookLastActionAndSyncStatus(localBook.getBook().getId(), action);
+            }
+        }
+        for (BookNamesake namesake : untouchedNamesakes.values()) {
+            dataRepository.setBookLastActionAndSyncStatus(
+                    namesake.getBook().getBook().getId(),
+                    BookAction.forNow(BookAction.Type.INFO, namesake.getStatus().msg()));
+        }
+        /*
+        TODO: handle local book deleted but still present in repo (should be re-added)
+          - decide in what situations to run this.getBooks()
+            - [x] if namesakesWithRepoLink.isEmpty
+        TODO: verify that files in sub-folders are found/loaded
+        TODO: add support for repo "ignore file"
+        TODO: ignore all hidden files in the repo?
+        */
+        synchronizer.tryPushIfHeadDiffersFromRemote();
+        return syncStateToReturn;
     }
 }

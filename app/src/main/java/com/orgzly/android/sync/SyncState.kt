@@ -19,6 +19,7 @@ data class SyncState(val type: Type, val message: String? = null, val current: I
         AUTO_SYNC_NOT_STARTED,
         FINISHED,
         CANCELED,
+        FINISHED_WITH_CONFLICTS,
 
         FAILED_NO_REPOS,
         FAILED_NO_CONNECTION,
@@ -44,7 +45,8 @@ data class SyncState(val type: Type, val message: String? = null, val current: I
         return when (type) {
             Type.AUTO_SYNC_NOT_STARTED,
             Type.FINISHED,
-            Type.CANCELED ->
+            Type.CANCELED,
+            Type.FINISHED_WITH_CONFLICTS ->
                 true
             else ->
                 false
@@ -85,6 +87,7 @@ data class SyncState(val type: Type, val message: String? = null, val current: I
                 Type.FAILED_NO_STORAGE_PERMISSION -> getString(R.string.storage_permissions_missing)
                 Type.FAILED_NO_BOOKS_FOUND -> getString(R.string.no_books)
                 Type.FAILED_EXCEPTION -> message
+                Type.FINISHED_WITH_CONFLICTS -> message
             }
         }
     }

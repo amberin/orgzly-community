@@ -65,6 +65,7 @@ open class CommonFragment : Fragment() {
 
             AUTO_SYNC_NOT_STARTED,
             FINISHED,
+            FINISHED_WITH_CONFLICTS,
             CANCELED,
             FAILED_NO_REPOS,
             FAILED_NO_CONNECTION,
