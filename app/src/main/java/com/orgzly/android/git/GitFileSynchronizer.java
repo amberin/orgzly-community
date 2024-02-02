@@ -95,9 +95,12 @@ public class GitFileSynchronizer {
      * @throws IOException if we had trouble fetching
      */
     public boolean fetch() throws IOException {
+        long checkPoint = System.currentTimeMillis();
         String currentBranch = git.getRepository().getBranch();
         RevCommit startingHead = currentHead();
         RevCommit mainBranchBeforeFetch = startingHead;
+        Log.i(TAG, String.format("Fetch: finding starting branch and head took %s ms",
+                (System.currentTimeMillis() - checkPoint)));
         if (!currentBranch.equals(mainBranch)) {
             mainBranchBeforeFetch = getCommit(mainBranch);
         }
@@ -105,11 +108,14 @@ public class GitFileSynchronizer {
             if (BuildConfig.LOG_DEBUG) {
                 LogUtils.d(TAG, String.format("Fetching Git repo from %s", preferences.remoteUri()));
             }
+            checkPoint = System.currentTimeMillis();
             transportSetter()
                     .setTransport(git.fetch()
                             .setRemote(preferences.remoteName())
                             .setRemoveDeletedRefs(true))
                     .call();
+            Log.i(TAG, String.format("Fetch: actual git fetch took %s ms",
+                    (System.currentTimeMillis() - checkPoint)));
         } catch (GitAPIException e) {
             Log.e(TAG, e.getMessage(), e);
             throw new IOException(e);
