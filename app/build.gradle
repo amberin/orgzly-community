@@ -8,7 +8,7 @@ android {
     compileSdkVersion 32
 
     defaultConfig {
-        def application_id = "com.orgzlyrevived"
+        def application_id = "com.orgzlyreviveddev"
         minSdkVersion 21 // Lollipop (5.0)
         targetSdkVersion 32 // Android 12L
         versionCode 188
