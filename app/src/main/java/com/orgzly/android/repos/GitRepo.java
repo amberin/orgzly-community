@@ -406,25 +406,30 @@ public class GitRepo implements SyncRepo, IntegrallySyncedRepo {
             - updateDataRepositoryFromStatus
         - tryPushIfHeadDiffersFromRemote
         */
+        long startTime = System.currentTimeMillis();
         SyncState syncStateToReturn = null;
         String startingBranch = currentBranch();
         boolean remoteHasChanges = false;
         HashSet<BookView> booksWithLocalChanges = new HashSet<>();
         try {
+            long preFetchTime = System.currentTimeMillis();
             if (synchronizer.fetch()) {
                 remoteHasChanges = true;
                 synchronizer.switchToTempSyncBranch();
             }
+            long postFetchTime = System.currentTimeMillis();
+            Log.i(TAG, String.format("Fetch took %s ms", (postFetchTime - preFetchTime)));
         } catch (Exception e) {
             Log.e(TAG, e.getMessage(), e);
             throw new RuntimeException(e);
         }
         for (VersionedRook rook : getBooks()) {
-            String fileName = BookName.getFileName(context, rook.uri);
-            BookView bookView = dataRepository.getBookView(BookName.getInstance(context, rook).getName());
+            String fileName = rook.uri.getPath().replaceFirst("^/", "");
+            BookView bookView = dataRepository.getBookView(BookName.fromFileName(fileName).getName());
             BookSyncStatus status;
             if (bookView == null) {
-                bookView = dataRepository.loadBookFromRepo(rook);
+                bookView = dataRepository.loadBookFromRepo(rook.repoId, rook.repoType,
+                        rook.repoUri.toString(), fileName);
                 status = BookSyncStatus.NO_BOOK_ONE_ROOK;
             } else {
                 if (bookView.isOutOfSync() || !bookView.hasSync()) {
@@ -466,7 +471,8 @@ public class GitRepo implements SyncRepo, IntegrallySyncedRepo {
                     switch (changedFile.getChangeType()) {
                         case MODIFY: {
                             rook = currentVersionedRook(Uri.parse(changedFile.getNewPath()));
-                            bookView = dataRepository.loadBookFromRepo(rook);
+                            bookView = dataRepository.loadBookFromRepo(rook.repoId, rook.repoType,
+                                    rook.repoUri.toString(), rook.uri.getPath().replaceFirst("^/", ""));
                             if (booksWithLocalChanges.contains(bookView)) {
                                 status = BookSyncStatus.CONFLICT_BOTH_BOOK_AND_ROOK_MODIFIED;
                             } else {
@@ -477,7 +483,8 @@ public class GitRepo implements SyncRepo, IntegrallySyncedRepo {
                         case ADD: {
                             if (BookName.isSupportedFormatFileName(changedFile.getNewPath())) {
                                 rook = currentVersionedRook(Uri.parse(changedFile.getNewPath()));
-                                bookView = dataRepository.loadBookFromRepo(rook);
+                                bookView = dataRepository.loadBookFromRepo(rook.repoId, rook.repoType,
+                                        rook.repoUri.toString(), rook.uri.getPath().replaceFirst("^/", ""));
                                 status = BookSyncStatus.NO_BOOK_ONE_ROOK;
                             }
                             break;
@@ -528,6 +535,9 @@ public class GitRepo implements SyncRepo, IntegrallySyncedRepo {
             }
         }
         tryPushIfHeadDiffersFromRemote();
+        long endTime = System.currentTimeMillis();
+        long duration = endTime - startTime;
+        Log.i(TAG, String.format("Sync took %s ms", duration));
         return syncStateToReturn;
     }
 
@@ -741,7 +751,8 @@ public class GitRepo implements SyncRepo, IntegrallySyncedRepo {
                         namesake.setStatus(BookSyncStatus.NO_BOOK_ONE_ROOK);
                         namesakesWithRepoLink.add(namesake);
                     } else continue;
-                    BookView bv = dataRepository.loadBookFromRepo(vrook);
+                    BookView bv = dataRepository.loadBookFromRepo(vrook.repoId, vrook.repoType,
+                            vrook.repoUri.toString(), vrook.uri.getPath().replaceFirst("^/", ""));
                     long localBookId = bv.getBook().getId();
                     dataRepository.updateBookLinkAndSync(localBookId, vrook);
                     BookAction action = BookAction.forNow(BookAction.Type.INFO, namesake.getStatus().msg(String.format("branch '%s'", this.currentBranch())));
@@ -768,11 +779,12 @@ public class GitRepo implements SyncRepo, IntegrallySyncedRepo {
             /* We have no local books from this repo. This may be the first time syncing the
             repo. */
             for (VersionedRook vrook : getBooks()) {
-                String fileName = BookName.getFileName(context, vrook.uri);
+                String fileName = vrook.uri.getPath().replaceFirst("^/", "");
                 String namesakeName = BookName.fromFileName(fileName).getName();
                 BookNamesake namesake = new BookNamesake(namesakeName);
                 namesake.addRook(vrook);
-                BookView localBook = dataRepository.loadBookFromRepo(vrook);
+                BookView localBook = dataRepository.loadBookFromRepo(vrook.repoId, vrook.repoType,
+                        vrook.repoUri.toString(), fileName);
                 if (localBook == null)
                     throw new RuntimeException("Failed to load book " + vrook.uri.toString() + " " +
                             "from repo");
