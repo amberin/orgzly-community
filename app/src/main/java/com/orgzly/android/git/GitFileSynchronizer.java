@@ -28,7 +28,8 @@ import org.eclipse.jgit.lib.Repository;
 import org.eclipse.jgit.revwalk.RevCommit;
 import org.eclipse.jgit.revwalk.RevTree;
 import org.eclipse.jgit.revwalk.RevWalk;
-import org.eclipse.jgit.transport.PushResult;
+import org.eclipse.jgit.transport.FetchResult;
+import org.eclipse.jgit.transport.SshSessionFactory;
 import org.eclipse.jgit.treewalk.AbstractTreeIterator;
 import org.eclipse.jgit.treewalk.CanonicalTreeParser;
 import org.eclipse.jgit.treewalk.TreeWalk;
@@ -95,21 +96,14 @@ public class GitFileSynchronizer {
      * @throws IOException if we had trouble fetching
      */
     public boolean fetch() throws IOException {
-        long checkPoint = System.currentTimeMillis();
-        String currentBranch = git.getRepository().getBranch();
-        RevCommit startingHead = currentHead();
-        RevCommit mainBranchBeforeFetch = startingHead;
-        Log.i(TAG, String.format("Fetch: finding starting branch and head took %s ms",
-                (System.currentTimeMillis() - checkPoint)));
-        if (!currentBranch.equals(mainBranch)) {
-            mainBranchBeforeFetch = getCommit(mainBranch);
-        }
+        long checkPoint;
+        FetchResult fetchResult;
         try {
             if (BuildConfig.LOG_DEBUG) {
                 LogUtils.d(TAG, String.format("Fetching Git repo from %s", preferences.remoteUri()));
             }
             checkPoint = System.currentTimeMillis();
-            transportSetter()
+            fetchResult = (FetchResult) transportSetter()
                     .setTransport(git.fetch()
                             .setRemote(preferences.remoteName())
                             .setRemoveDeletedRefs(true))
@@ -120,18 +114,12 @@ public class GitFileSynchronizer {
             Log.e(TAG, e.getMessage(), e);
             throw new IOException(e);
         }
-        RevCommit fetchedCurrentBranchTip = getCommit("origin/" + currentBranch);
-        if (fetchedCurrentBranchTip == null) {
-            // We failed to find a corresponding remote head. Check if the repo is completely
-            // empty, and if so, push to it.
-            try {
-                pushToRemoteIfEmpty();
-            } catch (GitAPIException e) {
-                Log.e(TAG, e.getMessage(), e);
-                throw new RuntimeException(e);
-            }
-        } else if (!fetchedCurrentBranchTip.equals(startingHead)) return true;
-        return !getCommit("origin/" + mainBranch).equals(mainBranchBeforeFetch);
+        if (fetchResult.getAdvertisedRefs().isEmpty()) {
+            // The remote repo is completely empty. Push our current branch to it.
+            tryPush();
+            return false;
+        }
+        return !fetchResult.getTrackingRefUpdates().isEmpty();
     }
 
     public void checkoutSelected() throws GitAPIException {
