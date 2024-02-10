@@ -8,6 +8,7 @@ import android.media.MediaScannerConnection
 import android.net.Uri
 import android.os.Handler
 import android.text.TextUtils
+import android.util.Log
 import androidx.lifecycle.LiveData
 import androidx.lifecycle.MutableLiveData
 import androidx.lifecycle.Transformations
@@ -53,6 +54,7 @@ import com.orgzly.org.parser.OrgParserWriter
 import com.orgzly.org.utils.StateChangeLogic
 import java.io.*
 import java.lang.IllegalStateException
+import java.lang.RuntimeException
 import java.util.*
 import java.util.concurrent.Callable
 import javax.inject.Inject
@@ -2329,7 +2331,8 @@ class DataRepository @Inject constructor(
                 val repo = getRepoInstance(id, type, url)
                 list.add(repo)
             } catch (e: Exception) {
-                e.printStackTrace()
+                Log.e(TAG, e.toString())
+                throw RuntimeException(e)
             }
         }
         return list

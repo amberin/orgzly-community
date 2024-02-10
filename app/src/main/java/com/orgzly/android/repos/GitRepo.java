@@ -52,6 +52,8 @@ import java.util.Objects;
 public class GitRepo implements SyncRepo, IntegrallySyncedRepo {
     private final static String TAG = "repos.GitRepo";
     private final long repoId;
+    private final Uri repoUri;
+    private final RepoType repoType = RepoType.GIT;
 
     /**
      * Used as cause when we try to clone into a non-empty directory
@@ -187,6 +189,7 @@ public class GitRepo implements SyncRepo, IntegrallySyncedRepo {
         repoId = id;
         git = g;
         preferences = prefs;
+        repoUri = getUri();
         synchronizer = new GitFileSynchronizer(git, prefs);
     }
 
@@ -403,6 +406,7 @@ public class GitRepo implements SyncRepo, IntegrallySyncedRepo {
         */
         long startTime = System.currentTimeMillis();
         SyncState syncStateToReturn = null;
+        Repo repo = Objects.requireNonNull(dataRepository.getRepo(repoId));
         String startingBranch = currentBranch();
         boolean remoteHasChanges = false;
         HashSet<BookView> booksWithLocalChanges = new HashSet<>();
@@ -424,12 +428,12 @@ public class GitRepo implements SyncRepo, IntegrallySyncedRepo {
                 BookView bookView = dataRepository.getBookView(BookName.fromFileName(fileName).getName());
                 BookSyncStatus status;
                 if (bookView == null) {
-                    bookView = dataRepository.loadBookFromRepo(rook.repoId, rook.repoType,
-                            rook.repoUri.toString(), fileName);
+                    bookView = dataRepository.loadBookFromRepo(repoId, rook.repoType,
+                            repoUri.toString(), fileName);
                     status = BookSyncStatus.NO_BOOK_ONE_ROOK;
                 } else {
                     if (bookView.isOutOfSync() || !bookView.hasSync()) {
-                        dataRepository.saveBookToRepo(Objects.requireNonNull(dataRepository.getRepo(repoId)), fileName, bookView, BookFormat.ORG);
+                        dataRepository.saveBookToRepo(repo, fileName, bookView, BookFormat.ORG);
                         status = BookSyncStatus.BOOK_WITH_LINK_LOCAL_MODIFIED;
                         booksWithLocalChanges.add(bookView);
                     } else {
@@ -467,8 +471,8 @@ public class GitRepo implements SyncRepo, IntegrallySyncedRepo {
                         switch (changedFile.getChangeType()) {
                             case MODIFY: {
                                 rook = currentVersionedRook(Uri.parse(changedFile.getNewPath()));
-                                bookView = dataRepository.loadBookFromRepo(rook.repoId, rook.repoType,
-                                        rook.repoUri.toString(), rook.uri.getPath().replaceFirst("^/", ""));
+                                bookView = dataRepository.loadBookFromRepo(repoId, repoType,
+                                        repoUri.toString(), rook.uri.getPath().replaceFirst("^/", ""));
                                 if (booksWithLocalChanges.contains(bookView)) {
                                     status = BookSyncStatus.CONFLICT_BOTH_BOOK_AND_ROOK_MODIFIED;
                                 } else {
@@ -479,8 +483,8 @@ public class GitRepo implements SyncRepo, IntegrallySyncedRepo {
                             case ADD: {
                                 if (BookName.isSupportedFormatFileName(changedFile.getNewPath())) {
                                     rook = currentVersionedRook(Uri.parse(changedFile.getNewPath()));
-                                    bookView = dataRepository.loadBookFromRepo(rook.repoId, rook.repoType,
-                                            rook.repoUri.toString(), rook.uri.getPath().replaceFirst("^/", ""));
+                                    bookView = dataRepository.loadBookFromRepo(repoId, repoType,
+                                            repoUri.toString(), rook.uri.getPath().replaceFirst("^/", ""));
                                     status = BookSyncStatus.NO_BOOK_ONE_ROOK;
                                 }
                                 break;
@@ -519,8 +523,7 @@ public class GitRepo implements SyncRepo, IntegrallySyncedRepo {
                         status = BookSyncStatus.ONLY_BOOK_WITHOUT_LINK_AND_MULTIPLE_REPOS;
                     } else {
                         String fileName = BookName.getFileName(context, bookView);
-                        dataRepository.saveBookToRepo(Objects.requireNonNull(
-                                dataRepository.getRepo(repoId)), fileName, bookView, BookFormat.ORG);
+                        dataRepository.saveBookToRepo(repo, fileName, bookView, BookFormat.ORG);
                         status = BookSyncStatus.ONLY_BOOK_WITHOUT_LINK_AND_ONE_REPO;
                     }
                 } else if (!bookView.hasSync()) {
@@ -534,7 +537,7 @@ public class GitRepo implements SyncRepo, IntegrallySyncedRepo {
         }
         long endTime = System.currentTimeMillis();
         long duration = endTime - startTime;
-        Log.i(TAG, String.format("Sync took %s ms", duration));
+        Log.i(TAG, String.format("Synced repo %s in %s ms", repoUri.toString(), duration));
         return syncStateToReturn;
     }
 
