@@ -290,26 +290,10 @@ public class GitFileSynchronizer {
             } catch (IOException ignored) {}
             LogUtils.d(TAG, "Pushing branch " + currentBranch + " to " + preferences.remoteUri());
         }
-        App.EXECUTORS.diskIO().execute(() -> {
-            try {
-                Iterable<PushResult> results = (Iterable<PushResult>) pushCommand.call();
-                // org.eclipse.jgit.api.PushCommand swallows some errors without throwing exceptions.
-                if (!results.iterator().next().getMessages().isEmpty()) {
-                    throw new RuntimeException(results.iterator().next().getMessages());
-                }
-                synchronized (monitor) {
-                    monitor.notify();
-                }
-            } catch (GitAPIException e) {
-                throw new RuntimeException(e);
-            }
-        });
-        synchronized (monitor) {
-            try {
-                monitor.wait();
-            } catch (InterruptedException e) {
-                Log.e(TAG, e.toString());
-            }
+        try {
+            pushCommand.call();
+        } catch (GitAPIException e) {
+            throw new RuntimeException(e);
         }
     }
 
