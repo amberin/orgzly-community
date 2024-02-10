@@ -12,8 +12,6 @@ interface IntegrallySyncedRepo {
     @Throws(IOException::class)
     fun syncBook(uri: Uri, current: VersionedRook?, fromDB: File): TwoWaySyncResult
 
-    @Throws(IOException::class)
+    @Throws(Exception::class)
     fun syncRepo(context: Context, dataRepository: DataRepository): SyncState?
-
-    fun tryPushIfHeadDiffersFromRemote()
 }

@@ -301,7 +301,7 @@ class DataRepository @Inject constructor(
      * @param dummy If true, creates a new dummy book - temporary incomplete book
      */
     @JvmOverloads
-    @Throws(IOException::class)
+    @Throws(Exception::class)
     fun createBook(name: String, dummy: Boolean = false): BookView {
         if (doesBookExist(name)) {
             throw IOException(resources.getString(R.string.book_name_already_exists, name))
@@ -356,7 +356,7 @@ class DataRepository @Inject constructor(
         }
     }
 
-    @Throws(IOException::class)
+    @Throws(Exception::class)
     private fun doRenameBook(bookView: BookView, name: String) {
         val book = bookView.book
 

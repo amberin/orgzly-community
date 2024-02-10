@@ -39,11 +39,11 @@ public interface SyncRepo {
      */
     VersionedRook storeBook(File file, String fileName) throws IOException;
 
-    VersionedRook renameBook(Uri from, String name) throws IOException;
+    VersionedRook renameBook(Uri from, String name) throws Exception;
 
     // VersionedRook moveBook(Uri from, Uri uri) throws IOException;
 
-    void delete(Uri uri) throws IOException;
+    void delete(Uri uri) throws IOException, Exception;
 
     String toString();
 }
