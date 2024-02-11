@@ -36,10 +36,10 @@ public class BookNamesake {
     /**
      * Create links between remote books and any local books with the same name.
      *
-     * This method is intended to be used with a limited set of VersionedRooks,
+     * This method is intended to be used with a limited set of both local books and VersionedRooks,
      * to allow syncing repos separately.
      */
-    public static Map<String, BookNamesake> getFromVrooks(Context context, List<BookView> books, List<VersionedRook> versionedRooks) {
+    public static Map<String, BookNamesake> groupBooksAndVrooks(Context context, List<BookView> books, List<VersionedRook> versionedRooks) {
         Map<String, BookNamesake> namesakes = new HashMap<>();
 
         /* Add all provided remote books. */
@@ -57,16 +57,10 @@ public class BookNamesake {
             String name = book.getBook().getName();
             BookNamesake namesake = namesakes.get(name);
             if (namesake == null) {
-                /* This local book does not have a namesake among the VersionedRooks. If it has a
-                repo link, we should ignore it, as it is linked to some other repo than the one
-                currently being synced. But if it has no repo link, it is probably just new,
-                and we should create a dummy namesake. */
-                if (book.getLinkRepo() != null) {
-                    continue;
-                } else {
-                    namesake = new BookNamesake(name);
-                    namesakes.put(name, namesake);
-                }
+                /* This local book does not have a namesake among the VersionedRooks. Create a
+                dummy namesake. */
+                namesake = new BookNamesake(name);
+                namesakes.put(name, namesake);
             }
             namesake.setBook(book);
         }

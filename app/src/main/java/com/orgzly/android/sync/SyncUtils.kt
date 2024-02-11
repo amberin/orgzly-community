@@ -4,13 +4,11 @@ import com.orgzly.BuildConfig
 import com.orgzly.android.App
 import com.orgzly.android.BookFormat
 import com.orgzly.android.BookName
-import com.orgzly.android.NotesOrgExporter
 import com.orgzly.android.data.DataRepository
 import com.orgzly.android.db.entity.BookAction
+import com.orgzly.android.db.entity.BookView
 import com.orgzly.android.db.entity.Repo
-import com.orgzly.android.repos.GitRepo
-import com.orgzly.android.repos.SyncRepo
-import com.orgzly.android.repos.IntegrallySyncedRepo
+import com.orgzly.android.repos.RepoType
 import com.orgzly.android.repos.VersionedRook
 import com.orgzly.android.util.LogUtils
 import java.io.IOException
@@ -24,7 +22,7 @@ object SyncUtils {
      */
     @Throws(IOException::class)
     @JvmStatic
-    fun getBooksFromRegularSyncRepos(dataRepository: DataRepository): List<VersionedRook> {
+    fun getVrooksFromRegularSyncRepos(dataRepository: DataRepository): List<VersionedRook> {
         val result = ArrayList<VersionedRook>()
 
         val repoList = dataRepository.getRegularSyncRepos()
@@ -40,7 +38,7 @@ object SyncUtils {
     /**
      * Compares remote books with their local equivalent and calculates the syncStatus for each link.
      *
-     * Acts only on regular SyncRepos, NOT on IntegrallySyncedRepos.
+     * N.B! Ignores all local books which are synced to a repo of type GIT.
      *
      * @return number of links (unique book names)
      * @throws IOException
@@ -52,11 +50,21 @@ object SyncUtils {
 
         val repos = dataRepository.getRepos()
 
-        val localBooks = dataRepository.getBooks()
-        val versionedRooks = getBooksFromRegularSyncRepos(dataRepository)
+        val localBooks = mutableListOf<BookView>()
+        /* TODO: This is a very ugly hack, as nothing ties the GIT repo type to the
+            IntegrallySyncedRepo interface. Find a better solution! */
+        for (localBook in dataRepository.getBooks()) {
+            if (localBook.hasLink() && localBook.linkRepo!!.type == RepoType.GIT) {
+                continue
+            } else {
+                localBooks.add(localBook)
+            }
+        }
+
+        val versionedRooks = getVrooksFromRegularSyncRepos(dataRepository)
 
         /* Group local and remote books by name. */
-        val namesakes = BookNamesake.getFromVrooks(
+        val namesakes = BookNamesake.groupBooksAndVrooks(
             App.getAppContext(), localBooks, versionedRooks)
 
         /* If there is no local book, create empty "dummy" one. */

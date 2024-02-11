@@ -32,7 +32,7 @@ public class LocalDbRepoTest extends OrgzlyTest {
         Repo repo = testUtils.setupRepo(RepoType.MOCK, "mock://repo-a");
         testUtils.setupRook(repo, "mock://repo-a/mock-book.org", "book content\n\n* First note\n** Second note", "rev1", 1234567890000L);
 
-        List<VersionedRook> books = SyncUtils.getBooksFromRegularSyncRepos(dataRepository, null);
+        List<VersionedRook> books = SyncUtils.getVrooksFromRegularSyncRepos(dataRepository, null);
 
         assertEquals(1, books.size());
 
@@ -78,7 +78,7 @@ public class LocalDbRepoTest extends OrgzlyTest {
         testUtils.setupRook(repo, "mock://repo-a/mock-book.org", "book content\n\n* First note\n** Second note", "rev1", 1234567890000L);
 
         SyncRepo syncRepo = testUtils.repoInstance(RepoType.MOCK, "mock://repo-a");
-        VersionedRook vrook = SyncUtils.getBooksFromRegularSyncRepos(dataRepository, null).get(0);
+        VersionedRook vrook = SyncUtils.getVrooksFromRegularSyncRepos(dataRepository, null).get(0);
 
         File tmpFile = dataRepository.getTempBookFile();
         try {

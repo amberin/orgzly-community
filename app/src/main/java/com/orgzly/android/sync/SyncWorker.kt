@@ -178,7 +178,7 @@ class SyncWorker(val context: Context, val params: WorkerParameters) :
 
         sendProgress(SyncState.getInstance(SyncState.Type.COLLECTING_BOOKS))
 
-        /* Get the list of local and remote books from all regular repositories.
+        /* Get the list of local and remote books from all REGULAR repositories.
          * Group them by name.
          * Inserts dummy books if they don't exist in database.
          */
@@ -191,7 +191,7 @@ class SyncWorker(val context: Context, val params: WorkerParameters) :
         }
 
         if (namesakes.isEmpty()) {
-            return SyncState.getInstance(SyncState.Type.FAILED_NO_BOOKS_FOUND)
+            return null
         }
 
         sendProgress(SyncState.getInstance(SyncState.Type.BOOKS_COLLECTED, total = namesakes.size))
