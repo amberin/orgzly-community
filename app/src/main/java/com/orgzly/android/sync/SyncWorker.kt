@@ -253,15 +253,7 @@ class SyncWorker(val context: Context, val params: WorkerParameters) :
     }
 
     private fun syncIntegrallySyncedRepos(): SyncState? {
-
-        val repos = dataRepository.getIntegrallySyncedRepos()
-
-        /* Abort if there are no integrally synced repos configured. */
-        if (repos.isEmpty()) {
-            return null
-        }
-
-        for (repo in repos) {
+        for (repo in dataRepository.getIntegrallySyncedRepos()) {
             val repoResult = repo.syncRepo(context, dataRepository)
             if (repoResult != null) {
                 return repoResult
