@@ -182,7 +182,7 @@ object SyncUtils {
         var noNewMergeConflicts = true
         // If there are only local changes, the GitRepo.syncBook method is overly complicated.
         if (namesake.status == BookSyncStatus.BOOK_WITH_LINK_LOCAL_MODIFIED) {
-            val fileName = BookName.getFileName(App.getAppContext(), namesake.book.syncedTo!!.uri)
+            val fileName = BookName.getRepoRelativePath(App.getAppContext(), namesake.book.syncedTo!!)
             dataRepository.saveBookToRepo(namesake.book.linkRepo!!, fileName, namesake.book, BookFormat.ORG)
         } else {
             val dbFile = dataRepository.getTempBookFile()
@@ -194,7 +194,7 @@ object SyncUtils {
                 newRook = newRook1
                 // We only need to write it if syncback is needed
                 if (loadFile != null) {
-                    val fileName = BookName.getFileName(App.getAppContext(), newRook.uri)
+                    val fileName = BookName.getRepoRelativePath(App.getAppContext(), newRook)
                     val bookName = BookName.fromFileName(fileName)
                     if (BuildConfig.LOG_DEBUG) LogUtils.d(TAG, "Loading from file '$loadFile'")
                     dataRepository.loadBookFromFile(

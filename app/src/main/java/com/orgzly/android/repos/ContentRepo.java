@@ -67,15 +67,11 @@ public class ContentRepo implements SyncRepo {
     public List<VersionedRook> getBooks() throws IOException {
         List<VersionedRook> result = new ArrayList<>();
 
-        DocumentFile[] files = repoDocumentFile.listFiles();
+        List<DocumentFile> files = walkFileTree();
 
-        if (files != null) {
-            // Can't compare TreeDocumentFile
-            // Arrays.sort(files);
-
+        if (files.size() > 0) {
             for (DocumentFile file : files) {
                 if (BookName.isSupportedFormatFileName(file.getName())) {
-
                     if (BuildConfig.LOG_DEBUG) {
                         LogUtils.d(TAG,
                                 "file.getName()", file.getName(),
@@ -85,7 +81,6 @@ public class ContentRepo implements SyncRepo {
                                 "file.getUri()", file.getUri(),
                                 "file.getParentFile()", file.getParentFile().getUri());
                     }
-
                     result.add(new VersionedRook(
                             repoId,
                             RepoType.DOCUMENT,
@@ -96,7 +91,6 @@ public class ContentRepo implements SyncRepo {
                     ));
                 }
             }
-
         } else {
             Log.e(TAG, "Listing files in " + getUri() + " returned null.");
         }
@@ -104,9 +98,39 @@ public class ContentRepo implements SyncRepo {
         return result;
     }
 
+    /**
+     * @return All file nodes in the repo tree
+     */
+    private List<DocumentFile> walkFileTree() {
+        List<DocumentFile> result = new ArrayList<>();
+        List<DocumentFile> directoryNodes = new ArrayList<>();
+        directoryNodes.add(repoDocumentFile);
+        while (!directoryNodes.isEmpty()) {
+            DocumentFile currentDir = directoryNodes.remove(0);
+            for (DocumentFile node : currentDir.listFiles()) {
+                if (node.isDirectory()) {
+                    directoryNodes.add(node);
+                } else {
+                    result.add(node);
+                }
+            }
+        }
+        return result;
+    }
+
+    public static String getContentRepoUriRootSegment(String repoUri) {
+        String repoUriLastSegment = repoUri.replaceAll("^.*/", "");
+        return repoUri + "/document/" + repoUriLastSegment + "%2F";
+    }
+
+    private DocumentFile getDocumentFileFromFileName(String fileName) {
+        String fullUri = repoDocumentFile.getUri() + Uri.encode("/" + fileName);
+        return DocumentFile.fromSingleUri(context, Uri.parse(fullUri));
+    }
+
     @Override
     public VersionedRook retrieveBook(String fileName, File destinationFile) throws IOException {
-        DocumentFile sourceFile = repoDocumentFile.findFile(fileName);
+        DocumentFile sourceFile = getDocumentFileFromFileName(fileName);
         if (sourceFile == null) {
             throw new FileNotFoundException("Book " + fileName + " not found in " + repoUri);
         } else {
@@ -131,24 +155,16 @@ public class ContentRepo implements SyncRepo {
         if (!file.exists()) {
             throw new FileNotFoundException("File " + file + " does not exist");
         }
-
-        /* Delete existing file. */
-        DocumentFile existingFile = repoDocumentFile.findFile(fileName);
-        if (existingFile != null) {
-            existingFile.delete();
+        DocumentFile destinationFile = getDocumentFileFromFileName(fileName);
+        if (!destinationFile.exists()) {
+            if (fileName.contains("/")) {
+                throw new UnsupportedOperationException("Invalid book name. (Creating files in " +
+                        "folders is not supported.)");
+            }
+            repoDocumentFile.createFile("text/*", fileName);
         }
+        OutputStream out = context.getContentResolver().openOutputStream(destinationFile.getUri());
 
-        /* Create new file. */
-        DocumentFile destinationFile = repoDocumentFile.createFile("text/*", fileName);
-
-        if (destinationFile == null) {
-            throw new IOException("Failed creating " + fileName + " in " + repoUri);
-        }
-
-        Uri uri = destinationFile.getUri();
-
-        /* Write file content to uri. */
-        OutputStream out = context.getContentResolver().openOutputStream(uri);
         try {
             MiscUtils.writeFileToStream(file, out);
         } finally {
@@ -159,8 +175,7 @@ public class ContentRepo implements SyncRepo {
 
         String rev = String.valueOf(destinationFile.lastModified());
         long mtime = System.currentTimeMillis();
-
-        return new VersionedRook(repoId, RepoType.DOCUMENT, getUri(), uri, rev, mtime);
+        return new VersionedRook(repoId, RepoType.DOCUMENT, getUri(), destinationFile.getUri(), rev, mtime);
     }
 
     @Override

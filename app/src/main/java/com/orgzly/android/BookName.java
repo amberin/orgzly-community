@@ -5,6 +5,7 @@ import android.net.Uri;
 import androidx.documentfile.provider.DocumentFile;
 
 import com.orgzly.BuildConfig;
+import com.orgzly.android.repos.ContentRepo;
 import com.orgzly.android.repos.Rook;
 import com.orgzly.android.util.LogUtils;
 
@@ -31,13 +32,27 @@ public class BookName {
         mFormat = format;
     }
 
-    public static String getFileName(Context context, com.orgzly.android.db.entity.BookView bookView) {
+    public static String getOrCreateRepoFilename(Context context, com.orgzly.android.db.entity.BookView bookView) {
         if (bookView.getSyncedTo() != null) {
-            return getFileName(context, bookView.getSyncedTo().getUri());
+            return getRepoRelativePath(context, bookView.getSyncedTo());
 
         } else {
             return fileName(bookView.getBook().getName(), BookFormat.ORG);
         }
+    }
+
+    /** @return a file name including any folders below the repository root folder */
+    public static String getRepoRelativePath(Context context, Rook rook) {
+        DocumentFile documentFile = DocumentFile.fromSingleUri(context, rook.getUri());
+
+        if ("content".equals(rook.getUri().getScheme()) && documentFile != null) {
+            // Get full filename relative to repo root
+            String repoUri = rook.getRepoUri().toString();
+            String fileUriRootSegment = ContentRepo.getContentRepoUriRootSegment(repoUri);
+            return Uri.decode(rook.getUri().toString().replace(fileUriRootSegment, ""));
+        }
+
+        return rook.getUri().toString().replaceFirst("/", "");
     }
 
     public static String getFileName(Context context, Uri uri) {
@@ -63,7 +78,7 @@ public class BookName {
     }
 
     public static BookName getInstance(Context context, Rook rook) {
-        return fromFileName(getFileName(context, rook.getUri()));
+        return fromFileName(getRepoRelativePath(context, rook));
     }
 
     public static boolean isSupportedFormatFileName(String fileName) {
