@@ -14,7 +14,10 @@ import com.orgzly.android.db.entity.Repo;
 import com.orgzly.android.util.LogUtils;
 import com.orgzly.android.util.MiscUtils;
 
+import org.eclipse.jgit.ignore.IgnoreNode;
+
 import java.io.File;
+import java.io.FileInputStream;
 import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.io.InputStream;
@@ -101,13 +104,17 @@ public class ContentRepo implements SyncRepo {
     /**
      * @return All file nodes in the repo tree
      */
-    private List<DocumentFile> walkFileTree() {
+    private List<DocumentFile> walkFileTree() throws IOException {
         List<DocumentFile> result = new ArrayList<>();
         List<DocumentFile> directoryNodes = new ArrayList<>();
+        IgnoreNode ignores = getIgnores();
         directoryNodes.add(repoDocumentFile);
         while (!directoryNodes.isEmpty()) {
             DocumentFile currentDir = directoryNodes.remove(0);
             for (DocumentFile node : currentDir.listFiles()) {
+                if (ignores.isIgnored(node.getUri().getPath(), node.isDirectory()) == IgnoreNode.MatchResult.IGNORED) {
+                    continue;
+                }
                 if (node.isDirectory()) {
                     directoryNodes.add(node);
                 } else {
@@ -116,6 +123,18 @@ public class ContentRepo implements SyncRepo {
             }
         }
         return result;
+    }
+
+    private IgnoreNode getIgnores() throws IOException {
+        IgnoreNode ignores = new IgnoreNode();
+        DocumentFile ignoreFile = getDocumentFileFromFileName(".orgzlyignore");
+        if (ignoreFile.exists()) {
+            try (InputStream in =
+                         context.getContentResolver().openInputStream(ignoreFile.getUri())) {
+                ignores.parse(in);
+            }
+        }
+        return ignores;
     }
 
     public static String getContentRepoUriRootSegment(String repoUri) {
