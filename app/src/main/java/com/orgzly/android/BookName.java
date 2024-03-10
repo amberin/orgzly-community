@@ -44,15 +44,15 @@ public class BookName {
     /** @return a file name including any folders below the repository root folder */
     public static String getRepoRelativePath(Context context, Rook rook) {
         DocumentFile documentFile = DocumentFile.fromSingleUri(context, rook.getUri());
+        String repoUri = rook.getRepoUri().toString();
 
         if ("content".equals(rook.getUri().getScheme()) && documentFile != null) {
             // Get full filename relative to repo root
-            String repoUri = rook.getRepoUri().toString();
             String fileUriRootSegment = ContentRepo.getContentRepoUriRootSegment(repoUri);
             return Uri.decode(rook.getUri().toString().replace(fileUriRootSegment, ""));
         }
 
-        return rook.getUri().toString().replaceFirst("/", "");
+        return rook.getUri().toString().replaceFirst(repoUri + "/", "");
     }
 
     public static String getFileName(Context context, Uri uri) {
