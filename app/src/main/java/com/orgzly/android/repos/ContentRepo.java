@@ -125,7 +125,7 @@ public class ContentRepo implements SyncRepo {
         return result;
     }
 
-    private IgnoreNode getIgnores() throws IOException {
+    public IgnoreNode getIgnores() throws IOException {
         IgnoreNode ignores = new IgnoreNode();
         DocumentFile ignoreFile = getDocumentFileFromFileName(".orgzlyignore");
         if (ignoreFile.exists()) {

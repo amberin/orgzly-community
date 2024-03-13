@@ -234,7 +234,7 @@ public class GitRepo implements SyncRepo, TwoWaySyncRepo {
         return new VersionedRook(repoId, RepoType.GIT, getUri(), uri, commit.name(), mtime);
     }
 
-    private IgnoreNode getIgnores() throws IOException {
+    public IgnoreNode getIgnores() throws IOException {
         IgnoreNode ignores = new IgnoreNode();
         File ignoreFile = synchronizer.repoDirectoryFile(context.getString(R.string.repo_ignore_rules_file));
         if (ignoreFile.exists()) {

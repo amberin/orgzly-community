@@ -2,6 +2,8 @@ package com.orgzly.android.repos;
 
 import android.net.Uri;
 
+import org.eclipse.jgit.ignore.IgnoreNode;
+
 import java.io.File;
 import java.io.IOException;
 import java.util.List;
@@ -44,6 +46,8 @@ public interface SyncRepo {
     // VersionedRook moveBook(Uri from, Uri uri) throws IOException;
 
     void delete(Uri uri) throws IOException;
+
+    IgnoreNode getIgnores() throws IOException;
 
     String toString();
 }

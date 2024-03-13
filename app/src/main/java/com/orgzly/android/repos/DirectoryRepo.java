@@ -9,9 +9,11 @@ import com.orgzly.android.db.entity.Repo;
 import com.orgzly.android.util.MiscUtils;
 import com.orgzly.android.util.UriUtils;
 
+import org.eclipse.jgit.ignore.IgnoreNode;
 import org.jetbrains.annotations.NotNull;
 
 import java.io.File;
+import java.io.FileInputStream;
 import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.util.ArrayList;
@@ -80,8 +82,9 @@ public class DirectoryRepo implements SyncRepo {
     }
 
     @Override
-    public List<VersionedRook> getBooks() {
+    public List<VersionedRook> getBooks() throws IOException {
         List<VersionedRook> result = new ArrayList<>();
+        IgnoreNode ignores = getIgnores();
 
         File[] files = mDirectory.listFiles((dir, filename) ->
                 BookName.isSupportedFormatFileName(filename));
@@ -90,6 +93,9 @@ public class DirectoryRepo implements SyncRepo {
             Arrays.sort(files);
 
             for (File file : files) {
+                if (ignores.isIgnored(file.getPath(), file.isDirectory()) == IgnoreNode.MatchResult.IGNORED) {
+                    continue;
+                }
                 Uri uri = repoUri.buildUpon().appendPath(file.getName()).build();
 
                 result.add(new VersionedRook(
@@ -204,6 +210,21 @@ public class DirectoryRepo implements SyncRepo {
                 throw new IOException("Failed deleting file " + uri.getPath());
             }
         }
+    }
+
+    @Override
+    public IgnoreNode getIgnores() throws IOException {
+        IgnoreNode ignores = new IgnoreNode();
+        File ignoreFile = new File(mDirectory, ".orgzlyignore");
+        if (ignoreFile.exists()) {
+            FileInputStream in = new FileInputStream(ignoreFile);
+            try {
+                ignores.parse(in);
+            } finally {
+                in.close();
+            }
+        }
+        return ignores;
     }
 
     public File getDirectory() {

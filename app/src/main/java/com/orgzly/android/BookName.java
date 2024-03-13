@@ -52,7 +52,7 @@ public class BookName {
             return Uri.decode(rook.getUri().toString().replace(fileUriRootSegment, ""));
         }
 
-        return rook.getUri().toString().replaceFirst(repoUri + "/", "");
+        return Uri.decode(rook.getUri().toString().replaceFirst(repoUri + "/", ""));
     }
 
     public static String getFileName(Context context, Uri uri) {
