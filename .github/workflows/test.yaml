@@ -42,7 +42,7 @@ jobs:
           force-avd-creation: false
           emulator-options: -no-window -gpu swiftshader_indirect -noaudio -no-boot-anim -camera-back none
           disable-animations: true
-          profile: Pixel 4
+          profile: Nexus 6
           script: echo "Generated AVD snapshot for caching."
 
       - name: run tests
@@ -52,5 +52,5 @@ jobs:
           force-avd-creation: false
           emulator-options: -no-snapshot-save -no-window -gpu swiftshader_indirect -noaudio -no-boot-anim -camera-back none
           disable-animations: true
-          profile: Pixel 4
+          profile: Nexus 6
           script: ./gradlew connectedCheck
