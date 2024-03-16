@@ -41,7 +41,8 @@ jobs:
           api-level: 29
           force-avd-creation: false
           emulator-options: -no-window -gpu swiftshader_indirect -noaudio -no-boot-anim -camera-back none
-          disable-animations: false
+          disable-animations: true
+          profile: Pixel 4
           script: echo "Generated AVD snapshot for caching."
 
       - name: run tests
