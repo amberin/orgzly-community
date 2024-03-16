@@ -38,9 +38,9 @@ android {
         viewBinding true
     }
 
-//    testOptions {
-//        execution 'ANDROIDX_TEST_ORCHESTRATOR'
-//    }
+    testOptions {
+        execution 'ANDROIDX_TEST_ORCHESTRATOR'
+    }
 
     buildTypes {
         release {
@@ -160,7 +160,7 @@ dependencies {
     implementation "androidx.test:core:$versions.android_test"
 
     // For ANDROIDX_TEST_ORCHESTRATOR
-    // androidTestUtil "androidx.test:orchestrator:$android_test_version"
+    androidTestUtil "androidx.test:orchestrator:$versions.android_test"
 
     androidTestImplementation "androidx.test.uiautomator:uiautomator:$versions.android_test_uiautomator"
 
