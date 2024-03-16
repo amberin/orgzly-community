@@ -35,6 +35,7 @@ jobs:
             ~/.android/avd/*
             ~/.android/adb*
           key: avd-29
+          save-always: true
 
       - name: create AVD and generate snapshot for caching
         if: steps.avd-cache.outputs.cache-hit != 'true'
