@@ -1,4 +1,14 @@
 jobs:
+
+  on:
+    pull_request:
+      branches:
+        - 'master'
+    push:
+      branches:
+        - 'master'
+    workflow_dispatch: 
+
   test:
     runs-on: ubuntu-latest
     steps:
