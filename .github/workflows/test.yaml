@@ -24,6 +24,8 @@ jobs:
 
       - name: Gradle cache
         uses: gradle/actions/setup-gradle@v3
+        with:
+          gradle-version: 7.6
 
       - name: AVD cache
         uses: actions/cache@v4
