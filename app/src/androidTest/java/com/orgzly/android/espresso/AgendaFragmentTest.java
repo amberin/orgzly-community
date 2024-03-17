@@ -34,10 +34,12 @@ import com.orgzly.android.prefs.AppPreferences;
 import com.orgzly.android.ui.main.MainActivity;
 
 import org.joda.time.DateTime;
+import org.junit.After;
 import org.junit.Ignore;
 import org.junit.Test;
 
 public class AgendaFragmentTest extends OrgzlyTest {
+    private ActivityScenario<MainActivity> scenario;
     private ActivityScenario<MainActivity> defaultSetUp() {
         testUtils.setupBook("book-one",
                 "First book used for testing\n" +
@@ -62,26 +64,32 @@ public class AgendaFragmentTest extends OrgzlyTest {
         return ActivityScenario.launch(MainActivity.class);
     }
 
+    @After
+    @Override
+    public void tearDown() throws Exception {
+        super.tearDown();
+        scenario.close();
+    }
+
     @Test
     public void testAgendaSavedSearch() {
-        try (ActivityScenario<MainActivity> ignored = defaultSetUp()) {
-            searchForText(".it.done ad.7");
-            /*
-             * 1 Overdue
-             * 1 Note B
-             * 1 Note C
-             * 1 Note 2
-             * 7 Day
-             * 7 Note C
-             * 7 Note 2
-             */
-            onView(withId(R.id.fragment_query_agenda_recycler_view)).check(matches(recyclerViewItemCount(25)));
-        }
+        scenario = defaultSetUp();
+        searchForText(".it.done ad.7");
+        /*
+         * 1 Overdue
+         * 1 Note B
+         * 1 Note C
+         * 1 Note 2
+         * 7 Day
+         * 7 Note C
+         * 7 Note 2
+         */
+        onView(withId(R.id.fragment_query_agenda_recycler_view)).check(matches(recyclerViewItemCount(25)));
     }
 
     @Test
     public void testWithNoBook() {
-        ActivityScenario.launch(MainActivity.class);
+        scenario = ActivityScenario.launch(MainActivity.class);
         searchForText(".it.done (s.7d or d.7d) ad.7");
         onNotesInAgenda().check(matches(recyclerViewItemCount(7)));
         searchForText(".it.done (s.7d or d.7d) ad.3");
@@ -90,17 +98,16 @@ public class AgendaFragmentTest extends OrgzlyTest {
 
     @Test
     public void testDayAgenda() {
-        try (ActivityScenario<MainActivity> ignored = defaultSetUp()) {
-            searchForText(".it.done (s.7d or d.7d) ad.1");
-            onNotesInAgenda().check(matches(recyclerViewItemCount(7)));
-            onItemInAgenda(0, R.id.item_agenda_divider_text).check(matches(allOf(withText(R.string.overdue), isDisplayed())));
-            onItemInAgenda(1, R.id.item_head_title_view).check(matches(allOf(withText(endsWith("Note B")), isDisplayed())));
-            onItemInAgenda(2, R.id.item_head_title_view).check(matches(allOf(withText(endsWith("Note C")), isDisplayed())));
-            onItemInAgenda(3, R.id.item_head_title_view).check(matches(allOf(withText(endsWith("Note 2")), isDisplayed())));
-            // Day 1
-            onItemInAgenda(5, R.id.item_head_title_view).check(matches(allOf(withText(endsWith("Note C")), isDisplayed())));
-            onItemInAgenda(6, R.id.item_head_title_view).check(matches(allOf(withText(endsWith("Note 2")), isDisplayed())));
-        }
+        scenario = defaultSetUp();
+        searchForText(".it.done (s.7d or d.7d) ad.1");
+        onNotesInAgenda().check(matches(recyclerViewItemCount(7)));
+        onItemInAgenda(0, R.id.item_agenda_divider_text).check(matches(allOf(withText(R.string.overdue), isDisplayed())));
+        onItemInAgenda(1, R.id.item_head_title_view).check(matches(allOf(withText(endsWith("Note B")), isDisplayed())));
+        onItemInAgenda(2, R.id.item_head_title_view).check(matches(allOf(withText(endsWith("Note C")), isDisplayed())));
+        onItemInAgenda(3, R.id.item_head_title_view).check(matches(allOf(withText(endsWith("Note 2")), isDisplayed())));
+        // Day 1
+        onItemInAgenda(5, R.id.item_head_title_view).check(matches(allOf(withText(endsWith("Note C")), isDisplayed())));
+        onItemInAgenda(6, R.id.item_head_title_view).check(matches(allOf(withText(endsWith("Note 2")), isDisplayed())));
     }
 
     @Test
@@ -111,73 +118,68 @@ public class AgendaFragmentTest extends OrgzlyTest {
                             "* Event A.\n" +
                             "<" + start.toString() + ">--<" + end.toString() + ">\n");
 
-        ActivityScenario.launch(MainActivity.class);
+        scenario = ActivityScenario.launch(MainActivity.class);
         searchForText("ad.5");
         onNotesInAgenda().check(matches(recyclerViewItemCount(10)));
     }
 
     @Test
     public void testOneTimeTaskMarkedDone() {
-        try (ActivityScenario<MainActivity> ignored = defaultSetUp()) {
-            searchForText(".it.done ad.7");
-            /*
-             * 1 Overdue
-             * 1 Note B   <- Mark as done
-             * 1 Note C
-             * 1 Note 2
-             * 7 Day
-             * 7 Note C
-             * 7 Note 2
-             */
-            onItemInAgenda(1).perform(longClick());
-            onView(withId(R.id.toggle_state)).perform(click());
-            onNotesInAgenda().check(matches(recyclerViewItemCount(24)));
-        }
+        scenario = defaultSetUp();
+        searchForText(".it.done ad.7");
+        /*
+         * 1 Overdue
+         * 1 Note B   <- Mark as done
+         * 1 Note C
+         * 1 Note 2
+         * 7 Day
+         * 7 Note C
+         * 7 Note 2
+         */
+        onItemInAgenda(1).perform(longClick());
+        onView(withId(R.id.toggle_state)).perform(click());
+        onNotesInAgenda().check(matches(recyclerViewItemCount(24)));
     }
 
     @Test
     public void testRepeaterTaskMarkedDone() {
-        try (ActivityScenario<MainActivity> ignored = defaultSetUp()) {
-            searchForText(".it.done ad.7");
-            onItemInAgenda(2).perform(longClick());
-            onView(withId(R.id.toggle_state)).perform(click());
-            onNotesInAgenda().check(matches(recyclerViewItemCount(23)));
-        }
+        scenario = defaultSetUp();
+        searchForText(".it.done ad.7");
+        onItemInAgenda(2).perform(longClick());
+        onView(withId(R.id.toggle_state)).perform(click());
+        onNotesInAgenda().check(matches(recyclerViewItemCount(23)));
     }
 
     @Test
     public void testRangeTaskMarkedDone() {
-        try (ActivityScenario<MainActivity> ignored = defaultSetUp()) {
-            searchForText(".it.done ad.7");
-            onItemInAgenda(3).perform(longClick());
-            onView(withId(R.id.toggle_state)).perform(click());
-            onNotesInAgenda().check(matches(recyclerViewItemCount(17)));
-
-        }
+        scenario = defaultSetUp();
+        searchForText(".it.done ad.7");
+        onItemInAgenda(3).perform(longClick());
+        onView(withId(R.id.toggle_state)).perform(click());
+        onNotesInAgenda().check(matches(recyclerViewItemCount(17)));
     }
 
     @Test
     public void testMoveTaskWithRepeaterToTomorrow() {
         DateTime tomorrow = DateTime.now().withTimeAtStartOfDay().plusDays(1);
-        try (ActivityScenario<MainActivity> ignored = defaultSetUp()) {
-            searchForText(".it.done ad.7");
-            onItemInAgenda(2).perform(longClick());
-            onView(withId(R.id.schedule)).perform(click());
-            onView(withId(R.id.date_picker_button)).perform(click());
-            onView(withClassName(equalTo(DatePicker.class.getName())))
-                    .perform(PickerActions.setDate(
-                            tomorrow.getYear(),
-                            tomorrow.getMonthOfYear(),
-                            tomorrow.getDayOfMonth()));
-            onView(withText(android.R.string.ok)).perform(click());
-            onView(withText(R.string.set)).perform(click());
-            onNotesInAgenda().check(matches(recyclerViewItemCount(23)));
-        }
+        scenario = defaultSetUp();
+        searchForText(".it.done ad.7");
+        onItemInAgenda(2).perform(longClick());
+        onView(withId(R.id.schedule)).perform(click());
+        onView(withId(R.id.date_picker_button)).perform(click());
+        onView(withClassName(equalTo(DatePicker.class.getName())))
+                .perform(PickerActions.setDate(
+                        tomorrow.getYear(),
+                        tomorrow.getMonthOfYear(),
+                        tomorrow.getDayOfMonth()));
+        onView(withText(android.R.string.ok)).perform(click());
+        onView(withText(R.string.set)).perform(click());
+        onNotesInAgenda().check(matches(recyclerViewItemCount(23)));
     }
 
     @Test
     public void testPersistedSpinnerSelection() {
-        ActivityScenario<MainActivity> scenario = defaultSetUp();
+        scenario = defaultSetUp();
 
         searchForText(".it.done ad.7");
         onNotesInAgenda().check(matches(recyclerViewItemCount(25)));
@@ -186,7 +188,6 @@ public class AgendaFragmentTest extends OrgzlyTest {
                 activity.setRequestedOrientation(ActivityInfo.SCREEN_ORIENTATION_LANDSCAPE));
 
         onNotesInAgenda().check(matches(recyclerViewItemCount(25)));
-        scenario.close();
     }
 
     @Test
@@ -196,7 +197,7 @@ public class AgendaFragmentTest extends OrgzlyTest {
                 "* TODO Note A\nSCHEDULED: <2018-01-01 +1d>\n" +
                 "* TODO Note B\nSCHEDULED: <2018-01-01 .+1d>\n");
 
-        ActivityScenario.launch(MainActivity.class);
+        scenario = ActivityScenario.launch(MainActivity.class);
 
         searchForText("i.todo ad.3");
 
@@ -223,7 +224,7 @@ public class AgendaFragmentTest extends OrgzlyTest {
     @Test
     public void testPreselectedStateOfSelectedNote() {
         testUtils.setupBook("notebook", "* TODO Note A\nSCHEDULED: <2018-01-01 +1d>");
-        ActivityScenario.launch(MainActivity.class);
+        scenario = ActivityScenario.launch(MainActivity.class);
 
         searchForText("ad.3");
 
@@ -236,7 +237,7 @@ public class AgendaFragmentTest extends OrgzlyTest {
     @Test
     public void testSwipeDivider() {
         testUtils.setupBook("notebook", "* TODO Note A\nSCHEDULED: <2018-01-01 +1d>");
-        ActivityScenario.launch(MainActivity.class);
+        scenario = ActivityScenario.launch(MainActivity.class);
         searchForText("ad.3");
         onItemInAgenda(0).perform(swipeLeft());
         onItemInAgenda(2).perform(swipeLeft());
@@ -246,7 +247,7 @@ public class AgendaFragmentTest extends OrgzlyTest {
     @Test
     public void testOpenCorrectNote() {
         testUtils.setupBook("notebook", "* TODO Note A\nSCHEDULED: <2018-01-01 +1d>");
-        ActivityScenario.launch(MainActivity.class);
+        scenario = ActivityScenario.launch(MainActivity.class);
 
         searchForText("ad.3");
 
@@ -261,7 +262,7 @@ public class AgendaFragmentTest extends OrgzlyTest {
         testUtils.setupBook("book-1","* DONE Note A");
         testUtils.setupBook("book-2","* TODO Note B\nSCHEDULED: <2014-01-01>\n* TODO Note C\nSCHEDULED: <2014-01-02>\n");
         AppPreferences.isReverseNoteClickAction(context, false);
-        ActivityScenario.launch(MainActivity.class);
+        scenario = ActivityScenario.launch(MainActivity.class);
 
         searchForText(".it.done ad.7");
         onItemInAgenda(1).perform(longClick());
@@ -272,7 +273,7 @@ public class AgendaFragmentTest extends OrgzlyTest {
     @Test
     public void testInactiveScheduled() {
         testUtils.setupBook("notebook-1", "* Note A\nSCHEDULED: [2020-07-01]\nDEADLINE: <2020-07-01>");
-        ActivityScenario.launch(MainActivity.class);
+        scenario = ActivityScenario.launch(MainActivity.class);
         searchForText("ad.1");
         // Overdue, note (deadline), today
         onNotesInAgenda().check(matches(recyclerViewItemCount(3)));
@@ -281,7 +282,7 @@ public class AgendaFragmentTest extends OrgzlyTest {
     @Test
     public void testInactiveDeadline() {
         testUtils.setupBook("notebook-1", "* Note A\nDEADLINE: [2020-07-01]\nSCHEDULED: <2020-07-01>");
-        ActivityScenario.launch(MainActivity.class);
+        scenario = ActivityScenario.launch(MainActivity.class);
         searchForText("ad.1");
         // Overdue, note (scheduled), today
         onNotesInAgenda().check(matches(recyclerViewItemCount(3)));
@@ -290,7 +291,7 @@ public class AgendaFragmentTest extends OrgzlyTest {
     @Test
     public void testInactiveScheduledAndDeadline() {
         testUtils.setupBook("notebook-1", "* Note A\nSCHEDULED: [2020-07-01]\nDEADLINE: [2020-07-01]");
-        ActivityScenario.launch(MainActivity.class);
+        scenario = ActivityScenario.launch(MainActivity.class);
         searchForText("ad.1");
         // Today
         onNotesInAgenda().check(matches(recyclerViewItemCount(1)));
