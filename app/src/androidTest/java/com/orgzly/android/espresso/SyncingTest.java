@@ -44,6 +44,7 @@ import com.orgzly.android.sync.BookSyncStatus;
 import com.orgzly.android.sync.SyncRunner;
 import com.orgzly.android.ui.main.MainActivity;
 
+import org.junit.After;
 import org.junit.Assert;
 import org.junit.Assume;
 import org.junit.Test;
@@ -55,6 +56,15 @@ public class SyncingTest extends OrgzlyTest {
     /**
      * Utility method for starting sync using drawer button.
      */
+    private ActivityScenario<MainActivity> scenario;
+
+    @After
+    @Override
+    public void tearDown() throws Exception {
+        super.tearDown();
+        scenario.close();
+    }
+
     private void sync() {
         onView(withId(R.id.drawer_layout)).perform(open());
         onView(withId(R.id.sync_button_container)).perform(click());
@@ -72,7 +82,7 @@ public class SyncingTest extends OrgzlyTest {
         Repo repo = testUtils.setupRepo(RepoType.MOCK, "mock://repo-a");
         testUtils.setupRook(repo, "mock://repo-a/booky.org", "New content", "abc", 1234567890000L);
         testUtils.setupBook("booky", "First book used for testing\n* Note A");
-        ActivityScenario.launch(MainActivity.class);
+        scenario = ActivityScenario.launch(MainActivity.class);
 
         onView(allOf(withText("booky"), isDisplayed())).perform(longClick());
         contextualToolbarOverflowMenu().perform(click());
