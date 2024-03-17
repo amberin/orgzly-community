@@ -44,12 +44,14 @@ import com.orgzly.android.prefs.AppPreferences;
 import com.orgzly.android.ui.main.MainActivity;
 import com.orgzly.org.datetime.OrgDateTime;
 
+import org.junit.After;
 import org.junit.Ignore;
 import org.junit.Test;
 
 import java.io.IOException;
 
 public class QueryFragmentTest extends OrgzlyTest {
+    private ActivityScenario<MainActivity> scenario;
     private void defaultSetUp() {
         testUtils.setupBook("book-one",
                 "First book used for testing\n" +
@@ -100,7 +102,14 @@ public class QueryFragmentTest extends OrgzlyTest {
                 "** Note #28.\n" +
                 "");
 
-        ActivityScenario.launch(MainActivity.class);
+        scenario = ActivityScenario.launch(MainActivity.class);
+    }
+
+    @After
+    @Override
+    public void tearDown() throws Exception {
+        super.tearDown();
+        scenario.close();
     }
 
     @Test
