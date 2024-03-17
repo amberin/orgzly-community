@@ -62,7 +62,9 @@ public class SyncingTest extends OrgzlyTest {
     @Override
     public void tearDown() throws Exception {
         super.tearDown();
-        scenario.close();
+        if (scenario != null) {
+            scenario.close();
+        }
     }
 
     private void sync() {
