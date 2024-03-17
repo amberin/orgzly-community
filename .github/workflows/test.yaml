@@ -67,4 +67,4 @@ jobs:
           disable-animations: true
           disable-spellchecker: true
           profile: Nexus 6
-          script: ./gradlew connectedCheck -Pandroid.testInstrumentationRunnerArguments.notAnnotation=org.junit.runner.RunWith
+          script: ./gradlew connectedCheck
