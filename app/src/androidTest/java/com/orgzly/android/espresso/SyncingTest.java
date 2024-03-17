@@ -73,7 +73,7 @@ public class SyncingTest extends OrgzlyTest {
 
     @Test
     public void testRunSync() {
-        ActivityScenario.launch(MainActivity.class);
+        scenario = ActivityScenario.launch(MainActivity.class);
         sync();
     }
 
@@ -104,7 +104,7 @@ public class SyncingTest extends OrgzlyTest {
     public void testAutoSyncIsTriggeredAfterCreatingNote() {
         Repo repo = testUtils.setupRepo(RepoType.MOCK, "mock://repo-a");
         testUtils.setupRook(repo, "mock://repo-a/booky.org", "", "abc", 1234567890000L);
-        ActivityScenario.launch(MainActivity.class);
+        scenario = ActivityScenario.launch(MainActivity.class);
         sync();
 
         // Set preference
@@ -138,7 +138,7 @@ public class SyncingTest extends OrgzlyTest {
     public void testPrefaceModificationMakesBookOutOfSync() {
         Repo repo = testUtils.setupRepo(RepoType.MOCK, "mock://repo-a");
         testUtils.setupRook(repo, "mock://repo-a/booky.org", "", "abc", 1234567890000L);
-        ActivityScenario.launch(MainActivity.class);
+        scenario = ActivityScenario.launch(MainActivity.class);
         sync();
 
         onBook(0, R.id.item_book_sync_needed_icon).check(matches(not(isDisplayed())));
@@ -158,7 +158,7 @@ public class SyncingTest extends OrgzlyTest {
     @Test
     public void nonLinkedBookCannotBeMadeOutOfSync() {
         testUtils.setupBook("booky", "* Note A");
-        ActivityScenario.launch(MainActivity.class);
+        scenario = ActivityScenario.launch(MainActivity.class);
 
         onBook(0, R.id.item_book_sync_needed_icon).check(matches(not(isDisplayed())));
 
@@ -176,7 +176,7 @@ public class SyncingTest extends OrgzlyTest {
     public void testForceLoadingBookWithNoLinkNoRepos() {
         testUtils.setupBook("booky", "First book used for testing\n* Note A");
         testUtils.setupBook("book-two", "Second book used for testing\n* Note 1\n* Note 2");
-        ActivityScenario.launch(MainActivity.class);
+        scenario = ActivityScenario.launch(MainActivity.class);
 
         onView(allOf(withText("booky"), isDisplayed())).perform(longClick());
         onView(withId(R.id.books_context_menu_force_load)).perform(click());
@@ -189,7 +189,7 @@ public class SyncingTest extends OrgzlyTest {
         testUtils.setupRepo(RepoType.MOCK, "mock://repo-a");
         testUtils.setupBook("booky", "First book used for testing\n* Note A");
         testUtils.setupBook("book-two", "Second book used for testing\n* Note 1\n* Note 2");
-        ActivityScenario.launch(MainActivity.class);
+        scenario = ActivityScenario.launch(MainActivity.class);
 
         onView(allOf(withText("booky"), isDisplayed())).perform(longClick());
         onView(withId(R.id.books_context_menu_force_load)).perform(click());
@@ -206,7 +206,7 @@ public class SyncingTest extends OrgzlyTest {
         testUtils.setupRook(repo, "mock://repo-a/book-one.org", "New content", "abc", 1234567890000L);
         testUtils.setupBook("book-one", "First book used for testing\n* Note A");
         testUtils.setupBook("book-two", "Second book used for testing\n* Note 1\n* Note 2");
-        ActivityScenario.launch(MainActivity.class);
+        scenario = ActivityScenario.launch(MainActivity.class);
 
         onView(allOf(withText("book-one"), isDisplayed())).perform(longClick());
         contextualToolbarOverflowMenu().perform(click());
@@ -238,7 +238,7 @@ public class SyncingTest extends OrgzlyTest {
     public void testForceLoadingAfterModification() {
         testUtils.setupBook("book-one", "* Note");
         testUtils.setupRepo(RepoType.MOCK, "mock://repo-a");
-        ActivityScenario.launch(MainActivity.class);
+        scenario = ActivityScenario.launch(MainActivity.class);
 
         // Force save
         onView(allOf(withText("book-one"), isDisplayed())).perform(longClick());
@@ -267,7 +267,7 @@ public class SyncingTest extends OrgzlyTest {
         testUtils.setupRepo(RepoType.MOCK, "mock://repo-b");
         testUtils.setupBook("book-one", "First book used for testing\n* Note A");
         testUtils.setupBook("book-two", "Second book used for testing\n* Note 1\n* Note 2");
-        ActivityScenario.launch(MainActivity.class);
+        scenario = ActivityScenario.launch(MainActivity.class);
 
         onView(allOf(withText("book-one"), isDisplayed())).perform(longClick());
         onView(withId(R.id.books_context_menu_force_save)).perform(click());
@@ -283,7 +283,7 @@ public class SyncingTest extends OrgzlyTest {
     public void testForceSavingBookWithNoLinkNoRepos() {
         testUtils.setupBook("book-one", "First book used for testing\n* Note A");
         testUtils.setupBook("book-two", "Second book used for testing\n* Note 1\n* Note 2");
-        ActivityScenario.launch(MainActivity.class);
+        scenario = ActivityScenario.launch(MainActivity.class);
 
         onView(allOf(withText("book-one"), isDisplayed())).perform(longClick());
         onView(withId(R.id.books_context_menu_force_save)).perform(click());
@@ -298,7 +298,7 @@ public class SyncingTest extends OrgzlyTest {
         testUtils.setupRepo(RepoType.MOCK, "mock://repo-a");
         testUtils.setupBook("book-one", "First book used for testing\n* Note A");
         testUtils.setupBook("book-two", "Second book used for testing\n* Note 1\n* Note 2");
-        ActivityScenario.launch(MainActivity.class);
+        scenario = ActivityScenario.launch(MainActivity.class);
 
         onView(allOf(withText("book-one"), isDisplayed())).perform(longClick());
         onView(withId(R.id.books_context_menu_force_save)).perform(click());
@@ -313,7 +313,7 @@ public class SyncingTest extends OrgzlyTest {
     public void testForceSavingBookWithLink() {
         Repo repo = testUtils.setupRepo(RepoType.MOCK, "mock://repo-a");
         testUtils.setupBook("booky", "First book used for testing\n* Note A", repo);
-        ActivityScenario.launch(MainActivity.class);
+        scenario = ActivityScenario.launch(MainActivity.class);
 
         onView(allOf(withText("booky"), isDisplayed())).perform(longClick());
         onView(withId(R.id.books_context_menu_force_save)).perform(click());
@@ -329,7 +329,7 @@ public class SyncingTest extends OrgzlyTest {
         testUtils.setupRepo(RepoType.MOCK, "mock://repo-a");
         testUtils.setupBook("book-one", "First book used for testing\n* Note A");
         testUtils.setupBook("book-two", "Second book used for testing\n* Note 1\n* Note 2");
-        ActivityScenario.launch(MainActivity.class);
+        scenario = ActivityScenario.launch(MainActivity.class);
 
         sync();
     }
@@ -342,7 +342,7 @@ public class SyncingTest extends OrgzlyTest {
                 "* Note #1.\n" +
                 "* Note #2.\n" +
                 "");
-        ActivityScenario.launch(MainActivity.class);
+        scenario = ActivityScenario.launch(MainActivity.class);
 
         sync();
         onView(allOf(withText("booky"), isDisplayed())).check(matches(isDisplayed()));
@@ -377,7 +377,7 @@ public class SyncingTest extends OrgzlyTest {
                 "** ANTIVIVISECTIONISTS Note #10.\n" +
                 "** Note #11. DIE PERSER (Ü: Andreas Röhler) Schauspiel 1 D 3 H Stand:\n" +
                 "");
-        ActivityScenario.launch(MainActivity.class);
+        scenario = ActivityScenario.launch(MainActivity.class);
 
         sync();
         onView(allOf(withText("booky"), isDisplayed())).perform(click());
@@ -417,7 +417,7 @@ public class SyncingTest extends OrgzlyTest {
                 "** ANTIVIVISECTIONISTS Note #10.\n" +
                 "** Note #11. DIE PERSER (Ü: Andreas Röhler) Schauspiel 1 D 3 H Stand:\n" +
                 "");
-        ActivityScenario.launch(MainActivity.class);
+        scenario = ActivityScenario.launch(MainActivity.class);
 
         sync();
 
@@ -454,7 +454,7 @@ public class SyncingTest extends OrgzlyTest {
         Repo repoB = testUtils.setupRepo(RepoType.MOCK, "mock://repo-b");
         testUtils.setupRook(repoA, "mock://repo-a/book-1.org", "Remote content for book in repo a", "abc", 1234567890);
         testUtils.setupRook(repoB, "mock://repo-b/book-1.org", "Remote content for book in repo b", "def", 1234567891);
-        ActivityScenario.launch(MainActivity.class);
+        scenario = ActivityScenario.launch(MainActivity.class);
 
         sync();
 
@@ -507,7 +507,7 @@ public class SyncingTest extends OrgzlyTest {
         testUtils.setupRook(repoB, "mock://repo-b/book-3.org", "Remote content for book 3", "def", 1234567891000L);
         testUtils.setupBook("book-1", "Local content for book 1");
         testUtils.setupBook("book-2", "Local content for book 2", repoB);
-        ActivityScenario.launch(MainActivity.class);
+        scenario = ActivityScenario.launch(MainActivity.class);
 
         sync();
 
@@ -565,7 +565,7 @@ public class SyncingTest extends OrgzlyTest {
     public void testEncodingAfterSyncSaving() {
         Repo repo = testUtils.setupRepo(RepoType.MOCK, "mock://repo-a");
         testUtils.setupRook(repo, "mock://repo-a/book-one.org", "Täht", "1abcde", 1400067156000L);
-        ActivityScenario.launch(MainActivity.class);
+        scenario = ActivityScenario.launch(MainActivity.class);
 
         sync();
         onBook(0, R.id.item_book_encoding_used)
@@ -590,7 +590,7 @@ public class SyncingTest extends OrgzlyTest {
 
         Repo repo = testUtils.setupRepo(RepoType.MOCK, "mock://repo-a");
         testUtils.setupRook(repo, "mock://repo-a/booky.org", "Täht", "1abcde", 1400067156000L);
-        ActivityScenario.launch(MainActivity.class);
+        scenario = ActivityScenario.launch(MainActivity.class);
 
         sync();
         onBook(0, R.id.item_book_link_repo)
@@ -647,7 +647,7 @@ public class SyncingTest extends OrgzlyTest {
         testUtils.setupRepo(RepoType.MOCK, "mock://repo-a");
         testUtils.setupRepo(RepoType.MOCK, "mock://repo-b");
         testUtils.setupBook("booky", "");
-        ActivityScenario.launch(MainActivity.class);
+        scenario = ActivityScenario.launch(MainActivity.class);
 
         onView(allOf(withText("booky"), isDisplayed())).perform(longClick());
         contextualToolbarOverflowMenu().perform(click());
@@ -680,7 +680,7 @@ public class SyncingTest extends OrgzlyTest {
     public void testRemovingLinkFromBook() {
         Repo repo = testUtils.setupRepo(RepoType.MOCK, "mock://repo-a");
         testUtils.setupBook("booky", "", repo);
-        ActivityScenario.launch(MainActivity.class);
+        scenario = ActivityScenario.launch(MainActivity.class);
 
         onBook(0, R.id.item_book_link_repo).check(matches(allOf(withText("mock://repo-a"), isDisplayed())));
 
@@ -696,7 +696,7 @@ public class SyncingTest extends OrgzlyTest {
     public void testSettingLinkForLoadedOrgTxtBook() {
         Repo repo = testUtils.setupRepo(RepoType.MOCK, "mock://repo-a");
         testUtils.setupRook(repo, "mock://repo-a/booky.org.txt", "", "1abcdef", 1400067155);
-        ActivityScenario.launch(MainActivity.class);
+        scenario = ActivityScenario.launch(MainActivity.class);
 
         sync();
 
@@ -717,7 +717,7 @@ public class SyncingTest extends OrgzlyTest {
         Repo repo = testUtils.setupRepo(RepoType.MOCK, "mock://repo-a");
         testUtils.setupRook(repo, "mock://repo-a/Book%20Name.org", "", "1abcdef", 1400067155);
 
-        ActivityScenario.launch(MainActivity.class);
+        scenario = ActivityScenario.launch(MainActivity.class);
 
         sync();
 
@@ -731,7 +731,7 @@ public class SyncingTest extends OrgzlyTest {
     public void testRenameModifiedBook() {
         testUtils.setupRepo(RepoType.MOCK, "mock://repo-a");
         testUtils.setupBook("booky", "* Note");
-        ActivityScenario.launch(MainActivity.class);
+        scenario = ActivityScenario.launch(MainActivity.class);
 
         sync();
 
@@ -766,7 +766,7 @@ public class SyncingTest extends OrgzlyTest {
                 "* TODO Note [a-1]\n* TODO Note [a-2]",
                 "1520077116000",
                 1520077116000L);
-        ActivityScenario.launch(MainActivity.class);
+        scenario = ActivityScenario.launch(MainActivity.class);
 
         sync();
 
@@ -800,7 +800,7 @@ public class SyncingTest extends OrgzlyTest {
     public void testDeleteNonExistentRemoteFile() throws IOException {
         testUtils.setupRepo(RepoType.MOCK, "mock://repo-a");
         testUtils.setupBook("booky", "Sample book used for tests");
-        ActivityScenario.launch(MainActivity.class);
+        scenario = ActivityScenario.launch(MainActivity.class);
 
         sync();
 
@@ -818,7 +818,7 @@ public class SyncingTest extends OrgzlyTest {
     public void testDeleteExistingRemoteFile() {
         Repo repo = testUtils.setupRepo(RepoType.MOCK, "mock://repo-a");
         testUtils.setupBook("booky", "Sample book used for tests");
-        ActivityScenario.launch(MainActivity.class);
+        scenario = ActivityScenario.launch(MainActivity.class);
 
         sync();
 

@@ -6,6 +6,7 @@ import com.orgzly.R;
 import com.orgzly.android.OrgzlyTest;
 import com.orgzly.android.ui.main.MainActivity;
 
+import org.junit.After;
 import org.junit.Test;
 
 import static androidx.test.espresso.Espresso.onView;
@@ -24,10 +25,19 @@ import static org.hamcrest.Matchers.allOf;
 import static org.hamcrest.Matchers.endsWith;
 
 public class NewNoteTest extends OrgzlyTest {
+    private ActivityScenario<MainActivity> scenario;
+    
+    @After
+    @Override
+    public void tearDown() throws Exception {
+        super.tearDown();
+        scenario.close();
+    }
+    
     @Test
     public void testNewNoteInEmptyNotebook() {
         testUtils.setupBook("notebook", "");
-        ActivityScenario.launch(MainActivity.class);
+        scenario = ActivityScenario.launch(MainActivity.class);
 
         onBook(0).perform(click());
 
@@ -43,7 +53,7 @@ public class NewNoteTest extends OrgzlyTest {
     @Test
     public void testNewNoteUnder() {
         testUtils.setupBook("notebook", "description\n* 1\n** 2\n*** 3\n*** 4\n** 5\n* 6");
-        ActivityScenario.launch(MainActivity.class);
+        scenario = ActivityScenario.launch(MainActivity.class);
 
         onBook(0).perform(click());
 
@@ -62,7 +72,7 @@ public class NewNoteTest extends OrgzlyTest {
     @Test
     public void testNewNoteAbove() {
         testUtils.setupBook("notebook", "description\n* 1\n** 2\n*** 3\n*** 4\n** 5\n* 6");
-        ActivityScenario.launch(MainActivity.class);
+        scenario = ActivityScenario.launch(MainActivity.class);
 
         onBook(0).perform(click());
 
@@ -86,7 +96,7 @@ public class NewNoteTest extends OrgzlyTest {
                                           "*** 4\n" +
                                           "** 5\n" +
                                           "* 6");
-        ActivityScenario.launch(MainActivity.class);
+        scenario = ActivityScenario.launch(MainActivity.class);
 
         onBook(0).perform(click());
 
@@ -115,7 +125,7 @@ public class NewNoteTest extends OrgzlyTest {
     @Test
     public void testNewNoteAfterMovingNotesAround() {
         testUtils.setupBook("notebook-1", "");
-        ActivityScenario.launch(MainActivity.class);
+        scenario = ActivityScenario.launch(MainActivity.class);
 
         onBook(0).perform(click());
 
