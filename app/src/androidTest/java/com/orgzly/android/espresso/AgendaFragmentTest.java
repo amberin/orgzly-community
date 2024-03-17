@@ -16,7 +16,6 @@ import static com.orgzly.android.espresso.util.EspressoUtils.onNotesInAgenda;
 import static com.orgzly.android.espresso.util.EspressoUtils.recyclerViewItemCount;
 import static com.orgzly.android.espresso.util.EspressoUtils.searchForText;
 import static org.hamcrest.Matchers.allOf;
-import static org.hamcrest.Matchers.anyOf;
 import static org.hamcrest.Matchers.endsWith;
 import static org.hamcrest.Matchers.equalTo;
 import static org.hamcrest.Matchers.instanceOf;
@@ -65,18 +64,19 @@ public class AgendaFragmentTest extends OrgzlyTest {
 
     @Test
     public void testAgendaSavedSearch() {
-        defaultSetUp();
-        searchForText(".it.done ad.7");
-        /*
-         * 1 Overdue
-         * 1 Note B
-         * 1 Note C
-         * 1 Note 2
-         * 7 Day
-         * 7 Note C
-         * 7 Note 2
-         */
-        onView(withId(R.id.fragment_query_agenda_recycler_view)).check(matches(recyclerViewItemCount(25)));
+        try (ActivityScenario<MainActivity> ignored = defaultSetUp()) {
+            searchForText(".it.done ad.7");
+            /*
+             * 1 Overdue
+             * 1 Note B
+             * 1 Note C
+             * 1 Note 2
+             * 7 Day
+             * 7 Note C
+             * 7 Note 2
+             */
+            onView(withId(R.id.fragment_query_agenda_recycler_view)).check(matches(recyclerViewItemCount(25)));
+        }
     }
 
     @Test
@@ -90,16 +90,17 @@ public class AgendaFragmentTest extends OrgzlyTest {
 
     @Test
     public void testDayAgenda() {
-        defaultSetUp();
-        searchForText(".it.done (s.7d or d.7d) ad.1");
-        onNotesInAgenda().check(matches(recyclerViewItemCount(7)));
-        onItemInAgenda(0, R.id.item_agenda_divider_text).check(matches(allOf(withText(R.string.overdue), isDisplayed())));
-        onItemInAgenda(1, R.id.item_head_title_view).check(matches(allOf(withText(endsWith("Note B")), isDisplayed())));
-        onItemInAgenda(2, R.id.item_head_title_view).check(matches(allOf(withText(endsWith("Note C")), isDisplayed())));
-        onItemInAgenda(3, R.id.item_head_title_view).check(matches(allOf(withText(endsWith("Note 2")), isDisplayed())));
-        // Day 1
-        onItemInAgenda(5, R.id.item_head_title_view).check(matches(allOf(withText(endsWith("Note C")), isDisplayed())));
-        onItemInAgenda(6, R.id.item_head_title_view).check(matches(allOf(withText(endsWith("Note 2")), isDisplayed())));
+        try (ActivityScenario<MainActivity> ignored = defaultSetUp()) {
+            searchForText(".it.done (s.7d or d.7d) ad.1");
+            onNotesInAgenda().check(matches(recyclerViewItemCount(7)));
+            onItemInAgenda(0, R.id.item_agenda_divider_text).check(matches(allOf(withText(R.string.overdue), isDisplayed())));
+            onItemInAgenda(1, R.id.item_head_title_view).check(matches(allOf(withText(endsWith("Note B")), isDisplayed())));
+            onItemInAgenda(2, R.id.item_head_title_view).check(matches(allOf(withText(endsWith("Note C")), isDisplayed())));
+            onItemInAgenda(3, R.id.item_head_title_view).check(matches(allOf(withText(endsWith("Note 2")), isDisplayed())));
+            // Day 1
+            onItemInAgenda(5, R.id.item_head_title_view).check(matches(allOf(withText(endsWith("Note C")), isDisplayed())));
+            onItemInAgenda(6, R.id.item_head_title_view).check(matches(allOf(withText(endsWith("Note 2")), isDisplayed())));
+        }
     }
 
     @Test
@@ -117,57 +118,61 @@ public class AgendaFragmentTest extends OrgzlyTest {
 
     @Test
     public void testOneTimeTaskMarkedDone() {
-        defaultSetUp();
-        searchForText(".it.done ad.7");
-        /*
-         * 1 Overdue
-         * 1 Note B   <- Mark as done
-         * 1 Note C
-         * 1 Note 2
-         * 7 Day
-         * 7 Note C
-         * 7 Note 2
-         */
-        onItemInAgenda(1).perform(longClick());
-        onView(withId(R.id.toggle_state)).perform(click());
-        onNotesInAgenda().check(matches(recyclerViewItemCount(24)));
+        try (ActivityScenario<MainActivity> ignored = defaultSetUp()) {
+            searchForText(".it.done ad.7");
+            /*
+             * 1 Overdue
+             * 1 Note B   <- Mark as done
+             * 1 Note C
+             * 1 Note 2
+             * 7 Day
+             * 7 Note C
+             * 7 Note 2
+             */
+            onItemInAgenda(1).perform(longClick());
+            onView(withId(R.id.toggle_state)).perform(click());
+            onNotesInAgenda().check(matches(recyclerViewItemCount(24)));
+        }
     }
 
     @Test
     public void testRepeaterTaskMarkedDone() {
-        defaultSetUp();
-        searchForText(".it.done ad.7");
-        onItemInAgenda(2).perform(longClick());
-        onView(withId(R.id.toggle_state)).perform(click());
-        onNotesInAgenda().check(matches(recyclerViewItemCount(23)));
+        try (ActivityScenario<MainActivity> ignored = defaultSetUp()) {
+            searchForText(".it.done ad.7");
+            onItemInAgenda(2).perform(longClick());
+            onView(withId(R.id.toggle_state)).perform(click());
+            onNotesInAgenda().check(matches(recyclerViewItemCount(23)));
+        }
     }
 
     @Test
     public void testRangeTaskMarkedDone() {
-        defaultSetUp();
-        searchForText(".it.done ad.7");
-        onItemInAgenda(3).perform(longClick());
-        onView(withId(R.id.toggle_state)).perform(click());
-        onNotesInAgenda().check(matches(recyclerViewItemCount(17)));
+        try (ActivityScenario<MainActivity> ignored = defaultSetUp()) {
+            searchForText(".it.done ad.7");
+            onItemInAgenda(3).perform(longClick());
+            onView(withId(R.id.toggle_state)).perform(click());
+            onNotesInAgenda().check(matches(recyclerViewItemCount(17)));
+
+        }
     }
 
     @Test
     public void testMoveTaskWithRepeaterToTomorrow() {
         DateTime tomorrow = DateTime.now().withTimeAtStartOfDay().plusDays(1);
-
-        defaultSetUp();
-        searchForText(".it.done ad.7");
-        onItemInAgenda(2).perform(longClick());
-        onView(withId(R.id.schedule)).perform(click());
-        onView(withId(R.id.date_picker_button)).perform(click());
-        onView(withClassName(equalTo(DatePicker.class.getName())))
-                .perform(PickerActions.setDate(
-                        tomorrow.getYear(),
-                        tomorrow.getMonthOfYear(),
-                        tomorrow.getDayOfMonth()));
-        onView(withText(android.R.string.ok)).perform(click());
-        onView(withText(R.string.set)).perform(click());
-        onNotesInAgenda().check(matches(recyclerViewItemCount(23)));
+        try (ActivityScenario<MainActivity> ignored = defaultSetUp()) {
+            searchForText(".it.done ad.7");
+            onItemInAgenda(2).perform(longClick());
+            onView(withId(R.id.schedule)).perform(click());
+            onView(withId(R.id.date_picker_button)).perform(click());
+            onView(withClassName(equalTo(DatePicker.class.getName())))
+                    .perform(PickerActions.setDate(
+                            tomorrow.getYear(),
+                            tomorrow.getMonthOfYear(),
+                            tomorrow.getDayOfMonth()));
+            onView(withText(android.R.string.ok)).perform(click());
+            onView(withText(R.string.set)).perform(click());
+            onNotesInAgenda().check(matches(recyclerViewItemCount(23)));
+        }
     }
 
     @Test
@@ -181,6 +186,7 @@ public class AgendaFragmentTest extends OrgzlyTest {
                 activity.setRequestedOrientation(ActivityInfo.SCREEN_ORIENTATION_LANDSCAPE));
 
         onNotesInAgenda().check(matches(recyclerViewItemCount(25)));
+        scenario.close();
     }
 
     @Test

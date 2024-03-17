@@ -12,12 +12,14 @@ import com.orgzly.android.espresso.util.EspressoUtils.*
 import com.orgzly.android.ui.main.MainActivity
 import org.hamcrest.CoreMatchers.allOf
 import org.hamcrest.CoreMatchers.instanceOf
+import org.junit.After
 import org.junit.Before
 import org.junit.Ignore
 import org.junit.Test
 
 
 class InternalLinksTest : OrgzlyTest() {
+    private lateinit var scenario: ActivityScenario<MainActivity>
     @Before
     @Throws(Exception::class)
     override fun setUp() {
@@ -77,9 +79,15 @@ class InternalLinksTest : OrgzlyTest() {
                 """.trimIndent()
         )
 
-        ActivityScenario.launch(MainActivity::class.java)
+        scenario = ActivityScenario.launch(MainActivity::class.java)
 
         onBook(0).perform(click())
+    }
+
+    @After
+    override fun tearDown() {
+        super.tearDown()
+        scenario.close()
     }
 
     @Test

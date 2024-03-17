@@ -17,6 +17,7 @@ import com.orgzly.android.OrgzlyTest
 import com.orgzly.android.espresso.util.EspressoUtils.*
 import com.orgzly.android.ui.main.MainActivity
 import org.hamcrest.Matchers.*
+import org.junit.After
 import org.junit.Before
 import org.junit.Test
 
@@ -64,6 +65,12 @@ class NoteFragmentTest : OrgzlyTest() {
         scenario = ActivityScenario.launch(MainActivity::class.java)
 
         onBook(0).perform(click())
+    }
+
+    @After
+    override fun tearDown() {
+        super.tearDown()
+        scenario.close()
     }
 
     @Test
