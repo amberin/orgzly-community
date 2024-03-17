@@ -221,7 +221,7 @@ public class QueryFragmentTest extends OrgzlyTest {
     @Test
     public void testToggleState() {
         testUtils.setupBook("book-one", "* Note");
-        ActivityScenario.launch(MainActivity.class);
+        scenario = ActivityScenario.launch(MainActivity.class);
 
         searchForText("Note");
         onNoteInSearch(0).perform(longClick());
@@ -277,7 +277,7 @@ public class QueryFragmentTest extends OrgzlyTest {
                 "** [#C] Note D.\n" +
                 "*** TODO Note E.");
         testUtils.setupBook("book-two", "* Note #1.\n");
-        ActivityScenario.launch(MainActivity.class);
+        scenario = ActivityScenario.launch(MainActivity.class);
 
         searchForText("p.b");
         onView(withId(R.id.fragment_query_search_view_flipper)).check(matches(isDisplayed()));
@@ -301,7 +301,7 @@ public class QueryFragmentTest extends OrgzlyTest {
                 "*** DONE Note #5.\n" +
                 "CLOSED: [2014-06-03 Tue 13:34]\n" +
                 "");
-        ActivityScenario.launch(MainActivity.class);
+        scenario = ActivityScenario.launch(MainActivity.class);
 
         searchForText(".i.todo .i.done");
         onView(withId(R.id.fragment_query_search_view_flipper)).check(matches(isDisplayed()));
@@ -316,7 +316,7 @@ public class QueryFragmentTest extends OrgzlyTest {
     public void testNotesWithSameScheduledTimeString() throws IOException {
         testUtils.setupBook("notebook-1", "* Note A\nSCHEDULED: <2014-01-01>");
         testUtils.setupBook("notebook-2", "* Note B\nSCHEDULED: <2014-01-01>");
-        ActivityScenario.launch(MainActivity.class);
+        scenario = ActivityScenario.launch(MainActivity.class);
 
         searchForText("s.today");
         onView(withId(R.id.fragment_query_search_view_flipper)).check(matches(isDisplayed()));
@@ -327,7 +327,7 @@ public class QueryFragmentTest extends OrgzlyTest {
     public void testNotesWithSameDeadlineTimeString() throws IOException {
         testUtils.setupBook("notebook-1", "* Note A\nDEADLINE: <2014-01-01>");
         testUtils.setupBook("notebook-2", "* Note B\nDEADLINE: <2014-01-01>");
-        ActivityScenario.launch(MainActivity.class);
+        scenario = ActivityScenario.launch(MainActivity.class);
 
         searchForText("d.today");
         onView(withId(R.id.fragment_query_search_view_flipper)).check(matches(isDisplayed()));
@@ -337,7 +337,7 @@ public class QueryFragmentTest extends OrgzlyTest {
     @Test
     public void testClosedTimeSearch() {
         testUtils.setupBook("notebook-1", "* Note A\nCLOSED: [2014-01-01]");
-        ActivityScenario.launch(MainActivity.class);
+        scenario = ActivityScenario.launch(MainActivity.class);
 
         searchForText("c.ge.-2d");
         onView(withId(R.id.fragment_query_search_view_flipper)).check(matches(isDisplayed()));
@@ -353,7 +353,7 @@ public class QueryFragmentTest extends OrgzlyTest {
                 "*** Note C\n" +
                 "*** Note D\n" +
                 "");
-        ActivityScenario.launch(MainActivity.class);
+        scenario = ActivityScenario.launch(MainActivity.class);
 
         onView(allOf(withText("notebook-1"), isDisplayed())).perform(click());
         searchForText("t.tag");
@@ -369,7 +369,7 @@ public class QueryFragmentTest extends OrgzlyTest {
                 "*** Note C\n" +
                 "*** Note D\n" +
                 "");
-        ActivityScenario.launch(MainActivity.class);
+        scenario = ActivityScenario.launch(MainActivity.class);
 
         onView(allOf(withText("notebook-1"), isDisplayed())).perform(click());
         searchForText("t.tag1 t.tag2");
@@ -388,7 +388,7 @@ public class QueryFragmentTest extends OrgzlyTest {
                 "*** Note C :tag3:\n" +
                 "*** Note D :tag3:\n" +
                 "");
-        ActivityScenario.launch(MainActivity.class);
+        scenario = ActivityScenario.launch(MainActivity.class);
 
         onView(allOf(withText("notebook-1"), isDisplayed())).perform(click());
 
@@ -416,7 +416,7 @@ public class QueryFragmentTest extends OrgzlyTest {
                 "** Note C :tag3:\n" +
                 "** Note D :tag3:\n" +
                 "");
-        ActivityScenario.launch(MainActivity.class);
+        scenario = ActivityScenario.launch(MainActivity.class);
 
         onView(allOf(withText("notebook-1"), isDisplayed())).perform(click());
 
@@ -444,7 +444,7 @@ public class QueryFragmentTest extends OrgzlyTest {
                 "** Note C :tag3:\n" +
                 "** Note D :tag3:\n" +
                 "");
-        ActivityScenario.launch(MainActivity.class);
+        scenario = ActivityScenario.launch(MainActivity.class);
 
         onView(allOf(withText("notebook-1"), isDisplayed())).perform(click());
 
@@ -477,7 +477,7 @@ public class QueryFragmentTest extends OrgzlyTest {
                 "*** Note C\n" +
                 "*** Note D\n" +
                 "");
-        ActivityScenario.launch(MainActivity.class);
+        scenario = ActivityScenario.launch(MainActivity.class);
 
         onView(allOf(withText("notebook-1"), isDisplayed())).perform(click());
         searchForText("note o.scheduled");
@@ -498,7 +498,7 @@ public class QueryFragmentTest extends OrgzlyTest {
                 "*** DONE Note D\n" +
                 "SCHEDULED: <2014-01-03>\n" +
                 "");
-        ActivityScenario.launch(MainActivity.class);
+        scenario = ActivityScenario.launch(MainActivity.class);
 
         onView(allOf(withText("notebook-1"), isDisplayed())).perform(click());
         searchForText("s.today .i.done o.s");
@@ -520,7 +520,7 @@ public class QueryFragmentTest extends OrgzlyTest {
                 "*** DONE Note D\n" +
                 "DEADLINE: <2014-01-03>\n" +
                 "");
-        ActivityScenario.launch(MainActivity.class);
+        scenario = ActivityScenario.launch(MainActivity.class);
 
         onView(allOf(withText("notebook-1"), isDisplayed())).perform(click());
         searchForText("d.today .i.done .o.d");
@@ -567,7 +567,7 @@ public class QueryFragmentTest extends OrgzlyTest {
                 "** Note B :b:\n" +
                 "*** Note C\n" +
                 "* Note D\n");
-        ActivityScenario.launch(MainActivity.class);
+        scenario = ActivityScenario.launch(MainActivity.class);
 
         onView(allOf(withText("notebook"), isDisplayed())).perform(click());
         searchForText(".t.c");
@@ -582,7 +582,7 @@ public class QueryFragmentTest extends OrgzlyTest {
                 "** Note B :b:\n" +
                 "*** Note C\n" +
                 "* Note D\n");
-        ActivityScenario.launch(MainActivity.class);
+        scenario = ActivityScenario.launch(MainActivity.class);
 
         onView(allOf(withText("notebook"), isDisplayed())).perform(click());
         searchForText(".t.b");
@@ -599,7 +599,7 @@ public class QueryFragmentTest extends OrgzlyTest {
                 "** Note B :b:\n" +
                 "*** Note C\n" +
                 "* Note D\n");
-        ActivityScenario.launch(MainActivity.class);
+        scenario = ActivityScenario.launch(MainActivity.class);
 
         onView(allOf(withText("notebook"), isDisplayed())).perform(click());
         searchForText("tn.a or tn.b");
@@ -616,7 +616,7 @@ public class QueryFragmentTest extends OrgzlyTest {
                 "** [#A] Note B :b:\n" +
                 "*** [#C] Note C\n" +
                 "* Note D\n");
-        ActivityScenario.launch(MainActivity.class);
+        scenario = ActivityScenario.launch(MainActivity.class);
 
         onView(allOf(withText("notebook"), isDisplayed())).perform(click());
         searchForText("o.p");
@@ -634,7 +634,7 @@ public class QueryFragmentTest extends OrgzlyTest {
                 "** [#A] Note B :b:\n" +
                 "*** [#C] Note C\n" +
                 "* Note D\n");
-        ActivityScenario.launch(MainActivity.class);
+        scenario = ActivityScenario.launch(MainActivity.class);
 
         onView(allOf(withText("notebook"), isDisplayed())).perform(click());
         searchForText(".o.p");
@@ -653,7 +653,7 @@ public class QueryFragmentTest extends OrgzlyTest {
                 "** NEXT Note B :b:\n" +
                 "* DONE Note C\n" +
                 "* Note D\n");
-        ActivityScenario.launch(MainActivity.class);
+        scenario = ActivityScenario.launch(MainActivity.class);
 
         onView(allOf(withText("notebook"), isDisplayed())).perform(click());
         searchForText(".it.todo");
@@ -671,7 +671,7 @@ public class QueryFragmentTest extends OrgzlyTest {
                 "** NEXT Note B :b:\n" +
                 "* DONE Note C\n" +
                 "* Note D\n");
-        ActivityScenario.launch(MainActivity.class);
+        scenario = ActivityScenario.launch(MainActivity.class);
 
         onView(allOf(withText("notebook"), isDisplayed())).perform(click());
         searchForText("it.todo");
@@ -689,7 +689,7 @@ public class QueryFragmentTest extends OrgzlyTest {
                 "** NEXT Note B :b:\n" +
                 "* DONE Note C\n" +
                 "* Note D\n");
-        ActivityScenario.launch(MainActivity.class);
+        scenario = ActivityScenario.launch(MainActivity.class);
 
         onView(allOf(withText("notebook"), isDisplayed())).perform(click());
         searchForText("it.none");
@@ -706,7 +706,7 @@ public class QueryFragmentTest extends OrgzlyTest {
                 "** NEXT Note B :b:\n" +
                 "* DONE Note C\n" +
                 "* Note D\n");
-        ActivityScenario.launch(MainActivity.class);
+        scenario = ActivityScenario.launch(MainActivity.class);
 
         onView(allOf(withText("notebook"), isDisplayed())).perform(click());
         searchForText(".it.none");
@@ -725,7 +725,7 @@ public class QueryFragmentTest extends OrgzlyTest {
                 "** Note B\n" +
                 "Content for Note B\n" +
                 "* Note C\n");
-        ActivityScenario.launch(MainActivity.class);
+        scenario = ActivityScenario.launch(MainActivity.class);
 
         onView(allOf(withText("notebook"), isDisplayed())).perform(click());
         onNoteInBook(1, R.id.item_head_fold_button).perform(click());
@@ -739,7 +739,7 @@ public class QueryFragmentTest extends OrgzlyTest {
     @Test
     public void testDeSelectRemovedNoteInSearch() {
         testUtils.setupBook("notebook", "* TODO Note A\n* TODO Note B");
-        ActivityScenario.launch(MainActivity.class);
+        scenario = ActivityScenario.launch(MainActivity.class);
 
         searchForText("i.todo");
 
@@ -764,7 +764,7 @@ public class QueryFragmentTest extends OrgzlyTest {
 
     @Test
     public void testNoNotesFoundMessageIsDisplayedInSearch() {
-        ActivityScenario.launch(MainActivity.class);
+        scenario = ActivityScenario.launch(MainActivity.class);
         searchForText("Note");
         onView(withText(R.string.no_notes_found_after_search)).check(matches(isDisplayed()));
     }
@@ -773,7 +773,7 @@ public class QueryFragmentTest extends OrgzlyTest {
     @Test
     public void testPreselectedStateOfSelectedNote() {
         testUtils.setupBook("notebook", "* TODO Note A\n* TODO Note B");
-        ActivityScenario.launch(MainActivity.class);
+        scenario = ActivityScenario.launch(MainActivity.class);
 
         searchForText("i.todo");
 
@@ -787,7 +787,7 @@ public class QueryFragmentTest extends OrgzlyTest {
     @Test
     public void testSearchAndClickOnNoteWithTwoDifferentEvents() {
         testUtils.setupBook("notebook", "* Note\n<2000-01-01>\n<2000-01-02>");
-        ActivityScenario.launch(MainActivity.class);
+        scenario = ActivityScenario.launch(MainActivity.class);
         searchForText("e.lt.now");
         onNoteInSearch(0).perform(click());
     }
@@ -795,7 +795,7 @@ public class QueryFragmentTest extends OrgzlyTest {
     @Test
     public void testInactiveScheduled() {
         testUtils.setupBook("notebook-1", "* Note A\nSCHEDULED: [2020-07-01]");
-        ActivityScenario.launch(MainActivity.class);
+        scenario = ActivityScenario.launch(MainActivity.class);
         searchForText("s.le.today");
         onNotesInSearch().check(matches(recyclerViewItemCount(0)));
     }
@@ -803,7 +803,7 @@ public class QueryFragmentTest extends OrgzlyTest {
     @Test
     public void testInactiveDeadline() {
         testUtils.setupBook("notebook-1", "* Note A\nDEADLINE: [2020-07-01]");
-        ActivityScenario.launch(MainActivity.class);
+        scenario = ActivityScenario.launch(MainActivity.class);
         searchForText("d.le.today");
         onNotesInSearch().check(matches(recyclerViewItemCount(0)));
     }
@@ -820,7 +820,7 @@ public class QueryFragmentTest extends OrgzlyTest {
 
         testUtils.setupBook("notebook-1", "* Note A\nSCHEDULED: " + inOneHour);
 
-        ActivityScenario.launch(MainActivity.class);
+        scenario = ActivityScenario.launch(MainActivity.class);
 
         onBook(0).perform(click());
 
@@ -839,7 +839,7 @@ public class QueryFragmentTest extends OrgzlyTest {
     @Test
     public void testNotScheduled() {
         testUtils.setupBook("notebook-1", "* Note A");
-        ActivityScenario.launch(MainActivity.class);
+        scenario = ActivityScenario.launch(MainActivity.class);
         searchForText("s.no");
         onNotesInSearch().check(matches(recyclerViewItemCount(1)));
     }
