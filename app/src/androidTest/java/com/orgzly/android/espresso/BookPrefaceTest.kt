@@ -11,10 +11,12 @@ import com.orgzly.android.OrgzlyTest
 import com.orgzly.android.espresso.util.EspressoUtils.*
 import com.orgzly.android.ui.main.MainActivity
 import org.hamcrest.Matchers.not
+import org.junit.After
 import org.junit.Before
 import org.junit.Test
 
 class BookPrefaceTest : OrgzlyTest() {
+    private lateinit var scenario: ActivityScenario<MainActivity>
     @Before
     @Throws(Exception::class)
     override fun setUp() {
@@ -34,9 +36,15 @@ class BookPrefaceTest : OrgzlyTest() {
                     ** TODO Note #3.
                 """.trimIndent())
 
-        ActivityScenario.launch(MainActivity::class.java)
+        scenario = ActivityScenario.launch(MainActivity::class.java)
 
         onBook(0).perform(click())
+    }
+
+    @After
+    override fun tearDown() {
+        super.tearDown()
+        scenario.close()
     }
 
     @Test

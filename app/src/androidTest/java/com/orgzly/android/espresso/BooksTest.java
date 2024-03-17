@@ -42,6 +42,7 @@ import com.orgzly.android.BookFormat;
 import com.orgzly.android.OrgzlyTest;
 import com.orgzly.android.ui.main.MainActivity;
 
+import org.junit.After;
 import org.junit.Before;
 import org.junit.Ignore;
 import org.junit.Test;
@@ -50,6 +51,7 @@ import java.io.File;
 import java.io.IOException;
 
 public class BooksTest extends OrgzlyTest {
+    private ActivityScenario<MainActivity> scenario;
     @Before
     public void setUp() throws Exception {
         super.setUp();
@@ -85,7 +87,14 @@ public class BooksTest extends OrgzlyTest {
 
         testUtils.setupBook("book-3", "");
 
-        ActivityScenario.launch(MainActivity.class);
+        scenario = ActivityScenario.launch(MainActivity.class);
+    }
+
+    @After
+    @Override
+    public void tearDown() throws Exception {
+        super.tearDown();
+        scenario.close();
     }
 
     @Test

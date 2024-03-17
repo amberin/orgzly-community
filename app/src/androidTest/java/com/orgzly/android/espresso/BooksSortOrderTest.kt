@@ -13,11 +13,13 @@ import com.orgzly.android.OrgzlyTest
 import com.orgzly.android.espresso.util.EspressoUtils.*
 import com.orgzly.android.ui.main.MainActivity
 import org.hamcrest.Matchers.hasToString
+import org.junit.After
 import org.junit.Before
 import org.junit.Test
 
 
 class BooksSortOrderTest : OrgzlyTest() {
+    private lateinit var scenario: ActivityScenario<MainActivity>
     @Before
     @Throws(Exception::class)
     override fun setUp() {
@@ -26,7 +28,13 @@ class BooksSortOrderTest : OrgzlyTest() {
         testUtils.setupBook("Book A", "* Note A-01")
         testUtils.setupBook("Book B", "* Note B-01")
 
-        ActivityScenario.launch(MainActivity::class.java)
+        scenario = ActivityScenario.launch(MainActivity::class.java)
+    }
+
+    @After
+    override fun tearDown() {
+        super.tearDown()
+        scenario.close()
     }
 
     @Test

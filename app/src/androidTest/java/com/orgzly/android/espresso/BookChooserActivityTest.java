@@ -7,7 +7,9 @@ import androidx.test.core.app.ActivityScenario;
 
 import com.orgzly.android.OrgzlyTest;
 import com.orgzly.android.ui.BookChooserActivity;
+import com.orgzly.android.ui.main.MainActivity;
 
+import org.junit.After;
 import org.junit.Before;
 import org.junit.Ignore;
 import org.junit.Test;
@@ -25,33 +27,37 @@ import static org.hamcrest.Matchers.is;
 import static org.junit.Assert.assertTrue;
 
 public class BookChooserActivityTest extends OrgzlyTest {
-    private ActivityScenario<BookChooserActivity> startActivityWithCreateShortcutAction() {
-        Intent intent = new Intent(context, BookChooserActivity.class);
-        intent.setAction(Intent.ACTION_CREATE_SHORTCUT);
-        return ActivityScenario.launch(intent);
-    }
+    private ActivityScenario<MainActivity> scenario;
 
     @Before
+    @Override
     public void setUp() throws Exception {
         super.setUp();
 
         testUtils.setupBook("book-one", "");
         testUtils.setupBook("book-two", "");
         testUtils.setupBook("book-three", "");
+
+        Intent intent = new Intent(context, BookChooserActivity.class);
+        intent.setAction(Intent.ACTION_CREATE_SHORTCUT);
+        scenario = ActivityScenario.launch(intent);
+    }
+
+    @After
+    @Override
+    public void tearDown() throws Exception {
+        super.tearDown();
+        scenario.close();
     }
 
     @Test
     public void testDisplayBooks() {
-        startActivityWithCreateShortcutAction();
-
         onView(allOf(withText("book-one"), isDisplayed())).check(matches(isDisplayed()));
     }
 
     @Ignore("SecurityException")
     @Test
     public void testLongClickChoosesBook() {
-        ActivityScenario<BookChooserActivity> scenario = startActivityWithCreateShortcutAction();
-
         onView(allOf(withText("book-one"), isDisplayed())).perform(longClick());
         // java.lang.SecurityException: Injecting to another application requires INJECT_EVENTS permission
 
@@ -60,8 +66,6 @@ public class BookChooserActivityTest extends OrgzlyTest {
 
     @Test
     public void testCreateShortcut() {
-        ActivityScenario<BookChooserActivity> scenario = startActivityWithCreateShortcutAction();
-
         onView(allOf(withText("book-one"), isDisplayed())).perform(click());
 
         Instrumentation.ActivityResult result = scenario.getResult();
