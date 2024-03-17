@@ -34,22 +34,31 @@ import com.orgzly.android.LocalStorage;
 import com.orgzly.android.OrgzlyTest;
 import com.orgzly.android.ui.main.MainActivity;
 
+import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
 
 import java.io.IOException;
 
 public class SavedSearchesFragmentTest extends OrgzlyTest {
+    private ActivityScenario<MainActivity> scenario;
     @Before
     public void setUp() throws Exception {
         super.setUp();
 
         testUtils.setupBook("book-one", "Preface\n* Note A.\n");
 
-        ActivityScenario.launch(MainActivity.class);
+        scenario = ActivityScenario.launch(MainActivity.class);
 
         onView(withId(R.id.drawer_layout)).perform(open());
         onView(withText(R.string.searches)).perform(click());
+    }
+
+    @After
+    @Override
+    public void tearDown() throws Exception {
+        super.tearDown();
+        scenario.close();
     }
 
     @Test
