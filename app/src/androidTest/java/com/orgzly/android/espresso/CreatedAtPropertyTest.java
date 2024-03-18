@@ -6,11 +6,14 @@ import androidx.test.core.app.ActivityScenario;
 
 import com.orgzly.R;
 import com.orgzly.android.OrgzlyTest;
+import com.orgzly.android.RetryTestRule;
 import com.orgzly.android.ui.main.MainActivity;
 
 import org.junit.After;
 import org.junit.Before;
+import org.junit.Rule;
 import org.junit.Test;
+import org.junit.rules.TestRule;
 
 import static androidx.test.espresso.Espresso.onView;
 import static androidx.test.espresso.Espresso.pressBack;
@@ -30,8 +33,15 @@ import static com.orgzly.android.espresso.util.EspressoUtils.searchForTextCloseK
 import static org.hamcrest.CoreMatchers.instanceOf;
 import static org.hamcrest.Matchers.allOf;
 
+import kotlin.jvm.JvmField;
+
 public class CreatedAtPropertyTest extends OrgzlyTest {
     private ActivityScenario<MainActivity> scenario;
+
+    @Rule
+    @JvmField
+    public final TestRule mRetryTestRule = new RetryTestRule();
+
     @Before
     public void setUp() throws Exception {
         super.setUp();

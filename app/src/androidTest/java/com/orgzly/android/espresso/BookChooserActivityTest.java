@@ -6,13 +6,16 @@ import android.content.Intent;
 import androidx.test.core.app.ActivityScenario;
 
 import com.orgzly.android.OrgzlyTest;
+import com.orgzly.android.RetryTestRule;
 import com.orgzly.android.ui.BookChooserActivity;
 import com.orgzly.android.ui.main.MainActivity;
 
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Ignore;
+import org.junit.Rule;
 import org.junit.Test;
+import org.junit.rules.TestRule;
 
 import static android.app.Activity.RESULT_OK;
 import static androidx.test.espresso.Espresso.onView;
@@ -26,8 +29,14 @@ import static org.hamcrest.Matchers.allOf;
 import static org.hamcrest.Matchers.is;
 import static org.junit.Assert.assertTrue;
 
+import kotlin.jvm.JvmField;
+
 public class BookChooserActivityTest extends OrgzlyTest {
     private ActivityScenario<MainActivity> scenario;
+
+    @Rule
+    @JvmField
+    public final TestRule mRetryTestRule = new RetryTestRule();
 
     @Before
     @Override

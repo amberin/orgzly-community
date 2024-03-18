@@ -40,18 +40,28 @@ import androidx.test.uiautomator.UiDevice;
 import com.orgzly.R;
 import com.orgzly.android.BookFormat;
 import com.orgzly.android.OrgzlyTest;
+import com.orgzly.android.RetryTestRule;
 import com.orgzly.android.ui.main.MainActivity;
 
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Ignore;
+import org.junit.Rule;
 import org.junit.Test;
+import org.junit.rules.TestRule;
 
 import java.io.File;
 import java.io.IOException;
 
+import kotlin.jvm.JvmField;
+
 public class BooksTest extends OrgzlyTest {
     private ActivityScenario<MainActivity> scenario;
+
+    @Rule
+    @JvmField
+    public final TestRule mRetryTestRule = new RetryTestRule();
+
     @Before
     public void setUp() throws Exception {
         super.setUp();

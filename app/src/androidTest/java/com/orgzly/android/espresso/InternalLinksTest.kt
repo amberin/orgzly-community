@@ -8,6 +8,7 @@ import androidx.test.espresso.assertion.ViewAssertions.matches
 import androidx.test.espresso.matcher.ViewMatchers.*
 import com.orgzly.R
 import com.orgzly.android.OrgzlyTest
+import com.orgzly.android.RetryTestRule
 import com.orgzly.android.espresso.util.EspressoUtils.*
 import com.orgzly.android.ui.main.MainActivity
 import org.hamcrest.CoreMatchers.allOf
@@ -15,11 +16,18 @@ import org.hamcrest.CoreMatchers.instanceOf
 import org.junit.After
 import org.junit.Before
 import org.junit.Ignore
+import org.junit.Rule
 import org.junit.Test
+import org.junit.rules.TestRule
 
 
 class InternalLinksTest : OrgzlyTest() {
     private lateinit var scenario: ActivityScenario<MainActivity>
+
+    @Rule
+    @JvmField
+    val mRetryTestRule: TestRule = RetryTestRule()
+
     @Before
     @Throws(Exception::class)
     override fun setUp() {

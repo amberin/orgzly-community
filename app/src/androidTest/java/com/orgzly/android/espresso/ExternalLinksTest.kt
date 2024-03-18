@@ -8,16 +8,26 @@ import androidx.test.espresso.matcher.ViewMatchers.withText
 import com.orgzly.R
 import com.orgzly.android.App
 import com.orgzly.android.OrgzlyTest
-import com.orgzly.android.espresso.util.EspressoUtils.*
+import com.orgzly.android.RetryTestRule
+import com.orgzly.android.espresso.util.EspressoUtils.clickClickableSpan
+import com.orgzly.android.espresso.util.EspressoUtils.onBook
+import com.orgzly.android.espresso.util.EspressoUtils.onNoteInBook
+import com.orgzly.android.espresso.util.EspressoUtils.onSnackbar
 import com.orgzly.android.ui.main.MainActivity
 import org.hamcrest.Matchers.startsWith
+import org.junit.Rule
 import org.junit.Test
+import org.junit.rules.TestRule
 import org.junit.runner.RunWith
 import org.junit.runners.Parameterized
 
 
 @RunWith(value = Parameterized::class)
 class ExternalLinksTest(private val param: Parameter) : OrgzlyTest() {
+
+    @Rule
+    @JvmField
+    val mRetryTestRule: TestRule = RetryTestRule()
 
     data class Parameter(val link: String, val check: () -> Any)
 
