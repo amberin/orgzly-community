@@ -3,7 +3,6 @@ package com.orgzly.android.espresso
 import android.os.Environment
 import androidx.test.core.app.ActivityScenario
 import androidx.test.espresso.action.ViewActions.click
-import androidx.test.espresso.action.ViewActions.pressBack
 import androidx.test.espresso.assertion.ViewAssertions.matches
 import androidx.test.espresso.matcher.ViewMatchers.withText
 import com.orgzly.R
@@ -56,7 +55,7 @@ class ExternalLinksTest(private val param: Parameter) : OrgzlyTest() {
 
         ActivityScenario.launch(MainActivity::class.java).use {
             // Open book
-            onBook(0).perform(click(pressBack()))
+            onBook(0).perform(click())
 
             // Click on link
             onNoteInBook(1, R.id.item_head_content_view).perform(clickClickableSpan(param.link))
