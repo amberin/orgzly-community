@@ -71,6 +71,8 @@ buildscript {
 
     versions.biometric_ktx = '1.2.0-alpha04'
 
+    versions.leakcanary = '3.0-alpha-1'
+
     ext.versions = versions
 
     repositories {

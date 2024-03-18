@@ -155,6 +155,10 @@ dependencies {
     androidTestImplementation "androidx.test:rules:$versions.android_test"
     androidTestImplementation "androidx.test.ext:junit:$versions.android_test_ext_junit"
 
+    // Leak Canary
+    debugImplementation "com.squareup.leakcanary:leakcanary-android:$versions.leakcanary"
+    androidTestImplementation 'com.squareup.leakcanary:leakcanary-android-instrumentation:3.0-alpha-1'
+
     /* For running tests on lower API versions (e.g. 18) to avoid:
      * Didn't find class "androidx.test.core.app.InstrumentationActivityInvoker$BootstrapActivity"
      */
