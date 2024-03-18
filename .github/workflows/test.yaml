@@ -68,3 +68,10 @@ jobs:
           disable-spellchecker: true
           profile: Nexus 6
           script: ./gradlew connectedCheck
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          path: ~/work/orgzly-android-revived/orgzly-android-revived/app/build/reports/androidTests/connected/flavors/fdroid/index.html
+          retention-days: 1
+          overwrite: true
