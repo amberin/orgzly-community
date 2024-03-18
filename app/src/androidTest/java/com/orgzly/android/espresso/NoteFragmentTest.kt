@@ -6,6 +6,7 @@ import android.widget.TimePicker
 import androidx.test.core.app.ActivityScenario
 import androidx.test.espresso.Espresso.*
 import androidx.test.espresso.Espresso.pressBack
+import androidx.test.espresso.action.ViewActions
 import androidx.test.espresso.action.ViewActions.*
 import androidx.test.espresso.assertion.ViewAssertions.matches
 import androidx.test.espresso.contrib.PickerActions.setDate
@@ -483,7 +484,7 @@ class NoteFragmentTest : OrgzlyTest() {
 
     @Test
     fun testContentLineCountUpdatedOnNoteUpdate() {
-        onNoteInBook(1).perform(click())
+        onNoteInBook(1).perform(click(ViewActions.pressBack()))
         onView(withId(R.id.content)).perform(scroll()) // For smaller screens
         onView(withId(R.id.content)).perform(click())
         onView(withId(R.id.content_edit)).perform(typeTextIntoFocusedView("a\nb\nc"))
