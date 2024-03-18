@@ -17,6 +17,7 @@ android {
 
         testInstrumentationRunner "com.orgzly.android.OrgzlyTestRunner"
         // testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
+        testInstrumentationRunnerArguments clearPackageData: 'true'
         // testInstrumentationRunnerArguments.put("notAnnotation", "org.junit.runner.RunWith")
 
         multiDexEnabled true
