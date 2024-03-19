@@ -59,7 +59,6 @@ public class BooksTest extends OrgzlyTest {
     private ActivityScenario<MainActivity> scenario;
 
     @Rule
-    @JvmField
     public final TestRule mRetryTestRule = new RetryTestRule();
 
     @Before

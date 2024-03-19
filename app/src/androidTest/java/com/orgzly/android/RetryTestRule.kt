@@ -30,6 +30,7 @@ class RetryTestRule(val retryCount: Int = 3) : TestRule {
                     } catch (t: Throwable) {
                         caughtThrowable = t
                         Log.e(TAG, description.displayName + ": run " + (i + 1) + " failed")
+                        Thread.sleep(1000)
                     }
                 }
 
