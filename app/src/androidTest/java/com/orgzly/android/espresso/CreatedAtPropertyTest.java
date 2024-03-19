@@ -33,13 +33,10 @@ import static com.orgzly.android.espresso.util.EspressoUtils.searchForTextCloseK
 import static org.hamcrest.CoreMatchers.instanceOf;
 import static org.hamcrest.Matchers.allOf;
 
-import kotlin.jvm.JvmField;
-
 public class CreatedAtPropertyTest extends OrgzlyTest {
     private ActivityScenario<MainActivity> scenario;
 
     @Rule
-    @JvmField
     public final TestRule mRetryTestRule = new RetryTestRule();
 
     @Before

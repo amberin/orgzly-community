@@ -44,13 +44,10 @@ import org.junit.Rule;
 import org.junit.Test;
 import org.junit.rules.TestRule;
 
-import kotlin.jvm.JvmField;
-
 public class BookTest extends OrgzlyTest {
     private ActivityScenario<MainActivity> scenario;
 
     @Rule
-    @JvmField
     public final TestRule mRetryTestRule = new RetryTestRule();
 
     @Before
