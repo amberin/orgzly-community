@@ -2,15 +2,18 @@ package com.orgzly.android.query
 
 import androidx.test.espresso.matcher.ViewMatchers.assertThat
 import com.orgzly.android.OrgzlyTest
+import com.orgzly.android.RetryTestRule
 import com.orgzly.android.query.sql.SqliteQueryBuilder
 import com.orgzly.android.query.user.DottedQueryBuilder
 import com.orgzly.android.query.user.DottedQueryParser
 import org.hamcrest.Matchers.`is`
 import org.junit.Before
+import org.junit.Rule
 import org.junit.Test
+import org.junit.rules.TestRule
 import org.junit.runner.RunWith
 import org.junit.runners.Parameterized
-import java.util.*
+import java.util.Calendar
 
 @RunWith(value = Parameterized::class)
 class QueryTest(private val param: Parameter) : OrgzlyTest() {
@@ -22,6 +25,10 @@ class QueryTest(private val param: Parameter) : OrgzlyTest() {
     private lateinit var actualSqlOrder: String
     private lateinit var actualQuerySortOrders: List<SortOrder>
     private lateinit var actualQueryOptions: Options
+
+    @Rule
+    @JvmField
+    val mRetryTestRule: TestRule = RetryTestRule()
 
     data class Parameter(
             val queryString: String,
