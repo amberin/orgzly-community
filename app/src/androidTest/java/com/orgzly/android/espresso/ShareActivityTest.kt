@@ -12,14 +12,23 @@ import androidx.test.espresso.matcher.ViewMatchers.withText
 import com.orgzly.R
 import com.orgzly.android.AppIntent
 import com.orgzly.android.OrgzlyTest
-import com.orgzly.android.espresso.util.EspressoUtils.*
+import com.orgzly.android.RetryTestRule
+import com.orgzly.android.espresso.util.EspressoUtils.onSnackbar
+import com.orgzly.android.espresso.util.EspressoUtils.scroll
 import com.orgzly.android.ui.share.ShareActivity
 import org.hamcrest.Matchers.startsWith
 import org.junit.Assert.assertTrue
+import org.junit.Rule
 import org.junit.Test
+import org.junit.rules.TestRule
 
 
 class ShareActivityTest : OrgzlyTest() {
+
+    @Rule
+    @JvmField
+    val mRetryTestRule: TestRule = RetryTestRule()
+
     private fun startActivityWithIntent(
             action: String? = null,
             type: String? = null,
