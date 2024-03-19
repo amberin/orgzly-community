@@ -35,7 +35,7 @@ class RetryTestRule(val retryCount: Int = 3) : TestRule {
                 }
 
                 Log.e(TAG, description.displayName + ": giving up after " + retryCount + " failures")
-                throw AssertionError("Test failed 3 times: ", caughtThrowable)
+                throw caughtThrowable!!
             }
         }
     }
