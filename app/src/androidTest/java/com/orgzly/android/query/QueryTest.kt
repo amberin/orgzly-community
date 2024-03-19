@@ -28,7 +28,9 @@ class QueryTest(private val param: Parameter) : OrgzlyTest() {
 
     @Rule
     @JvmField
-    val mRetryTestRule: TestRule = RetryTestRule()
+    // Avoid sleeping between test attempts, as parameter creation vs test run
+    // timing is sensitive for many of these tests.
+    val mRetryTestRule: TestRule = RetryTestRule(3, 0)
 
     data class Parameter(
             val queryString: String,
@@ -192,16 +194,16 @@ class QueryTest(private val param: Parameter) : OrgzlyTest() {
                             expectedQueryString = "s.3d",
                             expectedSqlSelection = "((scheduled_is_active = 1 AND scheduled_time_timestamp != 0 AND scheduled_time_timestamp < " + TimeUtils.timeFromNow(Calendar.DAY_OF_MONTH, 3+1) + "))"
                     ),
-//                    Parameter(
-//                            queryString = "s.le.2h",
-//                            expectedQueryString = "s.2h",
-//                            expectedSqlSelection = "((scheduled_is_active = 1 AND scheduled_time_timestamp != 0 AND scheduled_time_timestamp < " + TimeUtils.timeFromNow(Calendar.HOUR_OF_DAY, 2+1) + "))"
-//                    ),
-//                    Parameter(
-//                            queryString = "s.le.+2h",
-//                            expectedQueryString = "s.2h",
-//                            expectedSqlSelection = "((scheduled_is_active = 1 AND scheduled_time_timestamp != 0 AND scheduled_time_timestamp < " + TimeUtils.timeFromNow(Calendar.HOUR_OF_DAY, 2+1) + "))"
-//                    ),
+                    Parameter(
+                            queryString = "s.le.2h",
+                            expectedQueryString = "s.2h",
+                            expectedSqlSelection = "((scheduled_is_active = 1 AND scheduled_time_timestamp != 0 AND scheduled_time_timestamp < " + TimeUtils.timeFromNow(Calendar.HOUR_OF_DAY, 2+1) + "))"
+                    ),
+                    Parameter(
+                            queryString = "s.le.+2h",
+                            expectedQueryString = "s.2h",
+                            expectedSqlSelection = "((scheduled_is_active = 1 AND scheduled_time_timestamp != 0 AND scheduled_time_timestamp < " + TimeUtils.timeFromNow(Calendar.HOUR_OF_DAY, 2+1) + "))"
+                    ),
                     Parameter(
                             queryString = "d.tom",
                             expectedQueryString = "d.tomorrow",
@@ -217,11 +219,11 @@ class QueryTest(private val param: Parameter) : OrgzlyTest() {
                             expectedQueryString = "c.ge.yesterday",
                             expectedSqlSelection = "((closed_time_timestamp != 0 AND ${TimeUtils.timeFromNow(Calendar.DAY_OF_MONTH, -1)} <= closed_time_timestamp))"
                     ),
-//                    Parameter(
-//                            queryString = "c.gt.-1h",
-//                            expectedQueryString = "c.gt.-1h",
-//                            expectedSqlSelection = "((closed_time_timestamp != 0 AND ${TimeUtils.timeFromNow(Calendar.HOUR_OF_DAY, 0)} <= closed_time_timestamp))"
-//                    ),
+                    Parameter(
+                            queryString = "c.gt.-1h",
+                            expectedQueryString = "c.gt.-1h",
+                            expectedSqlSelection = "((closed_time_timestamp != 0 AND ${TimeUtils.timeFromNow(Calendar.HOUR_OF_DAY, 0)} <= closed_time_timestamp))"
+                    ),
                     Parameter(
                             queryString = "p.a",
                             expectedQueryString = "p.a",

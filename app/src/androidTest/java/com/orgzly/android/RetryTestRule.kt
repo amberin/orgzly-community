@@ -8,7 +8,7 @@ import org.junit.runners.model.Statement
 /**
  * Retry test rule used to retry test that failed. Retry failed test 3 times
  */
-class RetryTestRule(val retryCount: Int = 3) : TestRule {
+class RetryTestRule(val retryCount: Int = 3, val sleepBetweenAttemptsMs: Long = 1000) : TestRule {
 
     private val TAG = RetryTestRule::class.java.simpleName
 
@@ -30,7 +30,7 @@ class RetryTestRule(val retryCount: Int = 3) : TestRule {
                     } catch (t: Throwable) {
                         caughtThrowable = t
                         Log.e(TAG, description.displayName + ": run " + (i + 1) + " failed")
-                        Thread.sleep(1000)
+                        Thread.sleep(sleepBetweenAttemptsMs)
                     }
                 }
 
