@@ -93,8 +93,6 @@ public class OrgzlyTest {
         database.close();
 
         dataRepository.clearDatabase();
-
-        localStorage.cleanup();
     }
 
     private void setupPreferences() {
