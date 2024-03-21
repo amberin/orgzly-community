@@ -74,4 +74,5 @@ jobs:
           disable-animations: true
           disable-spellchecker: true
           profile: Nexus 6
-          script: ./gradlew connectedCheck
+          # Run tests against the build with Dropbox included
+          script: ./gradlew connectedPremiumDebugAndroidTest --stacktrace
