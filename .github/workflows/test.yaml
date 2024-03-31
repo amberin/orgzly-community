@@ -60,11 +60,10 @@ jobs:
       - name: Add Dropbox API credentials
         shell: bash
         run: |
-          echo "dropbox.token = \"${{ secrets.DROPBOX_APP_TOKEN }}\"" >> app.properties
+          echo "dropbox.refresh_token = \"${{ secrets.DROPBOX_REFRESH_TOKEN }}\"" >> app.properties
           echo "dropbox.app_key = \"${{ secrets.DROPBOX_APP_KEY }}\"" >> app.properties
-          echo "dropbox.app_key_schema = \"db-${{ secrets.DROPBOX_APP_KEY }}\"" >> app.properties
 
-      - name: run tests
+      - name: Run tests
         uses: reactivecircus/android-emulator-runner@v2
         with:
           api-level: 29
