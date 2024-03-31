@@ -22,7 +22,6 @@ class RetryTestRule(val retryCount: Int = 3) : TestRule {
             override fun evaluate() {
                 var caughtThrowable: Throwable? = null
 
-                // implement retry logic here
                 for (i in 0 until retryCount) {
                     try {
                         base.evaluate()
@@ -30,7 +29,8 @@ class RetryTestRule(val retryCount: Int = 3) : TestRule {
                     } catch (t: Throwable) {
                         caughtThrowable = t
                         Log.e(TAG, description.displayName + ": run " + (i + 1) + " failed")
-                        Thread.sleep(1000)
+                        val sleep = 1000 * (i + 1).toLong() // Increase sleep time with each failed attempt
+                        Thread.sleep(sleep)
                     }
                 }
 
