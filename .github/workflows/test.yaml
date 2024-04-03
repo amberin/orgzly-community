@@ -76,3 +76,12 @@ jobs:
           profile: Nexus 6
           # Tests should use the build which includes Dropbox code.
           script: ./gradlew connectedPremiumDebugAndroidTest --no-watch-fs
+
+      - name: Upload test results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: test-results-api-29
+          path: |
+            **/build/reports/*
+            **/build/outputs/*/connected/*
