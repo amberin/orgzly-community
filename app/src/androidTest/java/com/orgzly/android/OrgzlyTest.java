@@ -84,8 +84,6 @@ public class OrgzlyTest {
         // localStorage.cleanup();
 
         setupPreferences();
-
-        dataRepository.clearDatabase();
     }
 
     @After
@@ -93,6 +91,8 @@ public class OrgzlyTest {
         restorePreferences();
 
         database.close();
+
+        dataRepository.clearDatabase();
     }
 
     private void setupPreferences() {
