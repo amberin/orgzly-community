@@ -461,6 +461,7 @@ public class MiscTest extends OrgzlyTest {
 
             // Search results
             onView(withId(R.id.drawer_layout)).perform(open());
+            SystemClock.sleep(500);
             onView(withText("Scheduled")).perform(click());
             fragmentTest(activity, true, withId(R.id.fragment_query_search_view_flipper));
 
@@ -496,6 +497,7 @@ public class MiscTest extends OrgzlyTest {
     }
 
     private void fragmentTest(Activity activity, boolean hasSearchMenuItem, Matcher<View> matcher) {
+        SystemClock.sleep(500);
         onView(matcher).check(matches(isDisplayed()));
 
         activity.setRequestedOrientation(ActivityInfo.SCREEN_ORIENTATION_PORTRAIT);
@@ -692,6 +694,7 @@ public class MiscTest extends OrgzlyTest {
 
             onView(withId(R.id.item_preface_text_view)).perform(clickClickableSpan("[ ]"));
 
+            SystemClock.sleep(500);
             onView(allOf(withId(R.id.item_preface_text_view), withText(containsString("- [X] Item"))))
                     .check(matches(isDisplayed()));
         }
