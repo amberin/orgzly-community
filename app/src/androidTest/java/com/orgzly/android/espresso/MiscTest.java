@@ -232,7 +232,7 @@ public class MiscTest extends OrgzlyTest {
         try (ActivityScenario<MainActivity> scenario = ActivityScenario.launch(MainActivity.class)) {
             scenario.onActivity(activity ->
                     activity.setRequestedOrientation(ActivityInfo.SCREEN_ORIENTATION_LANDSCAPE));
-
+            SystemClock.sleep(500);
             onView(withId(R.id.fab)).perform(click());
             onView(withId(R.id.dialog_new_book_container)).check(matches(isDisplayed()));
 
