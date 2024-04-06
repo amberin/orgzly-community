@@ -188,7 +188,6 @@ public class BookTest extends OrgzlyTest {
         scenario.onActivity(activity ->
                 activity.setRequestedOrientation(ActivityInfo.SCREEN_ORIENTATION_LANDSCAPE));
 
-        SystemClock.sleep(500);
         onNoteInBook(40).check(matches(isDisplayed())); // Scroll to note
 
         scenario.onActivity(activity ->
