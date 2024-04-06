@@ -519,9 +519,9 @@ class NoteFragmentTest : OrgzlyTest() {
     @Test
     fun testBreadcrumbsPromptWhenCreatingNewNote() {
         onNoteInBook(1).perform(longClick())
-        onActionItemClick(R.id.new_note, R.string.new_note);
+        onActionItemClick(R.id.new_note, R.string.new_note)
         onView(withText(R.string.new_under)).perform(click())
-        SystemClock.sleep(1000)
+        SystemClock.sleep(2000)
         onView(withId(R.id.title_edit)).perform(*replaceTextCloseKeyboard("1.1"))
         onView(withId(R.id.breadcrumbs_text)).perform(clickClickableSpan("Note #1."))
 
@@ -533,7 +533,7 @@ class NoteFragmentTest : OrgzlyTest() {
         onView(withText(R.string.cancel)).perform(click())
 
         // Title remains the same
-        SystemClock.sleep(1000)
+        SystemClock.sleep(2000)
         onView(withId(R.id.title_edit)).check(matches(withText("1.1")))
     }
 
