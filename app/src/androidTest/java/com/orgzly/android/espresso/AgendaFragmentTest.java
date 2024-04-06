@@ -289,6 +289,7 @@ public class AgendaFragmentTest extends OrgzlyTest {
         scenario = ActivityScenario.launch(MainActivity.class);
         searchForTextCloseKeyboard("ad.1");
         // Overdue, note (scheduled), today
+        SystemClock.sleep(500);
         onNotesInAgenda().check(matches(recyclerViewItemCount(3)));
     }
 
