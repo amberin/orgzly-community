@@ -531,7 +531,7 @@ class NoteFragmentTest : OrgzlyTest() {
         onView(withText(R.string.cancel)).perform(click())
 
         // Title remains the same
-        SystemClock.sleep(3000)
+        onView(isRoot()).perform(waitId(R.id.title_edit, 10000))
         onView(withId(R.id.title_edit)).check(matches(withText("1.1")))
     }
 
