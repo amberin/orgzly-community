@@ -154,7 +154,7 @@ class NoteEventsTest : OrgzlyTest() {
 
         onNotesInAgenda().check(matches(recyclerViewItemCount(10)))
 
-        SystemClock.sleep(500)
+        SystemClock.sleep(1000)
         
         // Today: deadline
         onItemInAgenda(1, R.id.item_head_scheduled_text).check(matches(not(isDisplayed())))
