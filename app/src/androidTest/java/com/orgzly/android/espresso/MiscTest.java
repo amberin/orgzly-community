@@ -48,6 +48,7 @@ import androidx.test.core.app.ActivityScenario;
 
 import com.orgzly.BuildConfig;
 import com.orgzly.R;
+import com.orgzly.android.App;
 import com.orgzly.android.OrgzlyTest;
 import com.orgzly.android.db.entity.NotePosition;
 import com.orgzly.android.repos.RepoType;
@@ -425,8 +426,8 @@ public class MiscTest extends OrgzlyTest {
         testUtils.setupRepo(RepoType.DROPBOX, "dropbox:/orgzly");
         testUtils.setupBook("book-one", "Preface\n\n* Note");
 
-        try (ActivityScenario<MainActivity> scenario = ActivityScenario.launch(MainActivity.class)) {
-            scenario.onActivity(it -> activity = it);
+        try (ActivityScenario<MainActivity> ignored = ActivityScenario.launch(MainActivity.class)) {
+            activity = App.getCurrentActivity();
 
             // Books
             // fragmentTest(activity, true, withId(R.id.fragment_books_view_flipper));
