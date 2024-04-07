@@ -75,7 +75,7 @@ jobs:
           disable-spellchecker: true
           profile: Nexus 6
           # Tests should use the build which includes Dropbox code.
-          script: ./gradlew connectedPremiumDebugAndroidTest --no-watch-fs --build-cache --info
+          script: ./gradlew connectedPremiumDebugAndroidTest --no-watch-fs --build-cache --info --stacktrace
 
       - name: Upload test results
         if: always()
