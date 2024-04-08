@@ -64,6 +64,8 @@ import java.util.concurrent.TimeoutException;
  * - replaceText() is preferred over typeText() as it is much faster.
  */
 public class EspressoUtils {
+
+
     public static ViewInteraction onListView() {
         return onView(allOf(isAssignableFrom(ListView.class), isDisplayed()));
     }
@@ -185,7 +187,6 @@ public class EspressoUtils {
     }
 
     public static ViewInteraction onRecyclerViewItem(@IdRes int recyclerView, int position, @IdRes int childView) {
-        onView(isRoot()).perform(waitId(recyclerView, 5000));
         onView(withId(recyclerView)).perform(RecyclerViewActions.scrollToPosition(position));
         return onView(new EspressoRecyclerViewMatcher(recyclerView)
                 .atPositionOnView(position, childView));
@@ -452,51 +453,5 @@ public class EspressoUtils {
 
     public static ViewAction scroll() {
         return new NestedScrollViewExtension();
-    }
-
-    /**
-     * Perform action of waiting for a specific view id. Copied from https://stackoverflow.com/a/49814995.
-     * @param viewId The id of the view to wait for.
-     * @param millis The timeout of until when to wait for.
-     */
-    public static ViewAction waitId(final int viewId, final long millis) {
-        return new ViewAction() {
-            @Override
-            public Matcher<View> getConstraints() {
-                return isRoot();
-            }
-
-            @Override
-            public String getDescription() {
-                return "wait for a specific view with id <" + viewId + "> during " + millis + " millis.";
-            }
-
-            @Override
-            public void perform(final UiController uiController, final View view) {
-                uiController.loopMainThreadUntilIdle();
-                final long startTime = System.currentTimeMillis();
-                final long endTime = startTime + millis;
-                final Matcher<View> viewMatcher = withId(viewId);
-
-                do {
-                    for (View child : TreeIterables.breadthFirstViewTraversal(view)) {
-                        // found view with required ID
-                        if (viewMatcher.matches(child)) {
-                            return;
-                        }
-                    }
-
-                    uiController.loopMainThreadForAtLeast(50);
-                }
-                while (System.currentTimeMillis() < endTime);
-
-                // timeout happens
-                throw new PerformException.Builder()
-                        .withActionDescription(this.getDescription())
-                        .withViewDescription(HumanReadables.describe(view))
-                        .withCause(new TimeoutException())
-                        .build();
-            }
-        };
     }
 }
