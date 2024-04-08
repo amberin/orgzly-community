@@ -31,7 +31,9 @@ import static org.hamcrest.Matchers.equalTo;
 import static org.hamcrest.Matchers.instanceOf;
 import static org.hamcrest.Matchers.not;
 import static org.hamcrest.Matchers.startsWith;
+import static org.junit.Assume.assumeTrue;
 
+import android.icu.util.Calendar;
 import android.widget.DatePicker;
 import android.widget.TextView;
 import android.widget.TimePicker;
@@ -811,11 +813,14 @@ public class QueryFragmentTest extends OrgzlyTest {
         onNotesInSearch().check(matches(recyclerViewItemCount(0)));
     }
 
-    // FIXME: Fails at an hour (or less) from midnight
     @Test
     public void testScheduledTimestamp() {
+        Calendar calendar = Calendar.getInstance();
+        // Skip this test if current time is less than an hour before midnight
+        assumeTrue(calendar.get(Calendar.HOUR_OF_DAY) < 23);
+        final long currentTime = calendar.getTimeInMillis();
         String inOneHour = new OrgDateTime.Builder()
-                .setDateTime(System.currentTimeMillis() + 1000 * 60 * 60)
+                .setDateTime(currentTime + 1000 * 60 * 60)
                 .setHasTime(true)
                 .setIsActive(true)
                 .build()
