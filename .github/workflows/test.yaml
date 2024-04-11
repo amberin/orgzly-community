@@ -16,7 +16,9 @@ on:
 jobs:
   test:
     runs-on: ubuntu-latest
-    # TODO: Use strategy.matrix and always run on lowest and highest supported API
+    strategy:
+      matrix:
+        api-level: [21, 34]
     steps:
       - name: checkout
         uses: actions/checkout@v4
@@ -37,17 +39,18 @@ jobs:
           path: |
             ~/.android/avd/*
             ~/.android/adb*
-          key: avd-29
+          key: avd-${{ matrix.api-level }}
           save-always: true
 
       - name: create AVD and generate snapshot for caching
         if: steps.avd-cache.outputs.cache-hit != 'true'
         uses: reactivecircus/android-emulator-runner@v2
         with:
-          api-level: 29
+          api-level: ${{ matrix.api-level }}
+          target: google_apis
           arch: x86_64
           force-avd-creation: false
-          emulator-options: -no-window -gpu swiftshader_indirect -noaudio -no-boot-anim -camera-back none
+          emulator-options: -no-window -gpu swiftshader_indirect -noaudio -no-boot-anim -camera-back none -metrics-collection
           disable-animations: true
           disable-spellchecker: true
           profile: Nexus 6
@@ -60,7 +63,7 @@ jobs:
           path: |
             ~/.android/avd/*
             ~/.android/adb*
-          key: avd-29
+          key: avd-${{ matrix.api-level }}
 
       - name: Add Dropbox API credentials
         shell: bash
@@ -71,10 +74,11 @@ jobs:
       - name: Run tests
         uses: reactivecircus/android-emulator-runner@v2
         with:
-          api-level: 29
+          api-level: ${{ matrix.api-level }}
+          target: google_apis
           arch: x86_64
           force-avd-creation: false
-          emulator-options: -no-snapshot-save -no-window -gpu swiftshader_indirect -noaudio -no-boot-anim -camera-back none
+          emulator-options: -no-snapshot-save -no-window -gpu swiftshader_indirect -noaudio -no-boot-anim -camera-back none -metrics-collection
           disable-animations: true
           disable-spellchecker: true
           profile: Nexus 6
