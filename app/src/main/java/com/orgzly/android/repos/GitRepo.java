@@ -446,10 +446,15 @@ public class GitRepo implements SyncRepo, IntegrallySyncedRepo {
                 RevCommit headBeforeMerge = synchronizer.currentHead();
                 boolean mergeSucceeded = true;
                 try {
-                /* We have always switched to a new temp branch at this point. Try to merge with
-                the main branch first, and if that fails, try to merge with the starting branch, in
-                case we were on a temp branch when the sync started. */
-                    if (!synchronizer.attemptReturnToBranch(mainBranch())) {
+                    /* We have always switched to a new temp branch at this point. Try to merge with
+                    the main branch first, and if that fails, try to merge with the starting branch, in
+                    case we were on a temp branch when the sync started. */
+                    if (synchronizer.attemptReturnToBranch(mainBranch())) {
+                        if (startingBranch != mainBranch()) {
+                            // Clean up obsolete sync branch
+                            git.branchDelete().setBranchNames(startingBranch);
+                        }
+                    } else {
                         mergeSucceeded = synchronizer.attemptReturnToBranch(startingBranch);
                     }
                 } catch (Exception e) {
