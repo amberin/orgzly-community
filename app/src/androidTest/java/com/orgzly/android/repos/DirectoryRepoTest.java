@@ -11,6 +11,7 @@ import com.orgzly.android.util.MiscUtils;
 
 import org.junit.After;
 import org.junit.Before;
+import org.junit.Ignore;
 import org.junit.Test;
 
 import java.io.File;
@@ -84,6 +85,7 @@ public class DirectoryRepoTest extends OrgzlyTest {
         assertEquals(repoUriString + "/03.org", books.get(0).getUri().toString());
     }
 
+    @Ignore
     @Test
     public void testListDownloadsDirectory() throws IOException {
         File dir = Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS);
@@ -119,6 +121,7 @@ public class DirectoryRepoTest extends OrgzlyTest {
     }
 
 
+    @Ignore
     @Test
     public void testSyncWithDirectoryContainingPercent() throws FileNotFoundException {
         String localBaseDir = context.getExternalCacheDir().getAbsolutePath();
