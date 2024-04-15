@@ -166,12 +166,8 @@ class NoteFragment : CommonFragment(), View.OnClickListener, TimestampDialogFrag
         binding.title.apply {
             // Keyboard's action button pressed
             setOnEditorActionListener { _, _, _ ->
-                if (verifyAlarmClockPermission()) {
-                    userSave()
-                    true
-                } else {
-                    false
-                }
+                userSave()
+                true
             }
         }
 
@@ -312,53 +308,9 @@ class NoteFragment : CommonFragment(), View.OnClickListener, TimestampDialogFrag
         menu.removeItem(R.id.delete)
     }
 
-    private fun usesExactTimes(): Boolean {
-        val payload = viewModel.notePayload
-        if (payload?.scheduled != null) {
-            val scheduled = OrgRange.parseOrNull(payload.scheduled)
-            if (scheduled.startTime.hasTime()) {
-                return true
-            }
-            if (scheduled.endTime != null) {
-                if (scheduled.endTime!!.hasTime()) {
-                    return true
-                }
-            }
-        }
-        if (payload?.deadline != null) {
-            val deadline = OrgRange.parseOrNull(payload.deadline)
-            if (deadline.startTime.hasTime()) {
-                return true
-            }
-            if (deadline.endTime != null) {
-                if (deadline.endTime!!.hasTime()) {
-                    return true
-                }
-            }
-        }
-        return false
-    }
-
-    private fun verifyAlarmClockPermission(): Boolean {
-        if (usesExactTimes() && (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S)) {
-            if (!requireContext().getAlarmManager().canScheduleExactAlarms()) {
-                dialog = MaterialAlertDialogBuilder(requireContext())
-                    .setTitle("Alarm clock permission required")
-                    .setMessage("The app needs the alarm clock permission in order to save exact times for scheduled/deadline.")
-                    .setPositiveButton(R.string.ok, null)
-                    .show()
-                return false
-            }
-        }
-        return true
-    }
-
     private fun handleActionItemClick(menuItem: MenuItem): Boolean {
         when (menuItem.itemId) {
             R.id.done -> {
-                if (!verifyAlarmClockPermission()) {
-                    return false
-                }
                 userSave()
             }
 

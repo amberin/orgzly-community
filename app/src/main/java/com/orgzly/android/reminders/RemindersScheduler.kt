@@ -77,13 +77,14 @@ class RemindersScheduler @Inject constructor(val context: Application, val logs:
     private fun schedule(intent: PendingIntent, inMs: Long, hasTime: Boolean, origin: String) {
         val alarmManager = context.getAlarmManager()
 
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+            if (!alarmManager.canScheduleExactAlarms()) {
+                throw SecurityException("Missing permission to schedule alarm")
+            }
+        }
+
         // TODO: Add preferences to control *how* to schedule the alarms
         if (hasTime) {
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
-                if (!alarmManager.canScheduleExactAlarms()) {
-                    throw SecurityException("Missing permission to schedule alarm")
-                }
-            }
             if (AppPreferences.remindersUseAlarmClockForTodReminders(context)) {
                 scheduleAlarmClock(alarmManager, intent, inMs, origin)
             } else {
