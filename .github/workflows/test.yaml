@@ -54,7 +54,7 @@ jobs:
           disable-animations: true
           disable-spellchecker: true
           profile: Nexus 6
-          script: echo "Generated AVD snapshot for caching."
+          script: ./gradlew assemblePremiumDebug --no-watch-fs --build-cache
 
       - name: Save AVD to cache
         if: steps.avd-cache.outputs.cache-hit != 'true'
