@@ -86,10 +86,7 @@ jobs:
           profile: Nexus 6
           # Tests should use the build which includes Dropbox code.
           script: |
-            adb logcat -c                             # clear logs
-            touch app/emulator.log                    # create log file
-            chmod 777 app/emulator.log                # allow writing to log file
-            adb logcat >> app/emulator.log &          # pipe all logcat messages into log file as a background process
+            adb shell appops set --uid com.orgzlyrevived SCHEDULE_EXACT_ALARM allow
             ./gradlew connectedPremiumDebugAndroidTest --no-watch-fs --build-cache --info
 
       - name: Upload Failing Test Report Log
