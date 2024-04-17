@@ -233,7 +233,7 @@ tasks.whenTaskAdded { task ->
                     if (it.endsWith("device")) {
                         def device = it.split()[0]
                         println "Granting test permissions on device ${device}\n"
-                        "${adb} shell appops set --uid ${variant.applicationId} SCHEDULE_EXACT_ALARM allow".execute()
+                        println "${adb} shell appops set --uid ${variant.applicationId} SCHEDULE_EXACT_ALARM allow\n"
                     }
                 }
             }
