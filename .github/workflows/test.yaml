@@ -86,6 +86,7 @@ jobs:
           profile: Nexus 6
           # Tests should use the build which includes Dropbox code.
           script: |
+            ./gradlew installPremiumDebug --no-watch-fs --build-cache --info
             adb shell appops set --uid com.orgzlyrevived SCHEDULE_EXACT_ALARM allow
             ./gradlew connectedPremiumDebugAndroidTest --no-watch-fs --build-cache --info
 
