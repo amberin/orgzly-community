@@ -85,18 +85,4 @@ jobs:
           disable-spellchecker: true
           profile: Nexus 6
           # Tests should use the build which includes Dropbox code.
-          script: |
-            ./gradlew installPremiumDebug --no-watch-fs --build-cache --info
-            adb shell appops set --uid com.orgzlyrevived SCHEDULE_EXACT_ALARM allow
-            ./gradlew connectedPremiumDebugAndroidTest --no-watch-fs --build-cache --info
-
-      - name: Upload Failing Test Report Log
-        if: steps.testing.outcome != 'success'        # upload the generated log on failure of the tests job
-        uses: actions/upload-artifact@v2
-        with:
-          name: logs
-          path: app/emulator.log # path to where the log is
-
-      - name: Raise error on test fail # set a red tick on the workflow run if the tests failed
-        if: steps.testing.outcome != 'success'
-        run: exit 1
+          script: ./gradlew connectedPremiumDebugAndroidTest --no-watch-fs --build-cache --info

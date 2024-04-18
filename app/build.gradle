@@ -223,20 +223,3 @@ def orgJavaLocation() {
         return "com.github.orgzly-revived:org-java:$versions.org_java"
     }
 }
-
-def adb = android.getAdbExe().toString()
-tasks.whenTaskAdded { task ->
-    if (task.name.startsWith('connected')) {
-        task.doFirst {
-            android.applicationVariants.all { variant ->
-                "${adb} devices".execute().text.eachLine {
-                    if (it.endsWith("device")) {
-                        def device = it.split()[0]
-                        println "Granting test permissions on device ${device}\n"
-                        println "${adb} shell appops set --uid ${variant.applicationId} SCHEDULE_EXACT_ALARM allow\n"
-                    }
-                }
-            }
-        }
-    }
-}

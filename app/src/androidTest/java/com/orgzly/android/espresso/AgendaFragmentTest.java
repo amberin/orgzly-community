@@ -11,6 +11,7 @@ import static androidx.test.espresso.matcher.ViewMatchers.withClassName;
 import static androidx.test.espresso.matcher.ViewMatchers.withId;
 import static androidx.test.espresso.matcher.ViewMatchers.withParent;
 import static androidx.test.espresso.matcher.ViewMatchers.withText;
+import static androidx.test.platform.app.InstrumentationRegistry.getInstrumentation;
 import static com.orgzly.android.espresso.util.EspressoUtils.onItemInAgenda;
 import static com.orgzly.android.espresso.util.EspressoUtils.onNotesInAgenda;
 import static com.orgzly.android.espresso.util.EspressoUtils.recyclerViewItemCount;
@@ -21,8 +22,11 @@ import static org.hamcrest.Matchers.equalTo;
 import static org.hamcrest.Matchers.instanceOf;
 import static org.hamcrest.Matchers.not;
 
+import android.app.UiAutomation;
 import android.content.pm.ActivityInfo;
+import android.os.ParcelFileDescriptor;
 import android.os.SystemClock;
+import android.util.Log;
 import android.widget.DatePicker;
 import android.widget.TextView;
 
@@ -38,6 +42,12 @@ import org.joda.time.DateTime;
 import org.junit.After;
 import org.junit.Ignore;
 import org.junit.Test;
+
+import java.io.BufferedInputStream;
+import java.io.FileDescriptor;
+import java.io.FileInputStream;
+import java.io.IOException;
+import java.io.InputStream;
 
 public class AgendaFragmentTest extends OrgzlyTest {
     private ActivityScenario<MainActivity> scenario;
@@ -163,6 +173,9 @@ public class AgendaFragmentTest extends OrgzlyTest {
 
     @Test
     public void testMoveTaskWithRepeaterToTomorrow() {
+        String grantExactAlarmCommand = "appops set --uid com.orgzlyrevived SCHEDULE_EXACT_ALARM " +
+                "allow";
+        getInstrumentation().getUiAutomation().executeShellCommand(grantExactAlarmCommand);
         DateTime tomorrow = DateTime.now().withTimeAtStartOfDay().plusDays(1);
         scenario = defaultSetUp();
         searchForTextCloseKeyboard(".it.done ad.7");
