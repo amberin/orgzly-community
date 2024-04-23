@@ -15,6 +15,7 @@ import static androidx.test.espresso.matcher.ViewMatchers.withClassName;
 import static androidx.test.espresso.matcher.ViewMatchers.withContentDescription;
 import static androidx.test.espresso.matcher.ViewMatchers.withId;
 import static androidx.test.espresso.matcher.ViewMatchers.withText;
+import static androidx.test.platform.app.InstrumentationRegistry.getInstrumentation;
 import static org.hamcrest.CoreMatchers.allOf;
 import static org.hamcrest.CoreMatchers.anyOf;
 import static org.hamcrest.CoreMatchers.endsWith;
@@ -47,6 +48,7 @@ import androidx.test.platform.app.InstrumentationRegistry;
 
 import com.orgzly.R;
 import com.orgzly.android.ui.SpanUtils;
+import com.orgzly.test.BuildConfig;
 
 import org.hamcrest.Description;
 import org.hamcrest.Matcher;
@@ -297,7 +299,7 @@ public class EspressoUtils {
 
             // Open the overflow menu OR open the options menu,
             // depending on if the device has a hardware or software overflow menu button.
-            openActionBarOverflowOrOptionsMenu(InstrumentationRegistry.getInstrumentation().getTargetContext());
+            openActionBarOverflowOrOptionsMenu(getInstrumentation().getTargetContext());
             onView(withText(resourceId)).perform(click());
         }
     }
@@ -500,5 +502,10 @@ public class EspressoUtils {
                         .build();
             }
         };
+    }
+
+    public static void grantAlarmsAndRemindersPermission() {
+        String shellCmd = "appops set --uid com.orgzlyrevived SCHEDULE_EXACT_ALARM allow";
+        getInstrumentation().getUiAutomation().executeShellCommand(shellCmd);
     }
 }

@@ -8,40 +8,6 @@ import kotlin.math.atan2
  * https://stackoverflow.com/questions/13095494/how-to-detect-swipe-direction-between-left-right-and-up-down
  */
 open class OnSwipeListener : SimpleOnGestureListener() {
-    override fun onFling(
-        e1: MotionEvent,
-        e2: MotionEvent,
-        velocityX: Float,
-        velocityY: Float
-    ): Boolean {
-
-        // Grab two events located on the plane at e1=(x1, y1) and e2=(x2, y2)
-        // Let e1 be the initial event
-        // e2 can be located at 4 different positions, consider the following diagram
-        // (Assume that lines are separated by 90 degrees.)
-        //
-        //
-        //         \ A  /
-        //          \  /
-        //       D   e1   B
-        //          /  \
-        //         / C  \
-        //
-        // So if (x2,y2) falls in region:
-        //  A => it's an UP swipe
-        //  B => it's a RIGHT swipe
-        //  C => it's a DOWN swipe
-        //  D => it's a LEFT swipe
-
-        val x1 = e1.x
-        val y1 = e1.y
-        val x2 = e2.x
-        val y2 = e2.y
-
-        val direction = getDirection(x1, y1, x2, y2)
-
-        return onSwipe(direction, e1, e2)
-    }
 
     /** Override this method. The Direction enum will tell you how the user swiped.  */
     open fun onSwipe(direction: Direction, e1: MotionEvent, e2: MotionEvent): Boolean {
