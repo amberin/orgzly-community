@@ -8,10 +8,8 @@ import android.content.Intent
 import android.net.Uri
 import android.os.Build
 import android.os.SystemClock
-import android.provider.Settings.ACTION_REQUEST_SCHEDULE_EXACT_ALARM
 import android.util.Log
 import androidx.annotation.RequiresApi
-import com.orgzly.BuildConfig
 import com.orgzly.android.AppIntent
 import com.orgzly.android.data.logs.AppLogsRepository
 import com.orgzly.android.prefs.AppPreferences
