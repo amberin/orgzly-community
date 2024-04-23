@@ -72,9 +72,7 @@ jobs:
           echo "dropbox.app_key = \"${{ secrets.DROPBOX_APP_KEY }}\"" >> app.properties
 
       - name: Run tests
-        id: testing
         uses: reactivecircus/android-emulator-runner@v2
-        continue-on-error: true
         with:
           api-level: ${{ matrix.api-level }}
           target: google_apis
