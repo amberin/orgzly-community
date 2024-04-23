@@ -146,7 +146,7 @@ class TimestampDialogFragment : DialogFragment(), View.OnClickListener {
             if (!requireContext().getAlarmManager().canScheduleExactAlarms()) {
                 MaterialAlertDialogBuilder(requireContext())
                     .setTitle("Alarms & reminders permission needed")
-                    .setMessage("The app needs the 'alarms & reminders' permission to set exact times for scheduled/deadline. Please grant the permission in the 'app info' screen.")
+                    .setMessage("The app needs the \"alarms & reminders\" permission to set exact times for scheduled/deadline. Please grant the permission in the \"app info\" screen.")
                     .setPositiveButton(R.string.ok, null)
                     .show()
                 return false
