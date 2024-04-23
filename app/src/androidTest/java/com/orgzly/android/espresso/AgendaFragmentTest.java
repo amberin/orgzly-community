@@ -35,8 +35,10 @@ import androidx.test.espresso.contrib.PickerActions;
 
 import com.orgzly.R;
 import com.orgzly.android.OrgzlyTest;
+import com.orgzly.android.espresso.util.EspressoUtils;
 import com.orgzly.android.prefs.AppPreferences;
 import com.orgzly.android.ui.main.MainActivity;
+import com.orgzly.test.BuildConfig;
 
 import org.joda.time.DateTime;
 import org.junit.After;
@@ -173,9 +175,7 @@ public class AgendaFragmentTest extends OrgzlyTest {
 
     @Test
     public void testMoveTaskWithRepeaterToTomorrow() {
-        String grantExactAlarmCommand = "appops set --uid com.orgzlyrevived SCHEDULE_EXACT_ALARM " +
-                "allow";
-        getInstrumentation().getUiAutomation().executeShellCommand(grantExactAlarmCommand);
+        EspressoUtils.grantAlarmsAndRemindersPermission();
         DateTime tomorrow = DateTime.now().withTimeAtStartOfDay().plusDays(1);
         scenario = defaultSetUp();
         searchForTextCloseKeyboard(".it.done ad.7");
