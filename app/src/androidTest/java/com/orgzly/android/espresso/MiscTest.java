@@ -629,6 +629,7 @@ public class MiscTest extends OrgzlyTest {
         testUtils.setupBook("booky", "* TODO Note 1\n* Note 2\n* Note 3\n* Note 4\n* TODO Note 5");
         try (ActivityScenario<MainActivity> ignored = ActivityScenario.launch(MainActivity.class)) {
             onBook(0).perform(click());
+            SystemClock.sleep(500);
             onNoteInBook(3).perform(longClick());
             onActionItemClick(R.id.move, R.string.move);
             onView(withId(R.id.drawer_layout)).perform(open());
