@@ -39,19 +39,8 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Sign F-Droid APK
-        uses: r0adkll/sign-android-release@v1
-        id: sign_fdroid_apk
-        with:
-          releaseDirectory: app/build/outputs/apk/fdroid/release
-          signingKeyBase64: ${{ secrets.APK_SIGNING_KEYSTORE_FILE }}
-          alias: orgzly-revived-20231013
-          keyStorePassword: ${{ secrets.APK_SIGNING_KEYSTORE_PASSWORD }}
-        env:
-          BUILD_TOOLS_VERSION: ${{ env.BUILD_TOOL_VERSION }}
-
       - name: Rename F-Droid APK file
-        run: mv ${{steps.sign_fdroid_apk.outputs.signedReleaseFile}} orgzly-revived-fdroid-${{ env.VERSION }}.apk
+        run: mv app/build/outputs/apk/fdroid/release/app-fdroid-release-unsigned.apk orgzly-revived-fdroid-${{ env.VERSION }}.apk
 
       # "Premium" APK
 
@@ -66,19 +55,8 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Sign "premium" APK
-        uses: r0adkll/sign-android-release@v1
-        id: sign_premium_apk
-        with:
-          releaseDirectory: app/build/outputs/apk/premium/release
-          signingKeyBase64: ${{ secrets.APK_SIGNING_KEYSTORE_FILE }}
-          alias: orgzly-revived-20231013
-          keyStorePassword: ${{ secrets.APK_SIGNING_KEYSTORE_PASSWORD }}
-        env:
-          BUILD_TOOLS_VERSION: ${{ env.BUILD_TOOL_VERSION }}
-
       - name: Rename "premium" APK file
-        run: mv ${{steps.sign_premium_apk.outputs.signedReleaseFile}} orgzly-revived-${{ env.VERSION }}.apk
+        run: mv app/build/outputs/apk/premium/release/app-premium-release-unsigned.apk orgzly-revived-${{ env.VERSION }}.apk
 
       # "Premium" AAB
 
@@ -87,19 +65,8 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Sign "premium" AAB
-        uses: r0adkll/sign-android-release@v1
-        id: sign_premium_aab
-        with:
-          releaseDirectory: app/build/outputs/bundle/premiumRelease
-          signingKeyBase64: ${{ secrets.APK_SIGNING_KEYSTORE_FILE }}
-          alias: orgzly-revived-20231013
-          keyStorePassword: ${{ secrets.APK_SIGNING_KEYSTORE_PASSWORD }}
-        env:
-          BUILD_TOOLS_VERSION: ${{ env.BUILD_TOOL_VERSION }}
-
       - name: Rename "premium" AAB file
-        run: mv ${{steps.sign_premium_aab.outputs.signedReleaseFile}} orgzly-revived-${{ env.VERSION }}.aab
+        run: mv app/build/outputs/bundle/premiumRelease/app-premium-release.aab orgzly-revived-${{ env.VERSION }}.aab
 
       - name: Upload artifacts and create Github pre-release draft
         uses: softprops/action-gh-release@v1
