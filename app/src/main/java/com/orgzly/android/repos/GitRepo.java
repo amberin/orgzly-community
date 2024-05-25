@@ -187,6 +187,9 @@ public class GitRepo implements SyncRepo, TwoWaySyncRepo {
         return true;
     }
 
+    @Override
+    public boolean isIncludeExcludeFileSupported() { return false; }
+
     public VersionedRook storeBook(File file, String fileName) throws IOException {
         File destination = synchronizer.repoDirectoryFile(fileName);
         ensureRepoPathIsNotIgnored(destination.getPath());

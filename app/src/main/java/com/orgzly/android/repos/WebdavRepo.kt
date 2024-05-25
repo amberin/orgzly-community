@@ -150,6 +150,10 @@ class WebdavRepo(
         return true
     }
 
+    override fun isIncludeExcludeFileSupported(): Boolean {
+        return false
+    }
+
     override fun getUri(): Uri {
         return uri
     }

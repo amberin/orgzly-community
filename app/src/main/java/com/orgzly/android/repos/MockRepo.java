@@ -40,6 +40,9 @@ public class MockRepo implements SyncRepo {
     }
 
     @Override
+    public boolean isIncludeExcludeFileSupported() { return false; }
+
+    @Override
     public Uri getUri() {
         return databaseRepo.getUri();
     }

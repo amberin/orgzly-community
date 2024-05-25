@@ -32,6 +32,9 @@ public class DropboxRepo implements SyncRepo {
     }
 
     @Override
+    public boolean isIncludeExcludeFileSupported() { return false; }
+
+    @Override
     public Uri getUri() {
         return repoUri;
     }

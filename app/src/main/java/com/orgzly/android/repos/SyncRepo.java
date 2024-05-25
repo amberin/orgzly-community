@@ -14,7 +14,7 @@ public interface SyncRepo {
 
     boolean isAutoSyncSupported();
 
-    boolean isExcludeIncludeFileSupported();
+    boolean isIncludeExcludeFileSupported();
 
     /**
      * Unique URL.
