@@ -16,6 +16,8 @@ public interface SyncRepo {
 
     boolean isAutoSyncSupported();
 
+    boolean isExcludeIncludeFileSupported();
+
     /**
      * Unique URL.
      */
@@ -46,8 +48,6 @@ public interface SyncRepo {
     // VersionedRook moveBook(Uri from, Uri uri) throws IOException;
 
     void delete(Uri uri) throws IOException;
-
-    IgnoreNode getIgnores() throws IOException;
 
     String toString();
 }

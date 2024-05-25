@@ -62,6 +62,9 @@ public class ContentRepo implements SyncRepo {
     }
 
     @Override
+    public boolean isExcludeIncludeFileSupported() { return true; }
+
+    @Override
     public Uri getUri() {
         return repoUri;
     }
@@ -125,7 +128,7 @@ public class ContentRepo implements SyncRepo {
         return result;
     }
 
-    public IgnoreNode getIgnores() throws IOException {
+    private IgnoreNode getIgnores() throws IOException {
         IgnoreNode ignores = new IgnoreNode();
         DocumentFile ignoreFile = getDocumentFileFromFileName(".orgzlyignore");
         if (ignoreFile.exists()) {

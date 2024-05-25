@@ -77,6 +77,9 @@ public class DirectoryRepo implements SyncRepo {
     }
 
     @Override
+    public boolean isExcludeIncludeFileSupported() { return true; }
+
+    @Override
     public Uri getUri() {
         return repoUri;
     }
@@ -212,8 +215,7 @@ public class DirectoryRepo implements SyncRepo {
         }
     }
 
-    @Override
-    public IgnoreNode getIgnores() throws IOException {
+    private IgnoreNode getIgnores() throws IOException {
         IgnoreNode ignores = new IgnoreNode();
         File ignoreFile = new File(mDirectory, ".orgzlyignore");
         if (ignoreFile.exists()) {
