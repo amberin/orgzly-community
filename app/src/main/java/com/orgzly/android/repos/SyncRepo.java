@@ -2,8 +2,6 @@ package com.orgzly.android.repos;
 
 import android.net.Uri;
 
-import org.eclipse.jgit.ignore.IgnoreNode;
-
 import java.io.File;
 import java.io.IOException;
 import java.util.List;

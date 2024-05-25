@@ -2,7 +2,6 @@ package com.orgzly.android.repos;
 
 import android.content.Context;
 import android.net.Uri;
-import android.os.Build;
 import android.provider.DocumentsContract;
 import android.util.Log;
 
@@ -17,7 +16,6 @@ import com.orgzly.android.util.MiscUtils;
 import org.eclipse.jgit.ignore.IgnoreNode;
 
 import java.io.File;
-import java.io.FileInputStream;
 import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.io.InputStream;
