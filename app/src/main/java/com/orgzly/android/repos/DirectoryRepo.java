@@ -14,6 +14,7 @@ import org.jetbrains.annotations.NotNull;
 import java.io.File;
 import java.io.FileNotFoundException;
 import java.io.IOException;
+import java.io.InputStream;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
@@ -75,7 +76,7 @@ public class DirectoryRepo implements SyncRepo {
     }
 
     @Override
-    public boolean isIncludeExcludeFileSupported() { return true; }
+    public boolean isIgnoreFileSupported() { return false; }
 
     @Override
     public Uri getUri() {
@@ -85,7 +86,6 @@ public class DirectoryRepo implements SyncRepo {
     @Override
     public List<VersionedRook> getBooks() throws IOException {
         List<VersionedRook> result = new ArrayList<>();
-        IncludeOrExcludeNode includeOrExcludeRules = new IncludeOrExcludeNode(mDirectory);
 
         File[] files = mDirectory.listFiles((dir, filename) ->
                 BookName.isSupportedFormatFileName(filename));
@@ -94,9 +94,6 @@ public class DirectoryRepo implements SyncRepo {
             Arrays.sort(files);
 
             for (File file : files) {
-                if (includeOrExcludeRules.isIgnored(file)) {
-                    continue;
-                }
                 Uri uri = repoUri.buildUpon().appendPath(file.getName()).build();
 
                 result.add(new VersionedRook(
@@ -135,6 +132,11 @@ public class DirectoryRepo implements SyncRepo {
         long mtime = sourceFile.lastModified();
 
         return new VersionedRook(repoId, RepoType.DIRECTORY, repoUri, uri, rev, mtime);
+    }
+
+    @Override
+    public InputStream streamFile(String fileName) throws IOException {
+        throw new UnsupportedOperationException("Not implemented");
     }
 
     @Override

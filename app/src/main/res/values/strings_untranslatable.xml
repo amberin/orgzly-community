@@ -43,6 +43,8 @@
     <string name="certificates_hint">-----BEGIN CERTIFICATE-----</string>
     <string name="webdav" translatable="false">WebDAV</string>
     <string name="repo_ignore_rules_file" translatable="false">.orgzlyignore</string>
+    <string name="repo_include_rules_file" translatable="false">.orgzlyinclude</string>
+    <string name="repo_exclude_rules_file" translatable="false">.orgzlyexclude</string>
 
     <string name="lorem_ipsum" translatable="false">Lorem ipsum dolor sit amet, consectetur</string>
     <string name="lorem_ipsum_rich" translatable="false">Lorem *ipsum* dolor sit amet, /consectetur/</string>

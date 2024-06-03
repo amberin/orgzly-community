@@ -7,7 +7,6 @@ import android.net.Uri;
 import android.util.Log;
 
 import com.orgzly.BuildConfig;
-import com.orgzly.R;
 import com.orgzly.android.App;
 import com.orgzly.android.BookName;
 import com.orgzly.android.db.entity.Repo;
@@ -22,7 +21,6 @@ import org.eclipse.jgit.api.CloneCommand;
 import org.eclipse.jgit.api.Git;
 import org.eclipse.jgit.api.errors.GitAPIException;
 import org.eclipse.jgit.api.errors.JGitInternalException;
-import org.eclipse.jgit.ignore.IgnoreNode;
 import org.eclipse.jgit.lib.FileMode;
 import org.eclipse.jgit.lib.ObjectId;
 import org.eclipse.jgit.lib.ProgressMonitor;
@@ -35,9 +33,9 @@ import org.eclipse.jgit.treewalk.filter.TreeFilter;
 import org.eclipse.jgit.util.FileUtils;
 
 import java.io.File;
-import java.io.FileInputStream;
 import java.io.FileNotFoundException;
 import java.io.IOException;
+import java.io.InputStream;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -188,11 +186,11 @@ public class GitRepo implements SyncRepo, TwoWaySyncRepo {
     }
 
     @Override
-    public boolean isIncludeExcludeFileSupported() { return false; }
+    public boolean isIgnoreFileSupported() { return true; }
 
     public VersionedRook storeBook(File file, String fileName) throws IOException {
+        new RepoIgnoreNode(this).ensurePathIsNotIgnored(fileName);
         File destination = synchronizer.repoDirectoryFile(fileName);
-        ensureRepoPathIsNotIgnored(destination.getPath());
 
         if (destination.exists()) {
             synchronizer.updateAndCommitExistingFile(file, fileName);
@@ -224,6 +222,12 @@ public class GitRepo implements SyncRepo, TwoWaySyncRepo {
         return currentVersionedRook(sourceUri);
     }
 
+    @Override
+    public InputStream streamFile(String fileName) throws IOException {
+        Uri sourceUri = Uri.parse(fileName);
+        return synchronizer.streamCurrentVersionOfFile(sourceUri.getPath());
+    }
+
     private VersionedRook currentVersionedRook(Uri uri) {
         RevCommit commit = null;
         uri = Uri.parse(Uri.decode(uri.toString()));
@@ -235,28 +239,6 @@ public class GitRepo implements SyncRepo, TwoWaySyncRepo {
         assert commit != null;
         long mtime = (long)commit.getCommitTime()*1000;
         return new VersionedRook(repoId, RepoType.GIT, getUri(), uri, commit.name(), mtime);
-    }
-
-    public IgnoreNode getIgnores() throws IOException {
-        IgnoreNode ignores = new IgnoreNode();
-        File ignoreFile = synchronizer.repoDirectoryFile(context.getString(R.string.repo_ignore_rules_file));
-        if (ignoreFile.exists()) {
-            FileInputStream in = new FileInputStream(ignoreFile);
-            try {
-                ignores.parse(in);
-            } finally {
-                in.close();
-            }
-        }
-        return ignores;
-    }
-
-    private void ensureRepoPathIsNotIgnored(String filePath) throws IOException {
-        IgnoreNode ignores = getIgnores();
-        if (ignores.isIgnored(filePath, false) == IgnoreNode.MatchResult.IGNORED) {
-            throw new IOException(context.getString(R.string.error_file_matches_repo_ignore_rule,
-                    context.getString(R.string.repo_ignore_rules_file)));
-        }
     }
 
     public boolean isUnchanged() throws IOException {
@@ -281,15 +263,10 @@ public class GitRepo implements SyncRepo, TwoWaySyncRepo {
         walk.reset();
         walk.setRecursive(true);
         walk.addTree(synchronizer.currentHead().getTree());
-        final IgnoreNode ignores = getIgnores();
+        final RepoIgnoreNode ignores = new RepoIgnoreNode(this);
         walk.setFilter(new TreeFilter() {
             @Override
-            public boolean include(TreeWalk walker) {
-                final FileMode mode = walker.getFileMode(0);
-                final String filePath = walker.getPathString();
-                final boolean isDirectory = mode == FileMode.TREE;
-                return !(ignores.isIgnored(filePath, isDirectory) == IgnoreNode.MatchResult.IGNORED);
-            }
+            public boolean include(TreeWalk walker) { return true; }
 
             @Override
             public boolean shouldBeRecursive() {
@@ -305,7 +282,7 @@ public class GitRepo implements SyncRepo, TwoWaySyncRepo {
             final FileMode mode = walk.getFileMode(0);
             final boolean isDirectory = mode == FileMode.TREE;
             final String filePath = walk.getPathString();
-            if (isDirectory)
+            if (isDirectory || ignores.isIgnored(filePath))
                 continue;
             if (BookName.isSupportedFormatFileName(filePath))
                 result.add(
@@ -326,7 +303,7 @@ public class GitRepo implements SyncRepo, TwoWaySyncRepo {
     public VersionedRook renameBook(Uri oldUri, String newRookName) throws IOException {
         String oldFileName = oldUri.toString().replaceFirst("^/", "");
         String newFileName = newRookName + ".org";
-        ensureRepoPathIsNotIgnored(newFileName);
+        new RepoIgnoreNode(this).ensurePathIsNotIgnored(newFileName);
         if (synchronizer.renameFileInRepo(oldFileName, newFileName)) {
             synchronizer.tryPush();
             return currentVersionedRook(Uri.EMPTY.buildUpon().appendPath(newFileName).build());

@@ -150,8 +150,8 @@ class WebdavRepo(
         return true
     }
 
-    override fun isIncludeExcludeFileSupported(): Boolean {
-        return false
+    override fun isIgnoreFileSupported(): Boolean {
+        return true
     }
 
     override fun getUri(): Uri {
@@ -165,10 +165,12 @@ class WebdavRepo(
             sardine.createDirectory(url)
         }
 
+        val ignores = RepoIgnoreNode(this)
+
         return sardine
                 .list(url)
                 .mapNotNull {
-                    if (it.isDirectory || !BookName.isSupportedFormatFileName(it.name)) {
+                    if (it.isDirectory || !BookName.isSupportedFormatFileName(it.name) || ignores.isIgnored(it.name)) {
                         null
                     } else {
                         it.toVersionedRook()
@@ -189,7 +191,15 @@ class WebdavRepo(
         return sardine.list(fileUrl).first().toVersionedRook()
     }
 
+    override fun streamFile(fileName: String): InputStream {
+        val fileUrl = Uri.withAppendedPath(uri, fileName).toUrl()
+        sardine.get(fileUrl).use {
+            return it
+        }
+    }
+
     override fun storeBook(file: File?, fileName: String?): VersionedRook {
+        RepoIgnoreNode(this).ensurePathIsNotIgnored(fileName!!)
         val fileUrl = Uri.withAppendedPath(uri, fileName).toUrl()
 
         sardine.put(fileUrl, file, null)
@@ -198,6 +208,7 @@ class WebdavRepo(
     }
 
     override fun renameBook(from: Uri, name: String?): VersionedRook {
+        UriUtils.ensureNewNameIsNotIgnored(from, name, RepoIgnoreNode(this))
         val destUrl = UriUtils.getUriForNewName(from, name).toUrl()
         sardine.move(from.toUrl(), destUrl)
         return sardine.list(destUrl).first().toVersionedRook()

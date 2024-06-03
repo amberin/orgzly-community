@@ -1,5 +1,6 @@
 package com.orgzly.android.repos;
 
+import android.content.ContentResolver;
 import android.content.Context;
 import android.net.Uri;
 import android.provider.DocumentsContract;
@@ -20,6 +21,7 @@ import java.io.InputStream;
 import java.io.OutputStream;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Objects;
 
 /**
  * Using DocumentFile, for devices running Lollipop or later.
@@ -58,7 +60,7 @@ public class ContentRepo implements SyncRepo {
     }
 
     @Override
-    public boolean isIncludeExcludeFileSupported() { return true; }
+    public boolean isIgnoreFileSupported() { return true; }
 
     @Override
     public Uri getUri() {
@@ -71,8 +73,13 @@ public class ContentRepo implements SyncRepo {
 
         List<DocumentFile> files = walkFileTree();
 
+        final RepoIgnoreNode ignores = new RepoIgnoreNode(this);
+
         if (files.size() > 0) {
             for (DocumentFile file : files) {
+                if (file.getName() != null && ignores.isIgnored(file.getName())) {
+                    continue;
+                }
                 if (BookName.isSupportedFormatFileName(file.getName())) {
                     if (BuildConfig.LOG_DEBUG) {
                         LogUtils.d(TAG,
@@ -106,14 +113,10 @@ public class ContentRepo implements SyncRepo {
     private List<DocumentFile> walkFileTree() {
         List<DocumentFile> result = new ArrayList<>();
         List<DocumentFile> directoryNodes = new ArrayList<>();
-        IncludeOrExcludeNode includeOrExcludeRules = new IncludeOrExcludeNode(repoDocumentFile, context);
         directoryNodes.add(repoDocumentFile);
         while (!directoryNodes.isEmpty()) {
             DocumentFile currentDir = directoryNodes.remove(0);
             for (DocumentFile node : currentDir.listFiles()) {
-                if (includeOrExcludeRules.isIgnored(node)) {
-                    continue;
-                }
                 if (node.isDirectory()) {
                     directoryNodes.add(node);
                 } else {
@@ -157,10 +160,18 @@ public class ContentRepo implements SyncRepo {
     }
 
     @Override
+    public InputStream streamFile(String fileName) throws IOException {
+        DocumentFile sourceFile = getDocumentFileFromFileName(fileName);
+        if (!sourceFile.exists()) throw new FileNotFoundException();
+        return context.getContentResolver().openInputStream(sourceFile.getUri());
+    }
+
+    @Override
     public VersionedRook storeBook(File file, String fileName) throws IOException {
         if (!file.exists()) {
             throw new FileNotFoundException("File " + file + " does not exist");
         }
+        new RepoIgnoreNode(this).ensurePathIsNotIgnored(fileName);
         DocumentFile destinationFile = getDocumentFileFromFileName(fileName);
         if (!destinationFile.exists()) {
             if (fileName.contains("/")) {
@@ -189,6 +200,7 @@ public class ContentRepo implements SyncRepo {
         DocumentFile fromDocFile = DocumentFile.fromSingleUri(context, from);
         BookName bookName = BookName.fromFileName(fromDocFile.getName());
         String newFileName = BookName.fileName(name, bookName.getFormat());
+        new RepoIgnoreNode(this).ensurePathIsNotIgnored(newFileName);
 
         /* Check if document already exists. */
         DocumentFile existingFile = repoDocumentFile.findFile(newFileName);

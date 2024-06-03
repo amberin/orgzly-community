@@ -4,6 +4,7 @@ import android.net.Uri;
 
 import com.orgzly.android.BookFormat;
 import com.orgzly.android.BookName;
+import com.orgzly.android.repos.RepoIgnoreNode;
 
 import java.util.List;
 
@@ -56,6 +57,13 @@ public class UriUtils {
                 .buildUpon()
                 .appendPath(newFilename) // New file name
                 .build();
+    }
+
+    public static void ensureNewNameIsNotIgnored(Uri uri, String name, RepoIgnoreNode ignores) {
+        BookName bookName = BookName.fromFileName(uri.getLastPathSegment());
+        BookFormat format = bookName.getFormat();
+        String newFilename = BookName.fileName(name, format);
+        ignores.ensurePathIsNotIgnored(newFilename);
     }
 
     public static boolean isUrlSecure(String url) {

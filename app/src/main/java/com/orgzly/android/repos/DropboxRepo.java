@@ -3,11 +3,13 @@ package com.orgzly.android.repos;
 import android.content.Context;
 import android.net.Uri;
 
+import com.orgzly.R;
 import com.orgzly.android.util.UriUtils;
 
 import java.io.File;
 import java.io.IOException;
 
+import java.io.InputStream;
 import java.util.List;
 
 public class DropboxRepo implements SyncRepo {
@@ -15,10 +17,12 @@ public class DropboxRepo implements SyncRepo {
 
     private final Uri repoUri;
     private final DropboxClient client;
+    private final Context mContext;
 
     public DropboxRepo(RepoWithProps repoWithProps, Context context) {
         this.repoUri = Uri.parse(repoWithProps.getRepo().getUrl());
         this.client = new DropboxClient(context, repoWithProps.getRepo().getId());
+        this.mContext = context;
     }
 
     @Override
@@ -32,7 +36,7 @@ public class DropboxRepo implements SyncRepo {
     }
 
     @Override
-    public boolean isIncludeExcludeFileSupported() { return false; }
+    public boolean isIgnoreFileSupported() { return false; }
 
     @Override
     public Uri getUri() {
@@ -41,7 +45,8 @@ public class DropboxRepo implements SyncRepo {
 
     @Override
     public List<VersionedRook> getBooks() throws IOException {
-        return client.getBooks(repoUri);
+        RepoIgnoreNode ignores = new RepoIgnoreNode(this);
+        return client.getBooks(repoUri, ignores);
     }
 
     @Override
@@ -50,12 +55,19 @@ public class DropboxRepo implements SyncRepo {
     }
 
     @Override
+    public InputStream streamFile(String fileName) throws IOException {
+        return client.streamFile(repoUri, fileName);
+    }
+
+    @Override
     public VersionedRook storeBook(File file, String fileName) throws IOException {
+        new RepoIgnoreNode(this).ensurePathIsNotIgnored(fileName);
         return client.upload(file, repoUri, fileName);
     }
 
     @Override
     public VersionedRook renameBook(Uri fromUri, String name) throws IOException {
+        UriUtils.ensureNewNameIsNotIgnored(fromUri, name, new RepoIgnoreNode(this));
         Uri toUri = UriUtils.getUriForNewName(fromUri, name);
         return client.move(repoUri, fromUri, toUri);
     }

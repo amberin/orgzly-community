@@ -3,7 +3,9 @@ package com.orgzly.android.repos;
 import android.net.Uri;
 
 import java.io.File;
+import java.io.FileNotFoundException;
 import java.io.IOException;
+import java.io.InputStream;
 import java.util.List;
 
 /**
@@ -14,7 +16,7 @@ public interface SyncRepo {
 
     boolean isAutoSyncSupported();
 
-    boolean isIncludeExcludeFileSupported();
+    boolean isIgnoreFileSupported();
 
     /**
      * Unique URL.
@@ -33,6 +35,12 @@ public interface SyncRepo {
      * Download the latest available revision of the book and store its content to {@code File}.
      */
     VersionedRook retrieveBook(String fileName, File destination) throws IOException;
+
+    /**
+     * Read a file from the repository to an input stream. Originally added for reading the
+     * .orgzlyignore file.
+     */
+    InputStream streamFile(String fileName) throws IOException;
 
     /**
      * Uploads book storing it under given filename under repo's url.
