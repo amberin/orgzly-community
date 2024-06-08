@@ -36,7 +36,6 @@ import android.widget.TextView;
 
 import androidx.test.core.app.ActivityScenario;
 
-import com.orgzly.BuildConfig;
 import com.orgzly.R;
 import com.orgzly.android.OrgzlyTest;
 import com.orgzly.android.RetryTestRule;
@@ -46,9 +45,9 @@ import com.orgzly.android.sync.BookSyncStatus;
 import com.orgzly.android.sync.SyncRunner;
 import com.orgzly.android.ui.main.MainActivity;
 
+import org.json.JSONException;
 import org.junit.After;
 import org.junit.Assert;
-import org.junit.Assume;
 import org.junit.Rule;
 import org.junit.Test;
 
@@ -594,9 +593,8 @@ public class SyncingTest extends OrgzlyTest {
     }
 
     @Test
-    public void testSettingLinkToRenamedRepo() {
-        Assume.assumeTrue(BuildConfig.IS_DROPBOX_ENABLED);
-
+    public void testSettingLinkToRenamedRepo() throws JSONException {
+        testUtils.dropboxTestPreflight();
         Repo repo = testUtils.setupRepo(RepoType.MOCK, "mock://repo-a");
         testUtils.setupRook(repo, "mock://repo-a/booky.org", "Täht", "1abcde", 1400067156000L);
         scenario = ActivityScenario.launch(MainActivity.class);
@@ -650,8 +648,8 @@ public class SyncingTest extends OrgzlyTest {
     }
 
     @Test
-    public void testRenamingReposRemovesLinksWhatUsedThem() {
-        Assume.assumeTrue(BuildConfig.IS_DROPBOX_ENABLED);
+    public void testRenamingReposRemovesLinksWhatUsedThem() throws JSONException {
+        testUtils.dropboxTestPreflight();
 
         testUtils.setupRepo(RepoType.MOCK, "mock://repo-a");
         testUtils.setupRepo(RepoType.MOCK, "mock://repo-b");
