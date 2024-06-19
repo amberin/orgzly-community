@@ -62,6 +62,16 @@ public class BookName {
         return fileName;
     }
 
+    public static String getFileName(Uri repoUri, Uri fileUri) {
+        if ("content".equals(repoUri.getScheme())) {
+            String repoUriLastSegment = repoUri.toString().replaceAll("^.*/", "");
+            String repoRootUriSegment = repoUri + "/document/" + repoUriLastSegment + "%2F";
+            return Uri.decode(fileUri.toString().replace(repoRootUriSegment, ""));
+        } else {
+            return fileUri.toString().replace(repoUri.toString(), "");
+        }
+    }
+
     public static BookName getInstance(Context context, Rook rook) {
         return fromFileName(getFileName(context, rook.getUri()));
     }
