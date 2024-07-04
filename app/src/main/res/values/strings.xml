@@ -24,6 +24,7 @@
     <string name="edit_note">Edit note</string>
     <string name="delete">Delete</string>
     <string name="delete_with_quoted_argument">Delete “%s”</string>
+    <string name="delete_amount_of_books">Delete %d notebooks</string>
     <string name="name">Name</string>
     <string name="query">Query</string>
     <string name="done">Done</string>
@@ -89,7 +90,7 @@
     <string name="ssh_keygen_preference_title">SSH key generation</string>
     <string name="ssh_keygen_preference_summary">Generate key pair for Git repo sync</string>
     <string name="ssh_show_public_key_preference_title">View generated SSH public key</string>
-    <string name="message_book_has_no_link">No link set</string>
+    <string name="message_book_has_no_link">Notebook has no repository link</string>
     <string name="message_note_created">Note created</string>
     <string name="message_failed_creating_note">Failed to create note</string>
     <string name="message_failed_updating_note">Failed to update note</string>
@@ -290,8 +291,9 @@
     <string name="renamed_book_from">Renamed from “%s”</string>
 
     <string name="also_delete_linked_book">Delete linked remote notebook</string>
-    <string name="message_deleting_book_failed">Deleting notebook failed: %s</string>
-    <string name="message_book_deleted">Notebook deleted</string>
+    <string name="also_delete_linked_books">Delete any linked remote notebooks</string>
+    <string name="message_deleting_book_failed">Deleting notebook(s) failed: %s</string>
+    <string name="message_book_deleted">Notebook(s) deleted</string>
 
     <string name="priority_with_argument">Priority %s</string>
     <string name="default_priority">Default priority</string>
@@ -614,8 +616,8 @@
     <string name="notification_channel_settings">Notifications</string>
     <string name="notification_channel_settings_summary">Sound, vibrate, notification dot</string>
     <string name="hide_note_metadata">Hide metadata</string>
-    <string name="overwrite_local_notebook_question">Overwrite local notebook?</string>
-    <string name="overwrite_remote_notebook_question">Overwrite remote notebook?</string>
+    <string name="overwrite_local_notebook_question">Overwrite local notebook(s)?</string>
+    <string name="overwrite_remote_notebook_question">Overwrite remote notebook(s)?</string>
     <string name="drawers_folded_by_default">Drawers folded</string>
     <string name="drawers_folded_by_default_summary">Fold drawers by default</string>
     <string name="log_on_time_shift">Log to drawer on time shift</string>
@@ -772,9 +774,12 @@
 
     <!-- Sync status -->
     <string name="sync_status_no_change">No change</string>
+    <string name="sync_status_no_link_and_multiple_repos">Notebook has no link and multiple repositories exist</string>
     <string name="sync_status_book_without_link_and_one_or_more_rooks_exist">Notebook has no link and one or more remote notebooks with the same name exist</string>
     <string name="sync_status_dummy_without_link_and_multiple_rooks">Notebook has no link and multiple remote notebooks with the same name exist</string>
     <string name="sync_status_no_book_multiple_rooks">No notebook and multiple remote notebooks with the same name exist</string>
+    <string name="sync_status_rook_no_longer_exists">Remote file no longer exists; repository link removed. Set a link if you want to sync to a repository.</string>
+    <string name="sync_status_no_link_and_previous_error">Notebook has no repository link</string>
     <string name="sync_status_loaded">Loaded from %s</string>
     <string name="sync_status_saved">Saved to %s</string>
 </resources>
