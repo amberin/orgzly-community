@@ -63,12 +63,17 @@ public class BookName {
     }
 
     public static String getFileName(Uri repoUri, Uri fileUri) {
+        /* The content:// repository type requires special handling */
         if ("content".equals(repoUri.getScheme())) {
             String repoUriLastSegment = repoUri.toString().replaceAll("^.*/", "");
             String repoRootUriSegment = repoUri + "/document/" + repoUriLastSegment + "%2F";
             return Uri.decode(fileUri.toString().replace(repoRootUriSegment, ""));
         } else {
-            return fileUri.toString().replace(repoUri.toString(), "");
+            // Just return the decoded fileUri stripped of the repoUri (if present), and stripped
+            // of any leading / (if present).
+            return Uri.decode(
+                    fileUri.toString().replace(repoUri.toString(), "")
+            ).replaceFirst("^/", "");
         }
     }
 
