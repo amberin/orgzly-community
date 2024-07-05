@@ -57,7 +57,11 @@ android {
         debug {
             buildConfigField "boolean", "LOG_DEBUG", "true"
 
+            // Set BuildConfig fields used by tests
             buildConfigField "String", "DROPBOX_REFRESH_TOKEN", gradle.ext.appProperties.getProperty("dropbox.refresh_token", '""')
+            buildConfigField "String", "WEBDAV_REPO_URL", gradle.ext.appProperties.getProperty("webdav.repo_url", '""')
+            buildConfigField "String", "WEBDAV_USERNAME", gradle.ext.appProperties.getProperty("webdav.username", '""')
+            buildConfigField "String", "WEBDAV_PASSWORD", gradle.ext.appProperties.getProperty("webdav.password", '""')
         }
     }
 
