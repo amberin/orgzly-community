@@ -212,6 +212,11 @@ class WebdavRepo(
         return sardine.list(fileUrl).first().toVersionedRook()
     }
 
+    fun uploadFile(file: File, fileName: String) {
+        val fileUrl = Uri.withAppendedPath(uri, fileName).toUrl()
+        sardine.put(fileUrl, file, null)
+    }
+
     override fun renameBook(from: Uri, name: String?): VersionedRook {
         val destUrl = UriUtils.getUriForNewName(from, name).toUrl()
         sardine.move(from.toUrl(), destUrl)
