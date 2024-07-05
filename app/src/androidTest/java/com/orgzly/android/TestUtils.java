@@ -46,9 +46,18 @@ public class TestUtils {
         return dataRepository.getRepoInstance(13, type, url);
     }
 
+    public SyncRepo repoInstance(RepoType type, String url, Long id) {
+        return dataRepository.getRepoInstance(id, type, url);
+    }
+
     public Repo setupRepo(RepoType type, String url) {
         long id = dataRepository.createRepo(new RepoWithProps(new Repo(0, type, url)));
 
+        return dataRepository.getRepo(id);
+    }
+
+    public Repo setupRepo(RepoType type, String url, Map<String, String> props) {
+        long id = dataRepository.createRepo(new RepoWithProps(new Repo(0, type, url), props));
         return dataRepository.getRepo(id);
     }
 
@@ -179,5 +188,11 @@ public class TestUtils {
         mockSerializedDbxCredential.put("refresh_token", BuildConfig.DROPBOX_REFRESH_TOKEN);
         mockSerializedDbxCredential.put("app_key", BuildConfig.DROPBOX_APP_KEY);
         AppPreferences.dropboxSerializedCredential(App.getAppContext(), mockSerializedDbxCredential.toString());
+    }
+
+    public void webdavTestPreflight() {
+        Assume.assumeTrue(BuildConfig.WEBDAV_REPO_URL.length() > 0);
+        Assume.assumeTrue(BuildConfig.WEBDAV_USERNAME.length() > 0);
+        Assume.assumeTrue(BuildConfig.WEBDAV_PASSWORD.length() > 0);
     }
 }
