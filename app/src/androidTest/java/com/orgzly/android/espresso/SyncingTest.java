@@ -13,7 +13,6 @@ import static androidx.test.espresso.matcher.ViewMatchers.withParent;
 import static androidx.test.espresso.matcher.ViewMatchers.withText;
 import static com.orgzly.android.espresso.util.EspressoUtils.clickSetting;
 import static com.orgzly.android.espresso.util.EspressoUtils.contextualToolbarOverflowMenu;
-import static com.orgzly.android.espresso.util.EspressoUtils.grantAlarmsAndRemindersPermission;
 import static com.orgzly.android.espresso.util.EspressoUtils.onActionItemClick;
 import static com.orgzly.android.espresso.util.EspressoUtils.onBook;
 import static com.orgzly.android.espresso.util.EspressoUtils.onListItem;
