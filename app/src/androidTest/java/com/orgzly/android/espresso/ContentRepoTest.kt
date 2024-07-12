@@ -5,8 +5,10 @@ import android.os.Build
 import androidx.documentfile.provider.DocumentFile
 import androidx.test.core.app.ActivityScenario
 import androidx.test.espresso.Espresso.onView
+import androidx.test.espresso.Espresso.pressBack
 import androidx.test.espresso.action.ViewActions
 import androidx.test.espresso.action.ViewActions.click
+import androidx.test.espresso.action.ViewActions.longClick
 import androidx.test.espresso.assertion.ViewAssertions.matches
 import androidx.test.espresso.matcher.ViewMatchers.isDisplayed
 import androidx.test.espresso.matcher.ViewMatchers.isRoot
@@ -24,6 +26,8 @@ import com.orgzly.android.db.entity.Repo
 import com.orgzly.android.espresso.util.EspressoUtils
 import com.orgzly.android.espresso.util.EspressoUtils.contextualToolbarOverflowMenu
 import com.orgzly.android.espresso.util.EspressoUtils.onBook
+import com.orgzly.android.espresso.util.EspressoUtils.onNoteInBook
+import com.orgzly.android.espresso.util.EspressoUtils.sync
 import com.orgzly.android.espresso.util.EspressoUtils.waitId
 import com.orgzly.android.repos.ContentRepo
 import com.orgzly.android.repos.RepoIgnoreNode
@@ -35,6 +39,7 @@ import org.hamcrest.CoreMatchers.endsWith
 import org.hamcrest.core.AllOf.allOf
 import org.junit.After
 import org.junit.Assert
+import org.junit.Assert.assertEquals
 import org.junit.Assume
 import org.junit.Before
 import org.junit.Rule
@@ -83,11 +88,11 @@ class ContentRepoTest : OrgzlyTest() {
             tmpFile.delete()
         }
         val books = syncRepo.books
-        Assert.assertEquals(1, books.size.toLong())
-        Assert.assertEquals("booky", BookName.getInstance(context, books[0]).name)
-        Assert.assertEquals("booky.org", BookName.getInstance(context, books[0]).fileName)
-        Assert.assertEquals(repo.url, books[0].repoUri.toString())
-        Assert.assertEquals(repo.url + documentTreeSegment + "booky.org", books[0].uri.toString())
+        assertEquals(1, books.size.toLong())
+        assertEquals("booky", BookName.getInstance(context, books[0]).name)
+        assertEquals("booky.org", BookName.getInstance(context, books[0]).fileName)
+        assertEquals(repo.url, books[0].repoUri.toString())
+        assertEquals(repo.url + documentTreeSegment + "booky.org", books[0].uri.toString())
     }
 
     @Test
@@ -98,12 +103,12 @@ class ContentRepoTest : OrgzlyTest() {
         MiscUtils.writeStringToDocumentFile("Notebook content 2", "02.o", repoUri)
         MiscUtils.writeStringToDocumentFile("Notebook content 3", "03.org", repoUri)
         val books = syncRepo.books
-        Assert.assertEquals(1, books.size.toLong())
-        Assert.assertEquals("03", BookName.getInstance(context, books[0]).name)
-        Assert.assertEquals("03.org", BookName.getInstance(context, books[0]).fileName)
-        Assert.assertEquals(repo.id, books[0].repoId)
-        Assert.assertEquals(repo.url, books[0].repoUri.toString())
-        Assert.assertEquals(repo.url + documentTreeSegment + "03.org", books[0].uri.toString())
+        assertEquals(1, books.size.toLong())
+        assertEquals("03", BookName.getInstance(context, books[0]).name)
+        assertEquals("03.org", BookName.getInstance(context, books[0]).fileName)
+        assertEquals(repo.id, books[0].repoId)
+        assertEquals(repo.url, books[0].repoUri.toString())
+        assertEquals(repo.url + documentTreeSegment + "03.org", books[0].uri.toString())
     }
 
     @Test
@@ -112,17 +117,17 @@ class ContentRepoTest : OrgzlyTest() {
         testUtils.setupBook("booky", "")
         testUtils.sync()
         var bookView: BookView? = dataRepository.getBookView("booky")
-        Assert.assertEquals(repo.url, bookView!!.linkRepo!!.url)
-        Assert.assertEquals(repo.url, bookView.syncedTo!!.repoUri.toString())
-        Assert.assertEquals(
+        assertEquals(repo.url, bookView!!.linkRepo!!.url)
+        assertEquals(repo.url, bookView.syncedTo!!.repoUri.toString())
+        assertEquals(
             repo.url + documentTreeSegment + "booky.org",
             bookView.syncedTo!!.uri.toString()
         )
         dataRepository.renameBook(bookView, "booky-renamed")
         bookView = dataRepository.getBookView("booky-renamed")
-        Assert.assertEquals(repo.url, bookView!!.linkRepo!!.url)
-        Assert.assertEquals(repo.url, bookView.syncedTo!!.repoUri.toString())
-        Assert.assertEquals(
+        assertEquals(repo.url, bookView!!.linkRepo!!.url)
+        assertEquals(repo.url, bookView.syncedTo!!.repoUri.toString())
+        assertEquals(
             repo.url + documentTreeSegment + "booky-renamed.org",
             bookView.syncedTo!!.uri.toString()
         )
@@ -135,8 +140,8 @@ class ContentRepoTest : OrgzlyTest() {
         setupContentRepo()
         MiscUtils.writeStringToDocumentFile("Notebook content 1", "notebook.org", repoUri)
         testUtils.sync()
-        Assert.assertEquals(1, dataRepository.getBooks().size.toLong())
-        Assert.assertEquals("content://com.android.externalstorage.documents/tree/primary%3Aspace%20separated", syncRepo.uri.toString())
+        assertEquals(1, dataRepository.getBooks().size.toLong())
+        assertEquals("content://com.android.externalstorage.documents/tree/primary%3Aspace%20separated", syncRepo.uri.toString())
     }
 
     @Test
@@ -154,9 +159,9 @@ class ContentRepoTest : OrgzlyTest() {
         MiscUtils.writeStringToDocumentFile("*1.org\nfile3*", RepoIgnoreNode.IGNORE_FILE, repoUri)
 
         val books = syncRepo.books
-        Assert.assertEquals(1, books.size.toLong())
-        Assert.assertEquals("file2", BookName.getInstance(context, books[0]).name)
-        Assert.assertEquals(repo.url + documentTreeSegment + "file2.org", books[0].uri.toString())
+        assertEquals(1, books.size.toLong())
+        assertEquals("file2", BookName.getInstance(context, books[0]).name)
+        assertEquals(repo.url + documentTreeSegment + "file2.org", books[0].uri.toString())
     }
 
     @Test
@@ -205,6 +210,93 @@ class ContentRepoTest : OrgzlyTest() {
         testUtils.syncOrThrow()
     }
 
+    @Test
+    fun testLoadNotebookFromSubfolder() {
+        setupContentRepo()
+        // Create subfolder
+        val subfolder = DocumentFile.fromTreeUri(context, repoUri)?.createDirectory("subfolder1")
+        // Write org file to subfolder
+        MiscUtils.writeStringToDocumentFile("content", "book1.org", subfolder?.uri)
+
+        testUtils.sync()
+
+        val books = dataRepository.getBooks()
+        assertEquals(1, books.size.toLong())
+        assertEquals("subfolder1/book1", books[0].book.name)
+        assertEquals(repo.url + documentTreeSegment + "subfolder1%2Fbook1.org", books[0].syncedTo?.uri.toString())
+    }
+
+    @Test
+    fun testIgnoreFileInSubfolder() {
+        Assume.assumeTrue(Build.VERSION.SDK_INT >= 26)
+        setupContentRepo()
+        // Add .orgzlyignore file
+        MiscUtils.writeStringToDocumentFile("subfolder1/book1.org", RepoIgnoreNode.IGNORE_FILE, repoUri)
+        // Create subfolder
+        val subfolder = DocumentFile.fromTreeUri(context, repoUri)?.createDirectory("subfolder1")
+        // Write 2 org files to subfolder
+        MiscUtils.writeStringToDocumentFile("content", "book1.org", subfolder?.uri)
+        MiscUtils.writeStringToDocumentFile("content", "book2.org", subfolder?.uri)
+
+        testUtils.sync()
+
+        val books = dataRepository.getBooks()
+        assertEquals(1, books.size.toLong())
+        assertEquals("subfolder1/book2", books[0].book.name)
+    }
+
+    @Test
+    fun testUnIgnoreSingleFileInSubfolder() {
+        Assume.assumeTrue(Build.VERSION.SDK_INT >= 26)
+        setupContentRepo()
+        // Add .orgzlyignore file
+        MiscUtils.writeStringToDocumentFile("subfolder1/**\n!subfolder1/book2.org", RepoIgnoreNode.IGNORE_FILE, repoUri)
+        // Create subfolder
+        val subfolder = DocumentFile.fromTreeUri(context, repoUri)?.createDirectory("subfolder1")
+        // Write 2 org files to subfolder
+        MiscUtils.writeStringToDocumentFile("content", "book1.org", subfolder?.uri)
+        MiscUtils.writeStringToDocumentFile("content", "book2.org", subfolder?.uri)
+
+        testUtils.sync()
+
+        val books = dataRepository.getBooks()
+        assertEquals(1, books.size.toLong())
+        assertEquals("subfolder1/book2", books[0].book.name)
+    }
+
+    @Test
+    fun testUpdateBookInSubfolder() {
+        setupContentRepo()
+        // Create subfolder
+        val subfolder = DocumentFile.fromTreeUri(context, repoUri)?.createDirectory("subfolder1")
+        // Create org file in subfolder
+        MiscUtils.writeStringToDocumentFile("* DONE Heading 1", "book1.org", subfolder?.uri)
+
+        testUtils.sync()
+        assertEquals(1, dataRepository.getBooks().size.toLong())
+        
+        ActivityScenario.launch(MainActivity::class.java).use {
+            // Modify book
+            onBook(0).perform(click())
+            onNoteInBook(1).perform(longClick())
+            onView(withId(R.id.toggle_state)).perform(click())
+            pressBack()
+            pressBack()
+            sync()
+            onBook(0, R.id.item_book_last_action).check(
+                matches(withText(endsWith("Saved to content://com.android.externalstorage.documents/tree/primary%3Aorgzly-local-dir-repo-test")))
+            )
+            // Delete notebook from Orgzly and reload it to verify that our change was successfully written
+            onBook(0).perform(longClick())
+            contextualToolbarOverflowMenu().perform(click())
+            onView(withText(R.string.delete)).perform(click())
+            onView(withText(R.string.delete)).perform(click())
+        }
+
+        testUtils.sync()
+        testUtils.assertBook("subfolder1/book1", "* TODO Heading 1\n")
+    }
+
     /**
      * An activity is required when creating this type of repo, because of the way Android handles
      * access permissions to content:// URLs.
@@ -233,6 +325,6 @@ class ContentRepoTest : OrgzlyTest() {
         encodedRepoDirName = Uri.encode(repoDirName)
         documentTreeSegment = "/document/primary%3A$encodedRepoDirName%2F"
         treeDocumentFileUrl = "content://com.android.externalstorage.documents/tree/primary%3A$encodedRepoDirName"
-        Assert.assertEquals(treeDocumentFileUrl, repo.url)
+        assertEquals(treeDocumentFileUrl, repo.url)
     }
 }
