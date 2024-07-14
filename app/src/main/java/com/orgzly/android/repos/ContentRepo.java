@@ -20,7 +20,9 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
+import java.util.Objects;
 
 /**
  * Using DocumentFile, for devices running Lollipop or later.
@@ -132,11 +134,6 @@ public class ContentRepo implements SyncRepo {
         return result;
     }
 
-    public static String getContentRepoUriRootSegment(String repoUri) {
-        String repoUriLastSegment = repoUri.replaceAll("^.*/", "");
-        return repoUri + "/document/" + repoUriLastSegment + "%2F";
-    }
-
     private DocumentFile getDocumentFileFromFileName(String fileName) {
         String fullUri = repoDocumentFile.getUri() + Uri.encode("/" + fileName);
         return DocumentFile.fromSingleUri(context, Uri.parse(fullUri));
@@ -179,10 +176,13 @@ public class ContentRepo implements SyncRepo {
         DocumentFile destinationFile = getDocumentFileFromFileName(fileName);
         if (!destinationFile.exists()) {
             if (fileName.contains("/")) {
-                throw new UnsupportedOperationException("Invalid book name. (Creating files in " +
-                        "folders is not supported.)");
+                DocumentFile destinationDir = ensureSubDirectoriesExist(fileName);
+                assert destinationDir != null;
+                destinationFile = destinationDir.createFile("text/*",
+                        Objects.requireNonNull(Uri.parse(fileName).getLastPathSegment()));
+            } else {
+                repoDocumentFile.createFile("text/*", fileName);
             }
-            repoDocumentFile.createFile("text/*", fileName);
         }
         OutputStream out = context.getContentResolver().openOutputStream(destinationFile.getUri());
 
@@ -200,10 +200,23 @@ public class ContentRepo implements SyncRepo {
         return new VersionedRook(repoId, RepoType.DOCUMENT, getUri(), destinationFile.getUri(), rev, mtime);
     }
 
+    private DocumentFile ensureSubDirectoriesExist(String fileName) {
+        List<String> levels = new ArrayList<>(Arrays.asList(fileName.split("/")));
+        DocumentFile parentDir = repoDocumentFile;
+        while (levels.size() > 1) {
+            String currentDirName = levels.remove(0);
+            assert parentDir != null;
+            if (parentDir.findFile(currentDirName) == null) {
+                parentDir = parentDir.createDirectory(currentDirName);
+            }
+        }
+        return parentDir;
+    }
+
     @Override
     public VersionedRook renameBook(Uri from, String name) throws IOException {
         DocumentFile fromDocFile = DocumentFile.fromSingleUri(context, from);
-        BookName bookName = BookName.fromFileName(fromDocFile.getName());
+        BookName bookName = BookName.fromFileName(BookName.getFileName(repoUri, from));
         String newFileName = BookName.fileName(name, bookName.getFormat());
 
         /* Check if document already exists. */
