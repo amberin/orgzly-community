@@ -204,7 +204,7 @@ object SyncUtils {
                 newRook = newRook1
                 // We only need to write it if syncback is needed
                 if (loadFile != null) {
-                    val fileName = BookName.getFileName(App.getAppContext(), newRook.uri)
+                    val fileName = BookName.getFileName(repo.getUri(), newRook.uri)
                     val bookName = BookName.fromFileName(fileName)
                     if (BuildConfig.LOG_DEBUG) LogUtils.d(TAG, "Loading from file '$loadFile'")
                     dataRepository.loadBookFromFile(
