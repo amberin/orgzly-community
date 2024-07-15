@@ -9,6 +9,7 @@ import android.util.Log;
 import androidx.documentfile.provider.DocumentFile;
 
 import com.orgzly.BuildConfig;
+import com.orgzly.R;
 import com.orgzly.android.BookName;
 import com.orgzly.android.db.entity.Repo;
 import com.orgzly.android.util.LogUtils;
@@ -176,10 +177,8 @@ public class ContentRepo implements SyncRepo {
         DocumentFile destinationFile = getDocumentFileFromFileName(fileName);
         if (!destinationFile.exists()) {
             if (fileName.contains("/")) {
-                DocumentFile destinationDir = ensureSubDirectoriesExist(fileName);
-                assert destinationDir != null;
-                destinationFile = destinationDir.createFile("text/*",
-                        Objects.requireNonNull(Uri.parse(fileName).getLastPathSegment()));
+                DocumentFile destinationDir = ensureDirectoryHierarchy(fileName);
+                destinationFile = destinationDir.createFile("text/*", Uri.parse(fileName).getLastPathSegment());
             } else {
                 repoDocumentFile.createFile("text/*", fileName);
             }
@@ -200,37 +199,91 @@ public class ContentRepo implements SyncRepo {
         return new VersionedRook(repoId, RepoType.DOCUMENT, getUri(), destinationFile.getUri(), rev, mtime);
     }
 
-    private DocumentFile ensureSubDirectoriesExist(String fileName) {
-        List<String> levels = new ArrayList<>(Arrays.asList(fileName.split("/")));
-        DocumentFile parentDir = repoDocumentFile;
+    /**
+     * Given a relative path, ensures that all directory levels are created unless they already
+     * exist.
+     * @param relativePath Path relative to the repository root directory
+     * @return The DocumentFile object of the leaf directory where the file should be placed.
+     */
+    private DocumentFile ensureDirectoryHierarchy(String relativePath) {
+        List<String> levels = new ArrayList<>(Arrays.asList(relativePath.split("/")));
+        DocumentFile currentDir = repoDocumentFile;
         while (levels.size() > 1) {
-            String currentDirName = levels.remove(0);
-            assert parentDir != null;
-            if (parentDir.findFile(currentDirName) == null) {
-                parentDir = parentDir.createDirectory(currentDirName);
+            String nextDirName = levels.remove(0);
+            DocumentFile nextDir = currentDir.findFile(nextDirName);
+            if (nextDir == null) {
+                currentDir = currentDir.createDirectory(nextDirName);
+            } else {
+                currentDir = nextDir;
             }
         }
-        return parentDir;
+        return currentDir;
     }
 
+    /**
+     * Allows renaming a notebook to any subdirectory (indicated with a "/"), ensuring that all
+     * required subdirectories are created, if they do not already exist. Note that the file is
+     * moved, but no "abandoned" directories are deleted.
+     * @param oldUri
+     * @param newName
+     * @return
+     * @throws IOException
+     */
     @Override
-    public VersionedRook renameBook(Uri from, String name) throws IOException {
-        DocumentFile fromDocFile = DocumentFile.fromSingleUri(context, from);
-        BookName bookName = BookName.fromFileName(BookName.getFileName(repoUri, from));
-        String newFileName = BookName.fileName(name, bookName.getFormat());
+    public VersionedRook renameBook(Uri oldUri, String newName) throws IOException {
+        DocumentFile oldDocFile = DocumentFile.fromSingleUri(context, oldUri);
+        long mtime = oldDocFile.lastModified();
+        String rev = String.valueOf(mtime);
+        String oldDocFileName = oldDocFile.getName();
+        Uri oldDirUri = Uri.parse(
+                oldUri.toString().replace(
+                        Uri.encode("/" + oldDocFile.getName()),
+                        ""
+                )
+        );
+        BookName oldBookName = BookName.fromFileName(BookName.getFileName(repoUri, oldUri));
+        String newRelativePath = BookName.fileName(newName, oldBookName.getFormat());
+        String newDocFileName = Uri.parse(newRelativePath).getLastPathSegment();
+        DocumentFile newDir;
+        Uri newUri = oldUri;
 
-        /* Check if document already exists. */
-        DocumentFile existingFile = repoDocumentFile.findFile(newFileName);
+        if (newName.contains("/")) {
+            newDir = ensureDirectoryHierarchy(newName);
+        } else {
+            newDir = repoDocumentFile;
+        }
+
+        /* Abort if destination file already exists. */
+        DocumentFile existingFile = newDir.findFile(newDocFileName);
         if (existingFile != null) {
             throw new IOException("File at " + existingFile.getUri() + " already exists");
         }
 
-        Uri newUri = DocumentsContract.renameDocument(context.getContentResolver(), from, newFileName);
+        if (!newDir.getUri().toString().equals(oldDirUri.toString())) {
+            // File should be moved to a different directory
+            if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.N) {
+                newUri = DocumentsContract.moveDocument(
+                        context.getContentResolver(),
+                        oldUri,
+                        oldDirUri,
+                        newDir.getUri()
+                );
+            } else {
+                throw new IllegalArgumentException(
+                        context.getString(R.string.moving_between_subdirectories_requires_api_24));
+            }
+        }
 
-        long mtime = fromDocFile.lastModified();
-        String rev = String.valueOf(mtime);
+        if (!Objects.equals(newDocFileName, oldDocFileName)) {
+            // File should be renamed
+            newUri = DocumentsContract.renameDocument(
+                    context.getContentResolver(),
+                    newUri,
+                    newDocFileName
+            );
+        }
 
-        return new VersionedRook(repoId, RepoType.DOCUMENT, getUri(), newUri, rev, mtime);
+        return new VersionedRook(repoId, RepoType.DOCUMENT, repoUri, newUri, rev, mtime);
     }
 
     @Override
