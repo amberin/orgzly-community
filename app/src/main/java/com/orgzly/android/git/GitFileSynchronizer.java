@@ -400,13 +400,13 @@ public class GitFileSynchronizer {
     }
 
     private void updateAndCommitFile(
-            File sourceFile, String repositoryPath) throws IOException {
-        File destinationFile = repoDirectoryFile(repositoryPath);
+            File sourceFile, String fileName) throws IOException {
+        File destinationFile = repoDirectoryFile(fileName);
         MiscUtils.copyFile(sourceFile, destinationFile);
         try {
-            git.add().addFilepattern(repositoryPath).call();
+            git.add().addFilepattern(fileName).call();
             if (!gitRepoIsClean())
-                commit(String.format("Orgzly update: %s", repositoryPath));
+                commit(String.format("Orgzly update: %s", fileName));
         } catch (GitAPIException e) {
             throw new IOException("Failed to commit changes.");
         }
