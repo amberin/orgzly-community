@@ -214,16 +214,16 @@ class ContentRepoTest : OrgzlyTest() {
     fun testLoadNotebookFromSubfolder() {
         setupContentRepo()
         // Create subfolder
-        val subfolder = DocumentFile.fromTreeUri(context, repoUri)?.createDirectory("subfolder1")
+        val subfolder = DocumentFile.fromTreeUri(context, repoUri)?.createDirectory("a folder")
         // Write org file to subfolder
-        MiscUtils.writeStringToDocumentFile("content", "book1.org", subfolder?.uri)
+        MiscUtils.writeStringToDocumentFile("content", "a book.org", subfolder?.uri)
 
         testUtils.sync()
 
         val books = dataRepository.getBooks()
         assertEquals(1, books.size.toLong())
-        assertEquals("subfolder1/book1", books[0].book.name)
-        assertEquals(repo.url + documentTreeSegment + "subfolder1%2Fbook1.org", books[0].syncedTo?.uri.toString())
+        assertEquals("a folder/a book", books[0].book.name)
+        assertEquals(repo.url + documentTreeSegment + "a%20folder%2Fa%20book.org", books[0].syncedTo?.uri.toString())
     }
 
     @Test
@@ -268,9 +268,9 @@ class ContentRepoTest : OrgzlyTest() {
     fun testUpdateBookInSubfolder() {
         setupContentRepo()
         // Create subfolder
-        val subfolder = DocumentFile.fromTreeUri(context, repoUri)?.createDirectory("subfolder1")
+        val subfolder = DocumentFile.fromTreeUri(context, repoUri)?.createDirectory("folder one")
         // Create org file in subfolder
-        MiscUtils.writeStringToDocumentFile("* DONE Heading 1", "book1.org", subfolder?.uri)
+        MiscUtils.writeStringToDocumentFile("* DONE Heading 1", "book one.org", subfolder?.uri)
 
         testUtils.sync()
         assertEquals(1, dataRepository.getBooks().size.toLong())
@@ -284,7 +284,7 @@ class ContentRepoTest : OrgzlyTest() {
             pressBack()
             sync()
             onBook(0, R.id.item_book_last_action).check(
-                matches(withText(endsWith("Saved to content://com.android.externalstorage.documents/tree/primary%3Aorgzly-local-dir-repo-test")))
+                matches(withText(endsWith("Saved to content://com.android.externalstorage.documents/tree/primary%3A$repoDirName")))
             )
             // Delete notebook from Orgzly and reload it to verify that our change was successfully written
             onBook(0).perform(longClick())
@@ -294,7 +294,8 @@ class ContentRepoTest : OrgzlyTest() {
         }
 
         testUtils.sync()
-        testUtils.assertBook("subfolder1/book1", "* TODO Heading 1\n")
+        assertEquals(1, dataRepository.getBooks().size.toLong())
+        testUtils.assertBook("folder one/book one", "* TODO Heading 1\n")
     }
 
     /**
