@@ -6,7 +6,6 @@ import androidx.documentfile.provider.DocumentFile
 import androidx.test.core.app.ActivityScenario
 import androidx.test.espresso.Espresso.onView
 import androidx.test.espresso.Espresso.pressBack
-import androidx.test.espresso.action.ViewActions
 import androidx.test.espresso.action.ViewActions.click
 import androidx.test.espresso.action.ViewActions.longClick
 import androidx.test.espresso.assertion.ViewAssertions.matches
@@ -32,14 +31,15 @@ import com.orgzly.android.espresso.util.EspressoUtils.waitId
 import com.orgzly.android.repos.ContentRepo
 import com.orgzly.android.repos.RepoIgnoreNode
 import com.orgzly.android.repos.RepoType
+import com.orgzly.android.sync.BookSyncStatus
 import com.orgzly.android.ui.main.MainActivity
 import com.orgzly.android.ui.repos.ReposActivity
 import com.orgzly.android.util.MiscUtils
 import org.hamcrest.CoreMatchers.endsWith
 import org.hamcrest.core.AllOf.allOf
 import org.junit.After
-import org.junit.Assert
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertTrue
 import org.junit.Assume
 import org.junit.Before
 import org.junit.Rule
@@ -176,7 +176,7 @@ class ContentRepoTest : OrgzlyTest() {
         testUtils.sync()
         ActivityScenario.launch(MainActivity::class.java).use {
             // Rename to allowed name
-            onBook(0).perform(ViewActions.longClick())
+            onBook(0).perform(longClick())
             contextualToolbarOverflowMenu().perform(click())
             onView(withText(R.string.rename)).perform(click())
             onView(withId(R.id.name)).perform(*EspressoUtils.replaceTextCloseKeyboard("file1"))
@@ -185,7 +185,7 @@ class ContentRepoTest : OrgzlyTest() {
                 matches(withText(endsWith("Renamed from “booky”")))
             )
             // Rename to ignored name
-            onBook(0).perform(ViewActions.longClick())
+            onBook(0).perform(longClick())
             contextualToolbarOverflowMenu().perform(click())
             onView(withText(R.string.rename)).perform(click())
             onView(withId(R.id.name)).perform(*EspressoUtils.replaceTextCloseKeyboard("file3"))
@@ -296,6 +296,106 @@ class ContentRepoTest : OrgzlyTest() {
         testUtils.sync()
         assertEquals(1, dataRepository.getBooks().size.toLong())
         testUtils.assertBook("folder one/book one", "* TODO Heading 1\n")
+    }
+
+    @Test
+    fun testRenameBookFromRootToSubfolder() {
+        setupContentRepo()
+        testUtils.setupBook("booky", "")
+        testUtils.sync()
+        dataRepository.renameBook(dataRepository.getBookView("booky")!!, "a/b")
+        assertTrue(dataRepository.getBookView("a/b")!!.book.lastAction!!.message.contains("Renamed from "))
+        testUtils.sync()
+        assertEquals(dataRepository.getBook("a/b")!!.syncStatus, BookSyncStatus.NO_CHANGE.toString())
+        assertEquals(
+            "content://com.android.externalstorage.documents/tree/primary%3Aorgzly-local-dir-repo-test/document/primary%3Aorgzly-local-dir-repo-test%2Fa%2Fb.org",
+            syncRepo.books[0].uri.toString()
+        )
+        assertEquals(1, dataRepository.getBooks().size.toLong())
+    }
+
+    @Test
+    fun testRenameBookFromSubfolderToRoot() {
+        setupContentRepo()
+        testUtils.setupBook("a/b", "")
+        testUtils.sync()
+        dataRepository.renameBook(dataRepository.getBookView("a/b")!!, "booky")
+        assertTrue(dataRepository.getBookView("booky")!!.book.lastAction!!.message.contains("Renamed from "))
+        testUtils.sync()
+        assertEquals(dataRepository.getBook("booky")!!.syncStatus, BookSyncStatus.NO_CHANGE.toString())
+        assertEquals(
+            "content://com.android.externalstorage.documents/tree/primary%3Aorgzly-local-dir-repo-test/document/primary%3Aorgzly-local-dir-repo-test%2Fbooky.org",
+            syncRepo.books[0].uri.toString()
+        )
+        assertEquals(1, dataRepository.getBooks().size.toLong())
+    }
+
+    @Test
+    fun testRenameBookNewSubfolderSameLeafName() {
+        setupContentRepo()
+        testUtils.setupBook("a/b", "")
+        testUtils.sync()
+        dataRepository.renameBook(dataRepository.getBookView("a/b")!!, "b/b")
+        assertTrue(dataRepository.getBookView("b/b")!!.book.lastAction!!.message.contains("Renamed from "))
+        testUtils.sync()
+        assertEquals(dataRepository.getBook("b/b")!!.syncStatus, BookSyncStatus.NO_CHANGE.toString())
+        assertEquals(
+            "content://com.android.externalstorage.documents/tree/primary%3Aorgzly-local-dir-repo-test/document/primary%3Aorgzly-local-dir-repo-test%2Fb%2Fb.org",
+            syncRepo.books[0].uri.toString()
+        )
+        assertEquals(1, dataRepository.getBooks().size.toLong())
+    }
+
+    @Test
+    fun testRenameBookNewSubfolderAndLeafName() {
+        setupContentRepo()
+        testUtils.setupBook("a/b", "")
+        testUtils.sync()
+        dataRepository.renameBook(dataRepository.getBookView("a/b")!!, "b/c")
+        assertTrue(dataRepository.getBookView("b/c")!!.book.lastAction!!.message.contains("Renamed from "))
+        testUtils.sync()
+        assertEquals(dataRepository.getBook("b/c")!!.syncStatus, BookSyncStatus.NO_CHANGE.toString())
+        assertEquals(
+            "content://com.android.externalstorage.documents/tree/primary%3Aorgzly-local-dir-repo-test/document/primary%3Aorgzly-local-dir-repo-test%2Fb%2Fc.org",
+            syncRepo.books[0].uri.toString()
+        )
+        assertEquals(1, dataRepository.getBooks().size.toLong())
+    }
+
+    @Test
+    fun testRenameBookSameSubfolderNewLeafName() {
+        setupContentRepo()
+        testUtils.setupBook("a/b", "")
+        testUtils.sync()
+        dataRepository.renameBook(dataRepository.getBookView("a/b")!!, "a/c")
+        assertTrue(dataRepository.getBookView("a/c")!!.book.lastAction!!.message.contains("Renamed from "))
+        testUtils.sync()
+        assertEquals(dataRepository.getBook("a/c")!!.syncStatus, BookSyncStatus.NO_CHANGE.toString())
+        assertEquals(
+            "content://com.android.externalstorage.documents/tree/primary%3Aorgzly-local-dir-repo-test/document/primary%3Aorgzly-local-dir-repo-test%2Fa%2Fc.org",
+            syncRepo.books[0].uri.toString()
+        )
+        assertEquals(1, dataRepository.getBooks().size.toLong())
+    }
+
+    @Test
+    fun testRenameBookToExistingFileName() {
+        setupContentRepo()
+        testUtils.setupBook("a", "")
+        testUtils.sync()
+        // Create "unsynced" file in repo
+        MiscUtils.writeStringToDocumentFile("", "b.org", DocumentFile.fromTreeUri(context, repoUri)!!.uri)
+        dataRepository.renameBook(dataRepository.getBookView("a")!!, "b")
+        assertTrue(dataRepository.getBook("a")!!.lastAction!!.message.contains("Renaming failed: File at content://"))
+    }
+
+    @Test
+    fun testRenameBookToExistingBookName() {
+        setupContentRepo()
+        testUtils.setupBook("a", "")
+        testUtils.setupBook("b", "")
+        dataRepository.renameBook(dataRepository.getBookView("a")!!, "b")
+        assertTrue(dataRepository.getBook("a")!!.lastAction!!.message.contains("Renaming failed: Notebook b already exists"))
     }
 
     /**
