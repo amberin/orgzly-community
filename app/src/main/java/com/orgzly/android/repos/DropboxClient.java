@@ -348,4 +348,23 @@ public class DropboxClient {
             }
         }
     }
+
+    public void deleteFolder(String path) throws IOException {
+        linkedOrThrow();
+
+        try {
+            if (dbxClient.files().getMetadata(path) instanceof FolderMetadata) {
+                dbxClient.files().deleteV2(path);
+            } else {
+                throw new IOException("Not a directory: " + path);
+            }
+        } catch (DbxException e) {
+            e.printStackTrace();
+            if (e.getMessage() != null) {
+                throw new IOException("Failed deleting " + path + " on Dropbox: " + e.getMessage());
+            } else {
+                throw new IOException("Failed deleting " + path + " on Dropbox: " + e);
+            }
+        }
+    }
 }
