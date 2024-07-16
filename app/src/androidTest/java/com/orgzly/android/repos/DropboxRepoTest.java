@@ -140,7 +140,7 @@ public class DropboxRepoTest extends OrgzlyTest {
         assertEquals("notebook-renamed.org", BookName.getInstance(context, repo.getBooks().get(0)).getFileName());
     }
 
-    private void uploadFileToRepo(Uri repoUri, String fileName, String fileContents) throws IOException {
+    static public void uploadFileToRepo(Uri repoUri, String fileName, String fileContents) throws IOException {
         DropboxClient client = new DropboxClient(App.getAppContext(), 0);
         File tmpFile = File.createTempFile("abc", null);
         MiscUtils.writeStringToFile(fileContents, tmpFile);

@@ -3,7 +3,6 @@ package com.orgzly.android.repos
 import android.net.Uri
 import android.os.Build
 import androidx.core.net.toUri
-import com.orgzly.R
 import com.orgzly.android.OrgzlyTest
 import com.orgzly.android.db.entity.BookView
 import com.orgzly.android.db.entity.Repo
@@ -64,18 +63,6 @@ class GitRepoTest : OrgzlyTest() {
     }
 
     @Test
-    fun testSyncNewBookWithoutLinkAndOneRepo() {
-        testUtils.setupBook("book1", "book content")
-        testUtils.sync()
-        val bookView = dataRepository.getBooks()[0]
-        assertEquals(repoUri.toString(), bookView.linkRepo?.url)
-        assertEquals(1, syncRepo.books.size)
-        assertEquals(bookView.syncedTo.toString(), syncRepo.books[0].toString())
-        assertEquals(context.getString(R.string.sync_status_saved, repo.url), bookView.book.lastAction!!.message)
-        assertEquals("/book1.org", bookView.syncedTo!!.uri.toString())
-    }
-
-    @Test
     fun testIgnoredFilesInRepoAreNotLoaded() {
         Assume.assumeTrue(Build.VERSION.SDK_INT >= Build.VERSION_CODES.O)
         // Create ignore file in working tree and commit
@@ -83,7 +70,7 @@ class GitRepoTest : OrgzlyTest() {
             ignoredbook.org
             ignored-*.org
         """.trimIndent()
-        addAndCommitIgnoreFile(ignoreFileContents)
+        addAndCommitIgnoreFile(synchronizer, ignoreFileContents)
         // Add multiple files to repo
         for (fileName in arrayOf("ignoredbook.org", "ignored-3.org", "notignored.org")) {
             val tmpFile = File.createTempFile("orgzlytest", null)
@@ -105,7 +92,7 @@ class GitRepoTest : OrgzlyTest() {
             *.org
             !notignored.org
         """.trimIndent()
-        addAndCommitIgnoreFile(ignoreFileContents)
+        addAndCommitIgnoreFile(synchronizer, ignoreFileContents)
         // Add multiple files to repo
         for (fileName in arrayOf("ignoredbook.org", "ignored-3.org", "notignored.org")) {
             val tmpFile = File.createTempFile("orgzlytest", null)
@@ -122,7 +109,7 @@ class GitRepoTest : OrgzlyTest() {
     @Test
     fun testIgnoreRulePreventsLinkingBook() {
         Assume.assumeTrue(Build.VERSION.SDK_INT >= Build.VERSION_CODES.O)
-        addAndCommitIgnoreFile("*.org")
+        addAndCommitIgnoreFile(synchronizer, "*.org")
         testUtils.setupBook("booky", "")
         exceptionRule.expect(IOException::class.java)
         exceptionRule.expectMessage("matches a rule in .orgzlyignore")
@@ -132,7 +119,7 @@ class GitRepoTest : OrgzlyTest() {
     @Test
     fun testIgnoreRulePreventsRenamingBook() {
         Assume.assumeTrue(Build.VERSION.SDK_INT >= Build.VERSION_CODES.O)
-        addAndCommitIgnoreFile("badname*")
+        addAndCommitIgnoreFile(synchronizer, "badname*")
         testUtils.setupBook("goodname", "")
         testUtils.sync()
         var bookView: BookView? = dataRepository.getBookView("goodname")
@@ -143,10 +130,12 @@ class GitRepoTest : OrgzlyTest() {
         )
     }
 
-    private fun addAndCommitIgnoreFile(contents: String) {
-        val tmpFile = File.createTempFile("orgzlytest", null)
-        MiscUtils.writeStringToFile(contents, tmpFile)
-        synchronizer.addAndCommitNewFile(tmpFile, RepoIgnoreNode.IGNORE_FILE)
-        tmpFile.delete()
+    companion object {
+        fun addAndCommitIgnoreFile(synchronizer: GitFileSynchronizer, contents: String) {
+            val tmpFile = File.createTempFile("orgzlytest", null)
+            MiscUtils.writeStringToFile(contents, tmpFile)
+            synchronizer.addAndCommitNewFile(tmpFile, RepoIgnoreNode.IGNORE_FILE)
+            tmpFile.delete()
+        }
     }
 }
