@@ -7,6 +7,8 @@ import android.content.Context;
 import android.net.Uri;
 import android.util.Log;
 
+import androidx.documentfile.provider.DocumentFile;
+
 import com.orgzly.BuildConfig;
 import com.orgzly.R;
 import com.orgzly.android.App;
@@ -34,6 +36,8 @@ import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.io.InputStream;
 import java.text.SimpleDateFormat;
+import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Calendar;
 import java.util.List;
 import java.util.TimeZone;
@@ -396,7 +400,18 @@ public class GitFileSynchronizer {
         if (destinationFile.exists()) {
             throw new IOException("Can't add new file " + repositoryPath + " that already exists.");
         }
+        ensureDirectoryHierarchy(repositoryPath);
         updateAndCommitFile(sourceFile, repositoryPath);
+    }
+
+    private void ensureDirectoryHierarchy(String repositoryPath) throws IOException {
+        if (repositoryPath.contains("/")) {
+            File targetDir = repoDirectoryFile(repositoryPath).getParentFile();
+            if (!(targetDir.exists() || targetDir.mkdirs())) {
+                throw new IOException("The directory " + targetDir.getAbsolutePath() + " could " +
+                        "not be created");
+            }
+        }
     }
 
     private void updateAndCommitFile(
@@ -490,8 +505,9 @@ public class GitFileSynchronizer {
             File newFile = repoDirectoryFile(newFileName);
             // Abort if destination file exists
             if (newFile.exists()) {
-                throw new IOException("Can't add new file " + newFileName + " that already exists.");
+                throw new IOException("Repository file " + newFileName + " already exists.");
             }
+            ensureDirectoryHierarchy(newFileName);
             // Copy the file contents and add it to the index
             MiscUtils.copyFile(oldFile, newFile);
             try {
