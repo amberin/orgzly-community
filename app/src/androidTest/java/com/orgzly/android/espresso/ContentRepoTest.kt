@@ -404,7 +404,7 @@ class ContentRepoTest : OrgzlyTest() {
      * @throws UiObjectNotFoundException
      */
     @Throws(UiObjectNotFoundException::class)
-    private fun setupContentRepo() {
+    fun setupContentRepo() {
         ActivityScenario.launch(ReposActivity::class.java).use {
             onView(withId(R.id.activity_repos_directory)).perform(click())
             onView(withId(R.id.activity_repo_directory_browse_button))
