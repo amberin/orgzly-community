@@ -134,14 +134,6 @@ class WebdavRepoTest : OrgzlyTest() {
         )
     }
 
-    @Throws(IOException::class)
-    private fun uploadFileToRepo(repo: WebdavRepo, fileName: String, fileContents: String) {
-        val tmpFile = File.createTempFile("abc", null)
-        MiscUtils.writeStringToFile(fileContents, tmpFile)
-        repo.uploadFile(tmpFile, fileName)
-        tmpFile.delete()
-    }
-
     private fun randomUrl(): String {
         return BuildConfig.WEBDAV_REPO_URL + WEBDAV_TEST_DIR + "/" + UUID.randomUUID().toString()
     }
@@ -152,8 +144,17 @@ class WebdavRepoTest : OrgzlyTest() {
 
     companion object {
         private const val WEBDAV_TEST_DIR = "/orgzly-android-tests"
+
         private val repoProps: MutableMap<String, String> = mutableMapOf(
             WebdavRepo.USERNAME_PREF_KEY to BuildConfig.WEBDAV_USERNAME,
             WebdavRepo.PASSWORD_PREF_KEY to BuildConfig.WEBDAV_PASSWORD)
+
+        @Throws(IOException::class)
+        fun uploadFileToRepo(repo: WebdavRepo, fileName: String, fileContents: String) {
+            val tmpFile = File.createTempFile("abc", null)
+            MiscUtils.writeStringToFile(fileContents, tmpFile)
+            repo.uploadFile(tmpFile, fileName)
+            tmpFile.delete()
+        }
     }
 }
