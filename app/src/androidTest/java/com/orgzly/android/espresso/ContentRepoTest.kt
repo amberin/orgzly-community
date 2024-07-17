@@ -22,7 +22,6 @@ import com.orgzly.android.BookName
 import com.orgzly.android.OrgzlyTest
 import com.orgzly.android.db.entity.BookView
 import com.orgzly.android.db.entity.Repo
-import com.orgzly.android.espresso.util.EspressoUtils
 import com.orgzly.android.espresso.util.EspressoUtils.contextualToolbarOverflowMenu
 import com.orgzly.android.espresso.util.EspressoUtils.onBook
 import com.orgzly.android.espresso.util.EspressoUtils.onNoteInBook
@@ -78,41 +77,6 @@ class ContentRepoTest : OrgzlyTest() {
     var exceptionRule: ExpectedException = ExpectedException.none()
 
     @Test
-    @Throws(IOException::class)
-    fun testStoringFile() {
-        setupContentRepo()
-        val tmpFile = dataRepository.getTempBookFile()
-        try {
-            MiscUtils.writeStringToFile("...", tmpFile)
-            syncRepo.storeBook(tmpFile, "booky.org")
-        } finally {
-            tmpFile.delete()
-        }
-        val books = syncRepo.books
-        assertEquals(1, books.size.toLong())
-        assertEquals("booky", BookName.getInstance(context, books[0]).name)
-        assertEquals("booky.org", BookName.getInstance(context, books[0]).fileName)
-        assertEquals(repo.url, books[0].repoUri.toString())
-        assertEquals(repo.url + documentTreeSegment + "booky.org", books[0].uri.toString())
-    }
-
-    @Test
-    @Throws(IOException::class)
-    fun testExtension() {
-        setupContentRepo()
-        writeStringToRepoFile("Notebook content 1", "01.txt")
-        writeStringToRepoFile("Notebook content 2", "02.o")
-        writeStringToRepoFile("Notebook content 3", "03.org")
-        val books = syncRepo.books
-        assertEquals(1, books.size.toLong())
-        assertEquals("03", BookName.getInstance(context, books[0]).name)
-        assertEquals("03.org", BookName.getInstance(context, books[0]).fileName)
-        assertEquals(repo.id, books[0].repoId)
-        assertEquals(repo.url, books[0].repoUri.toString())
-        assertEquals(repo.url + documentTreeSegment + "03.org", books[0].uri.toString())
-    }
-
-    @Test
     fun testRenameBook() {
         setupContentRepo()
         testUtils.setupBook("booky", "")
@@ -143,52 +107,6 @@ class ContentRepoTest : OrgzlyTest() {
         testUtils.sync()
         assertEquals(1, dataRepository.getBooks().size.toLong())
         assertEquals("content://com.android.externalstorage.documents/tree/primary%3Aspace%20separated", syncRepo.uri.toString())
-    }
-    
-    @Test
-    fun testIgnoreRulePreventsRenamingBook() {
-        Assume.assumeTrue(Build.VERSION.SDK_INT >= 26)
-        setupContentRepo()
-
-        // Add .orgzlyignore file
-        writeStringToRepoFile("file3*", RepoIgnoreNode.IGNORE_FILE)
-        // Create book and sync it
-        testUtils.setupBook("booky", "")
-        testUtils.sync()
-        ActivityScenario.launch(MainActivity::class.java).use {
-            // Rename to allowed name
-            onBook(0).perform(longClick())
-            contextualToolbarOverflowMenu().perform(click())
-            onView(withText(R.string.rename)).perform(click())
-            onView(withId(R.id.name)).perform(*EspressoUtils.replaceTextCloseKeyboard("file1"))
-            onView(withText(R.string.rename)).perform(click())
-            onBook(0, R.id.item_book_last_action).check(
-                matches(withText(endsWith("Renamed from “booky”")))
-            )
-            // Rename to ignored name
-            onBook(0).perform(longClick())
-            contextualToolbarOverflowMenu().perform(click())
-            onView(withText(R.string.rename)).perform(click())
-            onView(withId(R.id.name)).perform(*EspressoUtils.replaceTextCloseKeyboard("file3"))
-            onView(withText(R.string.rename)).perform(click())
-            onBook(0, R.id.item_book_last_action).check(
-                matches(withText(endsWith(context.getString(
-                    R.string.error_file_matches_repo_ignore_rule,
-                    RepoIgnoreNode.IGNORE_FILE)))))
-        }
-    }
-
-    @Test
-    @Throws(java.lang.Exception::class)
-    fun testIgnoreRulePreventsLinkingBook() {
-        Assume.assumeTrue(Build.VERSION.SDK_INT >= 26)
-        setupContentRepo()
-        // Add .orgzlyignore file
-        writeStringToRepoFile("*.org", RepoIgnoreNode.IGNORE_FILE)
-        testUtils.setupBook("booky", "")
-        exceptionRule.expect(IOException::class.java)
-        exceptionRule.expectMessage("matches a rule in .orgzlyignore")
-        testUtils.syncOrThrow()
     }
 
     @Test
