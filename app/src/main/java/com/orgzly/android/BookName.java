@@ -69,9 +69,11 @@ public class BookName {
             String repoRootUriSegment = repoUri + "/document/" + repoUriLastSegment + "%2F";
             return Uri.decode(fileUri.toString().replace(repoRootUriSegment, ""));
         } else {
-            // Just return the fileUri stripped of the repoUri (if present), and stripped of any
-            // leading / (if present).
-            return fileUri.toString().replace(repoUri.toString(), "").replaceFirst("^/", "");
+            // Just return the decoded fileUri stripped of the repoUri (if present), and stripped
+            // of any leading / (if present).
+            return Uri.decode(
+                    fileUri.toString().replace(repoUri.toString(), "")
+            ).replaceFirst("^/", "");
         }
     }
 
