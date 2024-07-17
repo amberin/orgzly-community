@@ -70,7 +70,7 @@ class GitRepoTest : OrgzlyTest() {
             ignoredbook.org
             ignored-*.org
         """.trimIndent()
-        addAndCommitIgnoreFile(synchronizer, ignoreFileContents)
+        addAndCommitIgnoreFile(ignoreFileContents)
         // Add multiple files to repo
         for (fileName in arrayOf("ignoredbook.org", "ignored-3.org", "notignored.org")) {
             val tmpFile = File.createTempFile("orgzlytest", null)
@@ -92,7 +92,7 @@ class GitRepoTest : OrgzlyTest() {
             *.org
             !notignored.org
         """.trimIndent()
-        addAndCommitIgnoreFile(synchronizer, ignoreFileContents)
+        addAndCommitIgnoreFile(ignoreFileContents)
         // Add multiple files to repo
         for (fileName in arrayOf("ignoredbook.org", "ignored-3.org", "notignored.org")) {
             val tmpFile = File.createTempFile("orgzlytest", null)
@@ -109,7 +109,7 @@ class GitRepoTest : OrgzlyTest() {
     @Test
     fun testIgnoreRulePreventsLinkingBook() {
         Assume.assumeTrue(Build.VERSION.SDK_INT >= Build.VERSION_CODES.O)
-        addAndCommitIgnoreFile(synchronizer, "*.org")
+        addAndCommitIgnoreFile("*.org")
         testUtils.setupBook("booky", "")
         exceptionRule.expect(IOException::class.java)
         exceptionRule.expectMessage("matches a rule in .orgzlyignore")
@@ -119,7 +119,7 @@ class GitRepoTest : OrgzlyTest() {
     @Test
     fun testIgnoreRulePreventsRenamingBook() {
         Assume.assumeTrue(Build.VERSION.SDK_INT >= Build.VERSION_CODES.O)
-        addAndCommitIgnoreFile(synchronizer, "badname*")
+        addAndCommitIgnoreFile("badname*")
         testUtils.setupBook("goodname", "")
         testUtils.sync()
         var bookView: BookView? = dataRepository.getBookView("goodname")
@@ -130,12 +130,10 @@ class GitRepoTest : OrgzlyTest() {
         )
     }
 
-    companion object {
-        fun addAndCommitIgnoreFile(synchronizer: GitFileSynchronizer, contents: String) {
-            val tmpFile = File.createTempFile("orgzlytest", null)
-            MiscUtils.writeStringToFile(contents, tmpFile)
-            synchronizer.addAndCommitNewFile(tmpFile, RepoIgnoreNode.IGNORE_FILE)
-            tmpFile.delete()
-        }
+    private fun addAndCommitIgnoreFile(contents: String) {
+        val tmpFile = File.createTempFile("orgzly-test", null)
+        MiscUtils.writeStringToFile(contents, tmpFile)
+        syncRepo.storeBook(tmpFile, RepoIgnoreNode.IGNORE_FILE)
+        tmpFile.delete()
     }
 }

@@ -142,7 +142,7 @@ public class DropboxRepoTest extends OrgzlyTest {
 
     static public void uploadFileToRepo(Uri repoUri, String fileName, String fileContents) throws IOException {
         DropboxClient client = new DropboxClient(App.getAppContext(), 0);
-        File tmpFile = File.createTempFile("abc", null);
+        File tmpFile = File.createTempFile("orgzly-test", null);
         MiscUtils.writeStringToFile(fileContents, tmpFile);
         client.upload(tmpFile, repoUri, fileName);
         tmpFile.delete();
