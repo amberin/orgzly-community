@@ -565,6 +565,7 @@ public class SyncTest extends OrgzlyTest {
 
         BookView bookView = dataRepository.getBooks().get(0);
         assertNotNull(bookView.getSyncedTo());
+        assertEquals("Book Name", bookView.getBook().getName());
         assertEquals("mock://repo-a/Book%20Name.org", bookView.getSyncedTo().getUri().toString());
         assertEquals("Loaded from mock://repo-a/Book%20Name.org",
                 bookView.getBook().getLastAction().getMessage());
