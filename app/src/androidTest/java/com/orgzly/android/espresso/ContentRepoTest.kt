@@ -45,6 +45,7 @@ import org.junit.Before
 import org.junit.Rule
 import org.junit.Test
 import org.junit.rules.ExpectedException
+import java.io.File
 import java.io.FileNotFoundException
 import java.io.IOException
 
@@ -99,9 +100,9 @@ class ContentRepoTest : OrgzlyTest() {
     @Throws(IOException::class)
     fun testExtension() {
         setupContentRepo()
-        MiscUtils.writeStringToDocumentFile("Notebook content 1", "01.txt", repoUri)
-        MiscUtils.writeStringToDocumentFile("Notebook content 2", "02.o", repoUri)
-        MiscUtils.writeStringToDocumentFile("Notebook content 3", "03.org", repoUri)
+        writeStringToRepoFile("Notebook content 1", "01.txt")
+        writeStringToRepoFile("Notebook content 2", "02.o")
+        writeStringToRepoFile("Notebook content 3", "03.org")
         val books = syncRepo.books
         assertEquals(1, books.size.toLong())
         assertEquals("03", BookName.getInstance(context, books[0]).name)
@@ -138,39 +139,19 @@ class ContentRepoTest : OrgzlyTest() {
     fun testSyncWithDirectoryContainingPercent() {
         repoDirName = "space separated"
         setupContentRepo()
-        MiscUtils.writeStringToDocumentFile("Notebook content 1", "notebook.org", repoUri)
+        writeStringToRepoFile("Notebook content 1", "notebook.org")
         testUtils.sync()
         assertEquals(1, dataRepository.getBooks().size.toLong())
         assertEquals("content://com.android.externalstorage.documents/tree/primary%3Aspace%20separated", syncRepo.uri.toString())
     }
-
-    @Test
-    @Throws(IOException::class)
-    fun testIgnoreRulePreventsLoadingBook() {
-        Assume.assumeTrue(Build.VERSION.SDK_INT >= 26)
-        setupContentRepo()
-
-        // Add .org files
-        MiscUtils.writeStringToDocumentFile("content", "file1.org", repoUri)
-        MiscUtils.writeStringToDocumentFile("content", "file2.org", repoUri)
-        MiscUtils.writeStringToDocumentFile("content", "file3.org", repoUri)
-
-        // Add .orgzlyignore file
-        MiscUtils.writeStringToDocumentFile("*1.org\nfile3*", RepoIgnoreNode.IGNORE_FILE, repoUri)
-
-        val books = syncRepo.books
-        assertEquals(1, books.size.toLong())
-        assertEquals("file2", BookName.getInstance(context, books[0]).name)
-        assertEquals(repo.url + documentTreeSegment + "file2.org", books[0].uri.toString())
-    }
-
+    
     @Test
     fun testIgnoreRulePreventsRenamingBook() {
         Assume.assumeTrue(Build.VERSION.SDK_INT >= 26)
         setupContentRepo()
 
         // Add .orgzlyignore file
-        MiscUtils.writeStringToDocumentFile("file3*", RepoIgnoreNode.IGNORE_FILE, repoUri)
+        writeStringToRepoFile("file3*", RepoIgnoreNode.IGNORE_FILE)
         // Create book and sync it
         testUtils.setupBook("booky", "")
         testUtils.sync()
@@ -203,7 +184,7 @@ class ContentRepoTest : OrgzlyTest() {
         Assume.assumeTrue(Build.VERSION.SDK_INT >= 26)
         setupContentRepo()
         // Add .orgzlyignore file
-        MiscUtils.writeStringToDocumentFile("*.org", RepoIgnoreNode.IGNORE_FILE, repoUri)
+        writeStringToRepoFile("*.org", RepoIgnoreNode.IGNORE_FILE)
         testUtils.setupBook("booky", "")
         exceptionRule.expect(IOException::class.java)
         exceptionRule.expectMessage("matches a rule in .orgzlyignore")
@@ -213,10 +194,8 @@ class ContentRepoTest : OrgzlyTest() {
     @Test
     fun testLoadNotebookFromSubfolder() {
         setupContentRepo()
-        // Create subfolder
-        val subfolder = DocumentFile.fromTreeUri(context, repoUri)?.createDirectory("a folder")
         // Write org file to subfolder
-        MiscUtils.writeStringToDocumentFile("content", "a book.org", subfolder?.uri)
+        writeStringToRepoFile("content", "a folder/a book.org")
 
         testUtils.sync()
 
@@ -231,12 +210,10 @@ class ContentRepoTest : OrgzlyTest() {
         Assume.assumeTrue(Build.VERSION.SDK_INT >= 26)
         setupContentRepo()
         // Add .orgzlyignore file
-        MiscUtils.writeStringToDocumentFile("subfolder1/book1.org", RepoIgnoreNode.IGNORE_FILE, repoUri)
-        // Create subfolder
-        val subfolder = DocumentFile.fromTreeUri(context, repoUri)?.createDirectory("subfolder1")
+        writeStringToRepoFile("subfolder1/book1.org", RepoIgnoreNode.IGNORE_FILE)
         // Write 2 org files to subfolder
-        MiscUtils.writeStringToDocumentFile("content", "book1.org", subfolder?.uri)
-        MiscUtils.writeStringToDocumentFile("content", "book2.org", subfolder?.uri)
+        writeStringToRepoFile("content", "subfolder1/book1.org")
+        writeStringToRepoFile("content", "subfolder1/book2.org")
 
         testUtils.sync()
 
@@ -250,12 +227,10 @@ class ContentRepoTest : OrgzlyTest() {
         Assume.assumeTrue(Build.VERSION.SDK_INT >= 26)
         setupContentRepo()
         // Add .orgzlyignore file
-        MiscUtils.writeStringToDocumentFile("subfolder1/**\n!subfolder1/book2.org", RepoIgnoreNode.IGNORE_FILE, repoUri)
-        // Create subfolder
-        val subfolder = DocumentFile.fromTreeUri(context, repoUri)?.createDirectory("subfolder1")
+        writeStringToRepoFile("subfolder1/**\n!subfolder1/book2.org", RepoIgnoreNode.IGNORE_FILE)
         // Write 2 org files to subfolder
-        MiscUtils.writeStringToDocumentFile("content", "book1.org", subfolder?.uri)
-        MiscUtils.writeStringToDocumentFile("content", "book2.org", subfolder?.uri)
+        writeStringToRepoFile("content", "subfolder1/book1.org")
+        writeStringToRepoFile("content", "subfolder1/book2.org")
 
         testUtils.sync()
 
@@ -267,10 +242,8 @@ class ContentRepoTest : OrgzlyTest() {
     @Test
     fun testUpdateBookInSubfolder() {
         setupContentRepo()
-        // Create subfolder
-        val subfolder = DocumentFile.fromTreeUri(context, repoUri)?.createDirectory("folder one")
         // Create org file in subfolder
-        MiscUtils.writeStringToDocumentFile("* DONE Heading 1", "book one.org", subfolder?.uri)
+        writeStringToRepoFile("* DONE Heading 1", "folder one/book one.org")
 
         testUtils.sync()
         assertEquals(1, dataRepository.getBooks().size.toLong())
@@ -384,7 +357,7 @@ class ContentRepoTest : OrgzlyTest() {
         testUtils.setupBook("a", "")
         testUtils.sync()
         // Create "unsynced" file in repo
-        MiscUtils.writeStringToDocumentFile("", "b.org", DocumentFile.fromTreeUri(context, repoUri)!!.uri)
+        writeStringToRepoFile("", "b.org")
         dataRepository.renameBook(dataRepository.getBookView("a")!!, "b")
         assertTrue(dataRepository.getBook("a")!!.lastAction!!.message.contains("Renaming failed: File at content://"))
     }
@@ -398,13 +371,20 @@ class ContentRepoTest : OrgzlyTest() {
         assertTrue(dataRepository.getBook("a")!!.lastAction!!.message.contains("Renaming failed: Notebook b already exists"))
     }
 
+    private fun writeStringToRepoFile(content: String, fileName: String) {
+        val tmpFile = File.createTempFile("abc", null)
+        MiscUtils.writeStringToFile(content, tmpFile)
+        syncRepo.storeBook(tmpFile, fileName)
+        tmpFile.delete()
+    }
+
     /**
      * An activity is required when creating this type of repo, because of the way Android handles
      * access permissions to content:// URLs.
      * @throws UiObjectNotFoundException
      */
     @Throws(UiObjectNotFoundException::class)
-    fun setupContentRepo() {
+    private fun setupContentRepo() {
         ActivityScenario.launch(ReposActivity::class.java).use {
             onView(withId(R.id.activity_repos_directory)).perform(click())
             onView(withId(R.id.activity_repo_directory_browse_button))

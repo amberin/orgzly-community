@@ -1,21 +1,27 @@
 package com.orgzly.android.repos
 
+import androidx.core.net.toUri
 import com.orgzly.BuildConfig
 import com.orgzly.android.BookName
 import com.orgzly.android.OrgzlyTest
 import com.orgzly.android.db.entity.BookView
 import com.orgzly.android.db.entity.Repo
 import com.orgzly.android.util.MiscUtils
+import org.junit.After
 import org.junit.Assert
 import org.junit.Before
 import org.junit.Rule
 import org.junit.Test
 import org.junit.rules.ExpectedException
 import java.io.File
+import java.io.FileNotFoundException
 import java.io.IOException
 import java.util.UUID
 
 class WebdavRepoTest : OrgzlyTest() {
+
+    private val repoUriString = BuildConfig.WEBDAV_REPO_URL + "/orgzly-android-tests"
+    private lateinit var syncRepo: SyncRepo
 
     @Before
     @Throws(Exception::class)
@@ -24,13 +30,21 @@ class WebdavRepoTest : OrgzlyTest() {
         testUtils.webdavTestPreflight()
     }
 
+    @After
+    override fun tearDown() {
+        super.tearDown()
+        if (this::syncRepo.isInitialized) {
+            syncRepo.delete(syncRepo.uri)
+        }
+    }
+
     @JvmField
     @Rule
     var exceptionRule: ExpectedException = ExpectedException.none()
 
     @Test
     fun testUrl() {
-        val repo = setupRepo()
+        val repo = testUtils.setupRepo(RepoType.WEBDAV, repoUriString, repoProps)
         Assert.assertEquals(
             "webdav:/dir", testUtils.repoInstance(RepoType.WEBDAV, "webdav:/dir", repo.id).uri.toString()
         )
@@ -38,14 +52,14 @@ class WebdavRepoTest : OrgzlyTest() {
 
     @Test
     fun testSyncingUrlWithTrailingSlash() {
-        testUtils.setupRepo(RepoType.WEBDAV, randomUrl() + "/", repoProps)
+        val repo = testUtils.setupRepo(RepoType.WEBDAV, "$repoUriString/", repoProps)
+        syncRepo = testUtils.repoInstance(RepoType.WEBDAV, repo.url, repo.id)
         Assert.assertNotNull(testUtils.sync())
     }
 
     @Test
     fun testRenameBook() {
-        val repo = setupRepo()
-        val repoUriString = repo.url
+        setupRepo()
         testUtils.setupBook("booky", "")
         testUtils.sync()
         var bookView: BookView? = dataRepository.getBookView("booky")
@@ -65,10 +79,9 @@ class WebdavRepoTest : OrgzlyTest() {
     @Test
     @Throws(Exception::class)
     fun testIgnoreRulePreventsLinkingBook() {
-        val repo = setupRepo()
-        val webdavRepo = testUtils.repoInstance(RepoType.WEBDAV, repo.url, repo.id) as WebdavRepo
+        setupRepo()
         testUtils.sync() // To ensure the remote directory exists
-        uploadFileToRepo(webdavRepo, RepoIgnoreNode.IGNORE_FILE, "*.org")
+        writeStringToRepoFile(syncRepo, "*.org", RepoIgnoreNode.IGNORE_FILE)
         testUtils.setupBook("booky", "")
         exceptionRule.expect(IOException::class.java)
         exceptionRule.expectMessage("matches a rule in .orgzlyignore")
@@ -78,15 +91,14 @@ class WebdavRepoTest : OrgzlyTest() {
     @Test
     @Throws(Exception::class)
     fun testIgnoreRulePreventsLoadingBook() {
-        val repo = setupRepo()
-        val webdavRepo = testUtils.repoInstance(RepoType.WEBDAV, repo.url, repo.id) as WebdavRepo
+        setupRepo()
         testUtils.sync() // To ensure the remote directory exists
 
         // Create two .org files
-        uploadFileToRepo(webdavRepo, "ignored.org", "1 2 3")
-        uploadFileToRepo(webdavRepo, "notignored.org", "1 2 3")
+        writeStringToRepoFile(syncRepo, "1 2 3", "ignored.org")
+        writeStringToRepoFile(syncRepo, "1 2 3", "notignored.org")
         // Create .orgzlyignore
-        uploadFileToRepo(webdavRepo, RepoIgnoreNode.IGNORE_FILE, "ignored.org")
+        writeStringToRepoFile(syncRepo, "ignored.org", RepoIgnoreNode.IGNORE_FILE)
         testUtils.sync()
         val bookViews = dataRepository.getBooks()
         Assert.assertEquals(1, bookViews.size.toLong())
@@ -96,10 +108,9 @@ class WebdavRepoTest : OrgzlyTest() {
     @Test
     @Throws(Exception::class)
     fun testIgnoreRulePreventsRenamingBook() {
-        val repo = setupRepo()
-        val webdavRepo = testUtils.repoInstance(RepoType.WEBDAV, repo.url, repo.id) as WebdavRepo
+        setupRepo()
         testUtils.sync() // To ensure the remote directory exists
-        uploadFileToRepo(webdavRepo, RepoIgnoreNode.IGNORE_FILE, "badname*")
+        writeStringToRepoFile(syncRepo, "badname*", RepoIgnoreNode.IGNORE_FILE)
         testUtils.setupBook("goodname", "")
         testUtils.sync()
         var bookView: BookView? = dataRepository.getBookView("goodname")
@@ -113,8 +124,7 @@ class WebdavRepoTest : OrgzlyTest() {
     @Test
     @Throws(IOException::class)
     fun testFileRename() {
-        val repo = setupRepo()
-        val syncRepo = testUtils.repoInstance(RepoType.WEBDAV, repo.url, repo.id)
+        setupRepo()
         Assert.assertNotNull(syncRepo)
         Assert.assertEquals(0, syncRepo.books.size.toLong())
         val file = File.createTempFile("notebook.", ".org")
@@ -134,26 +144,20 @@ class WebdavRepoTest : OrgzlyTest() {
         )
     }
 
-    private fun randomUrl(): String {
-        return BuildConfig.WEBDAV_REPO_URL + WEBDAV_TEST_DIR + "/" + UUID.randomUUID().toString()
-    }
-
-    private fun setupRepo(): Repo {
-        return testUtils.setupRepo(RepoType.WEBDAV, randomUrl(), repoProps)
+    private fun setupRepo() {
+        val repo = testUtils.setupRepo(RepoType.WEBDAV, repoUriString, repoProps)
+        syncRepo = testUtils.repoInstance(RepoType.WEBDAV, repo.url, repo.id)
     }
 
     companion object {
-        private const val WEBDAV_TEST_DIR = "/orgzly-android-tests"
-
         private val repoProps: MutableMap<String, String> = mutableMapOf(
             WebdavRepo.USERNAME_PREF_KEY to BuildConfig.WEBDAV_USERNAME,
             WebdavRepo.PASSWORD_PREF_KEY to BuildConfig.WEBDAV_PASSWORD)
 
-        @Throws(IOException::class)
-        fun uploadFileToRepo(repo: WebdavRepo, fileName: String, fileContents: String) {
-            val tmpFile = File.createTempFile("abc", null)
-            MiscUtils.writeStringToFile(fileContents, tmpFile)
-            repo.uploadFile(tmpFile, fileName)
+        fun writeStringToRepoFile(repo: SyncRepo, content: String, fileName: String) {
+            val tmpFile = File.createTempFile("orgzly-test", null)
+            MiscUtils.writeStringToFile(content, tmpFile)
+            repo.storeBook(tmpFile, fileName)
             tmpFile.delete()
         }
     }

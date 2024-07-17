@@ -1,6 +1,8 @@
 package com.orgzly.android.repos
 
 import android.net.Uri
+import android.os.Build
+import android.os.SystemClock
 import androidx.core.net.toUri
 import androidx.documentfile.provider.DocumentFile
 import androidx.test.core.app.ActivityScenario
@@ -27,9 +29,11 @@ import com.orgzly.android.repos.RepoType.MOCK
 import com.orgzly.android.repos.RepoType.WEBDAV
 import com.orgzly.android.ui.repos.ReposActivity
 import com.orgzly.android.util.MiscUtils
+import com.thegrizzlylabs.sardineandroid.impl.SardineException
 import org.eclipse.jgit.api.Git
 import org.hamcrest.core.AllOf
 import org.junit.Assert
+import org.junit.Assume
 import org.junit.Rule
 import org.junit.Test
 import org.junit.rules.ExpectedException
@@ -42,7 +46,7 @@ import kotlin.io.path.createTempDirectory
 @RunWith(value = Parameterized::class)
 class SyncRepoTest(private val param: Parameter) : OrgzlyTest() {
 
-    private val testDirectoryName = "orgzly-android-tests"
+    private val repoDirectoryName = "orgzly-android-tests"
     private lateinit var repo: Repo
     private lateinit var syncRepo: SyncRepo
     // Used by GitRepo
@@ -60,9 +64,9 @@ class SyncRepoTest(private val param: Parameter) : OrgzlyTest() {
         @Parameterized.Parameters(name = "{0}")
         fun data(): Collection<Parameter> {
             return listOf(
+                Parameter(repoType = WEBDAV),
                 Parameter(repoType = DROPBOX),
                 Parameter(repoType = GIT),
-                Parameter(repoType = WEBDAV),
                 Parameter(repoType = DOCUMENT),
             )
         }
@@ -104,30 +108,54 @@ class SyncRepoTest(private val param: Parameter) : OrgzlyTest() {
             MOCK -> TODO()
             DROPBOX -> "dropbox:/orgzly-android-tests/book%201.org"
             DIRECTORY -> TODO()
-            DOCUMENT -> "content://com.android.externalstorage.documents/tree/primary%3A$testDirectoryName/document/primary%3A$testDirectoryName%2Fbook%201.org"
-            WEBDAV -> "https://use10.thegood.cloud/remote.php/dav/files/orgzlyrevived%40gmail.com/$testDirectoryName/book 1.org"
+            DOCUMENT -> "content://com.android.externalstorage.documents/tree/primary%3A$repoDirectoryName/document/primary%3A$repoDirectoryName%2Fbook%201.org"
+            WEBDAV -> "https://use10.thegood.cloud/remote.php/dav/files/orgzlyrevived%40gmail.com/$repoDirectoryName/book 1.org"
         }
         Assert.assertEquals(expectedUriString, bookView.syncedTo!!.uri.toString())
     }
 
+    @Test
+    fun testIgnoreRulePreventsLoadingBook() {
+        Assume.assumeTrue(Build.VERSION.SDK_INT >= Build.VERSION_CODES.O)
+        val ignoreRules = """
+            ignoredbook.org
+            ignored-*.org
+        """.trimIndent()
+        setupSyncRepo(param.repoType, ignoreRules)
+        // Add multiple files to repo
+        for (fileName in arrayOf("ignoredbook.org", "ignored-3.org", "notignored.org")) {
+            val tmpFile = File.createTempFile("orgzly-test", null)
+            MiscUtils.writeStringToFile("book content", tmpFile)
+            syncRepo.storeBook(tmpFile, fileName)
+            tmpFile.delete()
+        }
+        testUtils.sync()
+        Assert.assertEquals(1, syncRepo.books.size)
+        Assert.assertEquals(1, dataRepository.getBooks().size)
+        Assert.assertEquals("notignored", dataRepository.getBooks()[0].book.name)
+    }
+
     private fun setupSyncRepo(repoType: RepoType, ignoreRules: String?) {
         when (repoType) {
-            GIT -> setupGitRepo(ignoreRules)
+            GIT -> setupGitRepo()
             MOCK -> TODO()
-            DROPBOX -> setupDropboxRepo(ignoreRules)
+            DROPBOX -> setupDropboxRepo()
             DIRECTORY -> TODO()
-            DOCUMENT -> setupContentRepo(ignoreRules)
-            WEBDAV -> setupWebdavRepo(ignoreRules)
+            DOCUMENT -> setupContentRepo()
+            WEBDAV -> setupWebdavRepo()
+        }
+        if (ignoreRules != null) {
+            val tmpFile = File.createTempFile("orgzly-test", null)
+            MiscUtils.writeStringToFile(ignoreRules, tmpFile)
+            syncRepo.storeBook(tmpFile, RepoIgnoreNode.IGNORE_FILE)
+            tmpFile.delete()
         }
     }
 
-    private fun setupDropboxRepo(ignoreRules: String?) {
+    private fun setupDropboxRepo() {
         testUtils.dropboxTestPreflight()
-        syncRepo = testUtils.repoInstance(DROPBOX, "dropbox:/$testDirectoryName")
+        syncRepo = testUtils.repoInstance(DROPBOX, "dropbox:/$repoDirectoryName")
         repo = testUtils.setupRepo(DROPBOX, syncRepo.uri.toString())
-        if (ignoreRules != null) {
-            DropboxRepoTest.uploadFileToRepo(syncRepo.uri, RepoIgnoreNode.IGNORE_FILE, ignoreRules)
-        }
     }
 
     private fun tearDownDropboxRepo() {
@@ -135,7 +163,7 @@ class SyncRepoTest(private val param: Parameter) : OrgzlyTest() {
         dropboxRepo.deleteDirectory(syncRepo.uri)
     }
 
-    private fun setupContentRepo(ignoreRules: String?) {
+    private fun setupContentRepo() {
         ActivityScenario.launch(ReposActivity::class.java).use {
             Espresso.onView(ViewMatchers.withId(R.id.activity_repos_directory))
                 .perform(ViewActions.click())
@@ -144,7 +172,7 @@ class SyncRepoTest(private val param: Parameter) : OrgzlyTest() {
             // In Android file browser (Espresso cannot be used):
             val mDevice = UiDevice.getInstance(InstrumentationRegistry.getInstrumentation())
             mDevice.findObject(UiSelector().text("CREATE NEW FOLDER")).click()
-            mDevice.findObject(UiSelector().text("Folder name")).text = testDirectoryName
+            mDevice.findObject(UiSelector().text("Folder name")).text = repoDirectoryName
             mDevice.findObject(UiSelector().text("OK")).click()
             mDevice.findObject(UiSelector().text("USE THIS FOLDER")).click()
             mDevice.findObject(UiSelector().text("ALLOW")).click()
@@ -155,39 +183,37 @@ class SyncRepoTest(private val param: Parameter) : OrgzlyTest() {
         }
         repo = dataRepository.getRepos()[0]
         syncRepo = testUtils.repoInstance(DOCUMENT, repo.url, repo.id)
-        val encodedRepoDirName = Uri.encode(testDirectoryName)
+        val encodedRepoDirName = Uri.encode(repoDirectoryName)
         documentTreeSegment = "/document/primary%3A$encodedRepoDirName%2F"
         treeDocumentFileUrl = "content://com.android.externalstorage.documents/tree/primary%3A$encodedRepoDirName"
         Assert.assertEquals(treeDocumentFileUrl, repo.url)
-        if (ignoreRules != null) {
-            MiscUtils.writeStringToDocumentFile(
-                ignoreRules,
-                RepoIgnoreNode.IGNORE_FILE, syncRepo.uri
-            )
-        }
     }
 
     private fun tearDownContentRepo() {
         DocumentFile.fromTreeUri(context, treeDocumentFileUrl.toUri())!!.delete()
     }
 
-    private fun setupWebdavRepo(ignoreRules: String?) {
+    private fun setupWebdavRepo() {
         testUtils.webdavTestPreflight()
         val repoProps: MutableMap<String, String> = mutableMapOf(
             WebdavRepo.USERNAME_PREF_KEY to BuildConfig.WEBDAV_USERNAME,
             WebdavRepo.PASSWORD_PREF_KEY to BuildConfig.WEBDAV_PASSWORD)
-        repo = testUtils.setupRepo(WEBDAV, BuildConfig.WEBDAV_REPO_URL + "/" + testDirectoryName, repoProps)
+        repo = testUtils.setupRepo(WEBDAV, BuildConfig.WEBDAV_REPO_URL + "/" + repoDirectoryName, repoProps)
         syncRepo = dataRepository.getRepoInstance(repo.id, WEBDAV, repo.url)
-        if (ignoreRules != null) {
-            WebdavRepoTest.uploadFileToRepo(syncRepo as WebdavRepo, RepoIgnoreNode.IGNORE_FILE, ignoreRules)
-        }
+        testUtils.sync() // Required to create the remote directory
     }
 
     private fun tearDownWebdavRepo() {
-        syncRepo.delete(repo.url.toUri())
+        try {
+            syncRepo.delete(repo.url.toUri())
+        } catch (e: SardineException) {
+            if (e.statusCode != 404) {
+                throw e
+            }
+        }
     }
 
-    private fun setupGitRepo(ignoreRules: String?) {
+    private fun setupGitRepo() {
         gitBareRepoPath = createTempDirectory()
         Git.init().setBare(true).setDirectory(gitBareRepoPath.toFile()).call()
         AppPreferences.gitIsEnabled(context, true)
@@ -199,9 +225,6 @@ class SyncRepoTest(private val param: Parameter) : OrgzlyTest() {
         val git = GitRepo.ensureRepositoryExists(gitPreferences, true, null)
         gitFileSynchronizer = GitFileSynchronizer(git, gitPreferences)
         syncRepo = dataRepository.getRepoInstance(repo.id, GIT, repo.url)
-        if (ignoreRules != null) {
-            GitRepoTest.addAndCommitIgnoreFile(gitFileSynchronizer, ignoreRules)
-        }
     }
 
     private fun tearDownGitRepo() {
