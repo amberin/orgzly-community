@@ -1,7 +1,30 @@
 package com.orgzly.android.repos;
 
+import static androidx.test.espresso.Espresso.onView;
+import static androidx.test.espresso.action.ViewActions.click;
+import static androidx.test.espresso.action.ViewActions.longClick;
+import static androidx.test.espresso.assertion.ViewAssertions.matches;
+import static androidx.test.espresso.matcher.ViewMatchers.isDisplayed;
+import static androidx.test.espresso.matcher.ViewMatchers.withId;
+import static androidx.test.espresso.matcher.ViewMatchers.withText;
+import static com.orgzly.android.espresso.util.EspressoUtils.contextualToolbarOverflowMenu;
+import static com.orgzly.android.espresso.util.EspressoUtils.onBook;
+import static com.orgzly.android.espresso.util.EspressoUtils.onSnackbar;
+import static org.hamcrest.Matchers.allOf;
+import static org.hamcrest.Matchers.endsWith;
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertNotNull;
+import static org.junit.Assert.assertNotSame;
+import static org.junit.Assert.assertNull;
+import static org.junit.Assert.assertTrue;
+
 import android.net.Uri;
 
+import androidx.test.core.app.ActivityScenario;
+
+import com.orgzly.R;
+import com.orgzly.android.BookFormat;
 import com.orgzly.android.BookName;
 import com.orgzly.android.LocalStorage;
 import com.orgzly.android.OrgzlyTest;
@@ -11,24 +34,20 @@ import com.orgzly.android.db.entity.NoteView;
 import com.orgzly.android.db.entity.Repo;
 import com.orgzly.android.sync.BookNamesake;
 import com.orgzly.android.sync.BookSyncStatus;
+import com.orgzly.android.ui.main.MainActivity;
 import com.orgzly.android.util.EncodingDetect;
 import com.orgzly.android.util.MiscUtils;
 
 import org.junit.Before;
+import org.junit.Rule;
 import org.junit.Test;
+import org.junit.rules.ExpectedException;
 
 import java.io.File;
 import java.io.IOException;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
-
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertFalse;
-import static org.junit.Assert.assertNotNull;
-import static org.junit.Assert.assertNotSame;
-import static org.junit.Assert.assertNull;
-import static org.junit.Assert.assertTrue;
 
 public class SyncTest extends OrgzlyTest {
     private static final String TAG = SyncTest.class.getName();
@@ -37,6 +56,9 @@ public class SyncTest extends OrgzlyTest {
     public void setUp() throws Exception {
         super.setUp();
     }
+
+    @Rule
+    public ExpectedException exceptionRule = ExpectedException.none();
 
     @Test
     public void testOrgRange() {
@@ -532,5 +554,109 @@ public class SyncTest extends OrgzlyTest {
         book = dataRepository.getBooks().get(0);
         assertNull(book.getLinkRepo());
         assertEquals(BookSyncStatus.BOOK_WITH_PREVIOUS_ERROR_AND_NO_LINK.toString(), book.getBook().getSyncStatus());
+    }
+
+    @Test
+    public void testSpaceSeparatedBookName() {
+        Repo repo = testUtils.setupRepo(RepoType.MOCK, "mock://repo-a");
+        testUtils.setupRook(repo, "mock://repo-a/Book%20Name.org", "", "1abcdef", 1400067155);
+
+        testUtils.sync();
+
+        BookView bookView = dataRepository.getBooks().get(0);
+        assertNotNull(bookView.getSyncedTo());
+        assertEquals("mock://repo-a/Book%20Name.org", bookView.getSyncedTo().getUri().toString());
+        assertEquals("Loaded from mock://repo-a/Book%20Name.org",
+                bookView.getBook().getLastAction().getMessage());
+    }
+
+    @Test
+    public void testForceLoadingBookWithLink() throws IOException {
+        Repo repo = testUtils.setupRepo(RepoType.MOCK, "mock://repo-a");
+        testUtils.setupRook(repo, "mock://repo-a/booky.org", "New content", "abc", 1234567890000L);
+        Book book = testUtils.setupBook("booky", "First book used for testing\n* Note A").getBook();
+        dataRepository.setLink(book.getId(), repo);
+        dataRepository.forceLoadBook(book.getId());
+
+        assertEquals(context.getString(R.string.force_loaded_from_uri, "mock://repo-a/booky.org")
+                , dataRepository.getBook(book.getName()).getLastAction().getMessage());
+        assertEquals("New content\n\n", dataRepository.getBookContent("booky", BookFormat.ORG));
+    }
+
+    @Test
+    public void testForceLoadingBookWithNoLinkNoRepos() {
+        BookView book = testUtils.setupBook("booky", "First book used for testing\n* Note A");
+
+        exceptionRule.expect(IOException.class);
+        exceptionRule.expectMessage(context.getString(R.string.message_book_has_no_link));
+        dataRepository.forceLoadBook(book.getBook().getId());
+    }
+
+    @Test
+    public void testForceLoadingBookWithNoLinkSingleRepo() {
+        testUtils.setupRepo(RepoType.MOCK, "mock://repo-a");
+        BookView book = testUtils.setupBook("booky", "First book used for testing\n* Note A");
+
+        exceptionRule.expect(IOException.class);
+        exceptionRule.expectMessage(context.getString(R.string.message_book_has_no_link));
+        dataRepository.forceLoadBook(book.getBook().getId());
+    }
+
+    /* Books view was returning multiple entries for the same book, due to duplicates in encodings
+     * table. The last statement in this method will fail if there are multiple books matching.
+     */
+    @Test
+    public void testForceLoadingMultipleTimes() {
+        Repo repo = testUtils.setupRepo(RepoType.MOCK, "mock://repo-a");
+        testUtils.setupRook(repo, "mock://repo-a/book-one.org", "New content", "abc", 1234567890000L);
+        Book book = testUtils.setupBook("book-one", "First book used for testing\n* Note A").getBook();
+        dataRepository.setLink(book.getId(), repo);
+        dataRepository.forceLoadBook(book.getId());
+        assertEquals(
+            context.getString(R.string.force_loaded_from_uri, "mock://repo-a/book-one.org"),
+            dataRepository.getBook(book.getId()).getLastAction().getMessage()
+        );
+        dataRepository.forceLoadBook(book.getId());
+        assertEquals(
+                context.getString(R.string.force_loaded_from_uri, "mock://repo-a/book-one.org"),
+                dataRepository.getBook(book.getId()).getLastAction().getMessage()
+        );
+    }
+
+    @Test
+    public void testForceSavingBookWithNoLinkAndMultipleRepos() {
+        testUtils.setupRepo(RepoType.MOCK, "mock://repo-a");
+        testUtils.setupRepo(RepoType.MOCK, "mock://repo-b");
+        Book book = testUtils.setupBook("book-one", "First book used for testing\n* Note A").getBook();
+        exceptionRule.expect(IOException.class);
+        exceptionRule.expectMessage(context.getString(R.string.force_saving_failed, context.getString(R.string.multiple_repos)));
+        dataRepository.forceSaveBook(book.getId());
+    }
+
+    @Test
+    public void testForceSavingBookWithNoLinkNoRepos() {
+        Book book = testUtils.setupBook("book-one", "First book used for testing\n* Note A").getBook();
+        exceptionRule.expect(IOException.class);
+        exceptionRule.expectMessage(context.getString(R.string.force_saving_failed, context.getString(R.string.no_repos)));
+        dataRepository.forceSaveBook(book.getId());
+    }
+
+    @Test
+    public void testForceSavingBookWithNoLinkSingleRepo() {
+        testUtils.setupRepo(RepoType.MOCK, "mock://repo-a");
+        Book book = testUtils.setupBook("book-one", "First book used for testing\n* Note A").getBook();
+        dataRepository.forceSaveBook(book.getId());
+        assertEquals(context.getString(R.string.force_saved_to_uri, "mock://repo-a/book-one.org")
+                , dataRepository.getBook(book.getId()).getLastAction().getMessage());
+    }
+
+    @Test
+    public void testForceSavingBookWithLink() {
+        Repo repo = testUtils.setupRepo(RepoType.MOCK, "mock://repo-a");
+        Book book = testUtils.setupBook("booky", "First book used for testing\n* Note A", repo).getBook();
+        dataRepository.setLink(book.getId(), repo);
+        dataRepository.forceSaveBook(book.getId());
+        assertEquals(context.getString(R.string.force_saved_to_uri, "mock://repo-a/booky.org")
+                , dataRepository.getBook(book.getId()).getLastAction().getMessage());
     }
 }
