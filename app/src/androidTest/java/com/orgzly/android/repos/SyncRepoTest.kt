@@ -8,13 +8,16 @@ import androidx.documentfile.provider.DocumentFile
 import androidx.test.core.app.ActivityScenario
 import androidx.test.espresso.Espresso
 import androidx.test.espresso.action.ViewActions
+import androidx.test.espresso.assertion.ViewAssertions
 import androidx.test.espresso.matcher.ViewMatchers
 import androidx.test.platform.app.InstrumentationRegistry
 import androidx.test.uiautomator.UiDevice
 import androidx.test.uiautomator.UiSelector
 import com.orgzly.BuildConfig
 import com.orgzly.R
+import com.orgzly.android.BookName
 import com.orgzly.android.OrgzlyTest
+import com.orgzly.android.db.entity.BookView
 import com.orgzly.android.db.entity.Repo
 import com.orgzly.android.espresso.util.EspressoUtils
 import com.orgzly.android.git.GitFileSynchronizer
@@ -27,10 +30,12 @@ import com.orgzly.android.repos.RepoType.DROPBOX
 import com.orgzly.android.repos.RepoType.GIT
 import com.orgzly.android.repos.RepoType.MOCK
 import com.orgzly.android.repos.RepoType.WEBDAV
+import com.orgzly.android.ui.main.MainActivity
 import com.orgzly.android.ui.repos.ReposActivity
 import com.orgzly.android.util.MiscUtils
 import com.thegrizzlylabs.sardineandroid.impl.SardineException
 import org.eclipse.jgit.api.Git
+import org.hamcrest.CoreMatchers
 import org.hamcrest.core.AllOf
 import org.junit.Assert
 import org.junit.Assume
@@ -40,6 +45,7 @@ import org.junit.rules.ExpectedException
 import org.junit.runner.RunWith
 import org.junit.runners.Parameterized
 import java.io.File
+import java.io.IOException
 import java.nio.file.Path
 import kotlin.io.path.createTempDirectory
 
@@ -64,10 +70,10 @@ class SyncRepoTest(private val param: Parameter) : OrgzlyTest() {
         @Parameterized.Parameters(name = "{0}")
         fun data(): Collection<Parameter> {
             return listOf(
-                Parameter(repoType = WEBDAV),
-                Parameter(repoType = DROPBOX),
                 Parameter(repoType = GIT),
+                Parameter(repoType = DROPBOX),
                 Parameter(repoType = DOCUMENT),
+                Parameter(repoType = WEBDAV),
             )
         }
     }
@@ -89,6 +95,43 @@ class SyncRepoTest(private val param: Parameter) : OrgzlyTest() {
     @JvmField
     @Rule
     var exceptionRule: ExpectedException = ExpectedException.none()
+
+    @Test
+    @Throws(IOException::class)
+    fun testStoringFile() {
+        setupSyncRepo(param.repoType, null)
+        val tmpFile = dataRepository.getTempBookFile()
+        try {
+            MiscUtils.writeStringToFile("...", tmpFile)
+            syncRepo.storeBook(tmpFile, "booky.org")
+        } finally {
+            tmpFile.delete()
+        }
+        val books = syncRepo.books
+        Assert.assertEquals(1, books.size.toLong())
+        Assert.assertEquals("booky", BookName.getInstance(context, books[0]).name)
+        Assert.assertEquals("booky.org", BookName.getInstance(context, books[0]).fileName)
+        Assert.assertEquals(repo.url, books[0].repoUri.toString())
+    }
+
+    @Test
+    @Throws(IOException::class)
+    fun testExtension() {
+        setupSyncRepo(param.repoType, null)
+        // Add multiple files to repo
+        for (fileName in arrayOf("file one.txt", "file two.o", "file three.org")) {
+            val tmpFile = File.createTempFile("orgzly-test", null)
+            MiscUtils.writeStringToFile("book content", tmpFile)
+            syncRepo.storeBook(tmpFile, fileName)
+            tmpFile.delete()
+        }
+        val books = syncRepo.books
+        Assert.assertEquals(1, books.size.toLong())
+        Assert.assertEquals("file three", BookName.getInstance(context, books[0]).name)
+        Assert.assertEquals("file three.org", BookName.getInstance(context, books[0]).fileName)
+        Assert.assertEquals(repo.id, books[0].repoId)
+        Assert.assertEquals(repo.url, books[0].repoUri.toString())
+    }
 
     @Test
     fun testSyncNewBookWithoutLinkAndOneRepo() {
@@ -116,7 +159,7 @@ class SyncRepoTest(private val param: Parameter) : OrgzlyTest() {
 
     @Test
     fun testIgnoreRulePreventsLoadingBook() {
-        Assume.assumeTrue(Build.VERSION.SDK_INT >= Build.VERSION_CODES.O)
+        Assume.assumeTrue(Build.VERSION.SDK_INT >= 26) // .orgzlyignore not supported below API 26
         val ignoreRules = """
             ignoredbook.org
             ignored-*.org
@@ -133,6 +176,54 @@ class SyncRepoTest(private val param: Parameter) : OrgzlyTest() {
         Assert.assertEquals(1, syncRepo.books.size)
         Assert.assertEquals(1, dataRepository.getBooks().size)
         Assert.assertEquals("notignored", dataRepository.getBooks()[0].book.name)
+    }
+
+    @Test
+    fun testUnIgnoredFilesInRepoAreLoaded() {
+        Assume.assumeTrue(Build.VERSION.SDK_INT >= 26)
+        val ignoreFileContents = """
+            *.org
+            !notignored.org
+        """.trimIndent()
+        setupSyncRepo(param.repoType, ignoreFileContents)
+        // Add multiple files to repo
+        for (fileName in arrayOf("ignoredbook.org", "ignored-3.org", "notignored.org")) {
+            val tmpFile = File.createTempFile("orgzlytest", null)
+            MiscUtils.writeStringToFile("book content", tmpFile)
+            syncRepo.storeBook(tmpFile, fileName)
+            tmpFile.delete()
+        }
+        testUtils.sync()
+        Assert.assertEquals(1, syncRepo.books.size)
+        Assert.assertEquals(1, dataRepository.getBooks().size)
+        Assert.assertEquals("notignored", dataRepository.getBooks()[0].book.name)
+    }
+
+    @Test
+    fun testIgnoreRulePreventsRenamingBook() {
+        Assume.assumeTrue(Build.VERSION.SDK_INT >= 26)
+        setupSyncRepo(param.repoType,"bad name*")
+
+        // Create book and sync it
+        testUtils.setupBook("good name", "")
+        testUtils.sync()
+        var bookView: BookView? = dataRepository.getBookView("good name")
+        dataRepository.renameBook(bookView!!, "bad name")
+        bookView = dataRepository.getBooks()[0]
+        Assert.assertTrue(
+            bookView.book.lastAction.toString().contains("matches a rule in .orgzlyignore")
+        )
+    }
+
+    @Test
+    @Throws(java.lang.Exception::class)
+    fun testIgnoreRulePreventsLinkingBook() {
+        Assume.assumeTrue(Build.VERSION.SDK_INT >= 26)
+        setupSyncRepo(param.repoType, "*.org")
+        testUtils.setupBook("booky", "")
+        exceptionRule.expect(IOException::class.java)
+        exceptionRule.expectMessage("matches a rule in .orgzlyignore")
+        testUtils.syncOrThrow()
     }
 
     private fun setupSyncRepo(repoType: RepoType, ignoreRules: String?) {
@@ -154,8 +245,8 @@ class SyncRepoTest(private val param: Parameter) : OrgzlyTest() {
 
     private fun setupDropboxRepo() {
         testUtils.dropboxTestPreflight()
-        syncRepo = testUtils.repoInstance(DROPBOX, "dropbox:/$repoDirectoryName")
-        repo = testUtils.setupRepo(DROPBOX, syncRepo.uri.toString())
+        repo = testUtils.setupRepo(DROPBOX, "dropbox:/$repoDirectoryName")
+        syncRepo = testUtils.repoInstance(DROPBOX, repo.url, repo.id)
     }
 
     private fun tearDownDropboxRepo() {
