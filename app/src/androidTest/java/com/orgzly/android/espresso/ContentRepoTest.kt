@@ -69,7 +69,9 @@ class ContentRepoTest : OrgzlyTest() {
     @Throws(Exception::class)
     override fun tearDown() {
         super.tearDown()
-        DocumentFile.fromTreeUri(context, Uri.parse(treeDocumentFileUrl))?.delete()
+        if (this::treeDocumentFileUrl.isInitialized) {
+            DocumentFile.fromTreeUri(context, Uri.parse(treeDocumentFileUrl))!!.delete()
+        }
     }
 
     @Rule
