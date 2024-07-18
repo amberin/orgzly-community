@@ -260,9 +260,11 @@ class SyncRepoTest(private val param: Parameter) : OrgzlyTest() {
                 .perform(ViewActions.click())
             Espresso.onView(ViewMatchers.withId(R.id.activity_repo_directory_browse_button))
                 .perform(ViewActions.click())
+            SystemClock.sleep(100)
             // In Android file browser (Espresso cannot be used):
             val mDevice = UiDevice.getInstance(InstrumentationRegistry.getInstrumentation())
             mDevice.findObject(UiSelector().text("CREATE NEW FOLDER")).click()
+            SystemClock.sleep(100)
             mDevice.findObject(UiSelector().text("Folder name")).text = repoDirectoryName
             mDevice.findObject(UiSelector().text("OK")).click()
             mDevice.findObject(UiSelector().text("USE THIS FOLDER")).click()
