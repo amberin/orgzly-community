@@ -2,6 +2,7 @@ package com.orgzly.android.repos
 
 import android.net.Uri
 import android.os.Build
+import androidx.documentfile.provider.DocumentFile
 import com.burgstaller.okhttp.AuthenticationCacheInterceptor
 import com.burgstaller.okhttp.CachingAuthenticatorDecorator
 import com.burgstaller.okhttp.DispatchingAuthenticator
@@ -18,6 +19,7 @@ import okio.Buffer
 import java.io.File
 import java.io.FileNotFoundException
 import java.io.FileOutputStream
+import java.io.IOException
 import java.io.InputStream
 import java.security.KeyStore
 import java.security.cert.CertificateFactory
@@ -214,6 +216,12 @@ class WebdavRepo(
 
     override fun renameBook(from: Uri, name: String?): VersionedRook {
         val destUrl = UriUtils.getUriForNewName(from, name).toUrl()
+
+        /* Abort if destination file already exists. */
+        if (sardine.exists(destUrl)) {
+            throw IOException("File at $destUrl already exists")
+        }
+
         sardine.move(from.toUrl(), destUrl)
         return sardine.list(destUrl).first().toVersionedRook()
     }
