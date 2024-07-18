@@ -8,7 +8,6 @@ import androidx.documentfile.provider.DocumentFile
 import androidx.test.core.app.ActivityScenario
 import androidx.test.espresso.Espresso
 import androidx.test.espresso.action.ViewActions
-import androidx.test.espresso.assertion.ViewAssertions
 import androidx.test.espresso.matcher.ViewMatchers
 import androidx.test.platform.app.InstrumentationRegistry
 import androidx.test.uiautomator.UiDevice
@@ -30,14 +29,14 @@ import com.orgzly.android.repos.RepoType.DROPBOX
 import com.orgzly.android.repos.RepoType.GIT
 import com.orgzly.android.repos.RepoType.MOCK
 import com.orgzly.android.repos.RepoType.WEBDAV
-import com.orgzly.android.ui.main.MainActivity
 import com.orgzly.android.ui.repos.ReposActivity
 import com.orgzly.android.util.MiscUtils
 import com.thegrizzlylabs.sardineandroid.impl.SardineException
 import org.eclipse.jgit.api.Git
-import org.hamcrest.CoreMatchers
 import org.hamcrest.core.AllOf
 import org.junit.Assert
+import org.junit.Assert.assertEquals
+import org.junit.Assert.assertTrue
 import org.junit.Assume
 import org.junit.Rule
 import org.junit.Test
@@ -70,10 +69,10 @@ class SyncRepoTest(private val param: Parameter) : OrgzlyTest() {
         @Parameterized.Parameters(name = "{0}")
         fun data(): Collection<Parameter> {
             return listOf(
+                Parameter(repoType = WEBDAV),
                 Parameter(repoType = GIT),
                 Parameter(repoType = DROPBOX),
                 Parameter(repoType = DOCUMENT),
-                Parameter(repoType = WEBDAV),
             )
         }
     }
@@ -108,10 +107,10 @@ class SyncRepoTest(private val param: Parameter) : OrgzlyTest() {
             tmpFile.delete()
         }
         val books = syncRepo.books
-        Assert.assertEquals(1, books.size.toLong())
-        Assert.assertEquals("booky", BookName.getInstance(context, books[0]).name)
-        Assert.assertEquals("booky.org", BookName.getInstance(context, books[0]).fileName)
-        Assert.assertEquals(repo.url, books[0].repoUri.toString())
+        assertEquals(1, books.size.toLong())
+        assertEquals("booky", BookName.getInstance(context, books[0]).name)
+        assertEquals("booky.org", BookName.getInstance(context, books[0]).fileName)
+        assertEquals(repo.url, books[0].repoUri.toString())
     }
 
     @Test
@@ -126,11 +125,11 @@ class SyncRepoTest(private val param: Parameter) : OrgzlyTest() {
             tmpFile.delete()
         }
         val books = syncRepo.books
-        Assert.assertEquals(1, books.size.toLong())
-        Assert.assertEquals("file three", BookName.getInstance(context, books[0]).name)
-        Assert.assertEquals("file three.org", BookName.getInstance(context, books[0]).fileName)
-        Assert.assertEquals(repo.id, books[0].repoId)
-        Assert.assertEquals(repo.url, books[0].repoUri.toString())
+        assertEquals(1, books.size.toLong())
+        assertEquals("file three", BookName.getInstance(context, books[0]).name)
+        assertEquals("file three.org", BookName.getInstance(context, books[0]).fileName)
+        assertEquals(repo.id, books[0].repoId)
+        assertEquals(repo.url, books[0].repoUri.toString())
     }
 
     @Test
@@ -139,10 +138,10 @@ class SyncRepoTest(private val param: Parameter) : OrgzlyTest() {
         testUtils.setupBook("book 1", "content")
         testUtils.sync()
         val bookView = dataRepository.getBooks()[0]
-        Assert.assertEquals(repo.url, bookView.linkRepo?.url)
-        Assert.assertEquals(1, syncRepo.books.size)
-        Assert.assertEquals(bookView.syncedTo.toString(), syncRepo.books[0].toString())
-        Assert.assertEquals(
+        assertEquals(repo.url, bookView.linkRepo?.url)
+        assertEquals(1, syncRepo.books.size)
+        assertEquals(bookView.syncedTo.toString(), syncRepo.books[0].toString())
+        assertEquals(
             context.getString(R.string.sync_status_saved, repo.url),
             bookView.book.lastAction!!.message
         )
@@ -154,8 +153,58 @@ class SyncRepoTest(private val param: Parameter) : OrgzlyTest() {
             DOCUMENT -> "content://com.android.externalstorage.documents/tree/primary%3A$repoDirectoryName/document/primary%3A$repoDirectoryName%2Fbook%201.org"
             WEBDAV -> "https://use10.thegood.cloud/remote.php/dav/files/orgzlyrevived%40gmail.com/$repoDirectoryName/book 1.org"
         }
-        Assert.assertEquals(expectedUriString, bookView.syncedTo!!.uri.toString())
+        assertEquals(expectedUriString, bookView.syncedTo!!.uri.toString())
     }
+
+    @Test
+    fun testRenameBook() {
+        setupSyncRepo(param.repoType, null)
+        testUtils.setupBook("oldname", "")
+        testUtils.sync()
+        var bookView = dataRepository.getBookView("oldname")
+        assertEquals(repo.url, bookView!!.linkRepo!!.url)
+        assertEquals(repo.url, bookView.syncedTo!!.repoUri.toString())
+        assertTrue(bookView.syncedTo!!.uri.toString().contains("oldname.org"))
+
+        dataRepository.renameBook(bookView, "newname")
+
+        assertEquals(1, syncRepo.books.size.toLong())
+        assertEquals(
+            "newname.org",
+            BookName.getInstance(context, syncRepo.books[0]).fileName
+        )
+        bookView = dataRepository.getBookView("newname")
+        assertEquals(repo.url, bookView!!.linkRepo!!.url)
+        assertEquals(repo.url, bookView.syncedTo!!.repoUri.toString())
+        assertTrue(bookView.syncedTo!!.uri.toString().contains("newname.org"))
+    }
+
+    @Test
+    fun testRenameBookToExistingFileName() {
+        setupSyncRepo(param.repoType, null)
+        testUtils.setupBook("a", "")
+        testUtils.sync()
+
+        // Create "unsynced" file in repo
+        val tmpFile = File.createTempFile("orgzly-test", null)
+        MiscUtils.writeStringToFile("bla bla", tmpFile)
+        syncRepo.storeBook(tmpFile, "b.org")
+        tmpFile.delete()
+
+        dataRepository.renameBook(dataRepository.getBookView("a")!!, "b")
+        assertTrue(dataRepository.getBook("a")!!.lastAction!!.message.contains("Renaming failed:"))
+    }
+
+    @Test
+    fun testRenameBookToExistingBookName() {
+        setupSyncRepo(param.repoType, null)
+        testUtils.setupBook("a", "")
+        testUtils.setupBook("b", "")
+        assertEquals(2, dataRepository.getBooks().size)
+        dataRepository.renameBook(dataRepository.getBookView("a")!!, "b")
+        assertTrue(dataRepository.getBook("a")!!.lastAction!!.message.contains("Renaming failed: Notebook b already exists"))
+    }
+
 
     @Test
     fun testIgnoreRulePreventsLoadingBook() {
@@ -173,9 +222,9 @@ class SyncRepoTest(private val param: Parameter) : OrgzlyTest() {
             tmpFile.delete()
         }
         testUtils.sync()
-        Assert.assertEquals(1, syncRepo.books.size)
-        Assert.assertEquals(1, dataRepository.getBooks().size)
-        Assert.assertEquals("notignored", dataRepository.getBooks()[0].book.name)
+        assertEquals(1, syncRepo.books.size)
+        assertEquals(1, dataRepository.getBooks().size)
+        assertEquals("notignored", dataRepository.getBooks()[0].book.name)
     }
 
     @Test
@@ -194,9 +243,9 @@ class SyncRepoTest(private val param: Parameter) : OrgzlyTest() {
             tmpFile.delete()
         }
         testUtils.sync()
-        Assert.assertEquals(1, syncRepo.books.size)
-        Assert.assertEquals(1, dataRepository.getBooks().size)
-        Assert.assertEquals("notignored", dataRepository.getBooks()[0].book.name)
+        assertEquals(1, syncRepo.books.size)
+        assertEquals(1, dataRepository.getBooks().size)
+        assertEquals("notignored", dataRepository.getBooks()[0].book.name)
     }
 
     @Test
@@ -251,7 +300,9 @@ class SyncRepoTest(private val param: Parameter) : OrgzlyTest() {
 
     private fun tearDownDropboxRepo() {
         val dropboxRepo = syncRepo as DropboxRepo
-        dropboxRepo.deleteDirectory(syncRepo.uri)
+        try {
+            dropboxRepo.deleteDirectory(syncRepo.uri)
+        } catch (_: IOException) {}
     }
 
     private fun setupContentRepo() {
@@ -279,7 +330,7 @@ class SyncRepoTest(private val param: Parameter) : OrgzlyTest() {
         val encodedRepoDirName = Uri.encode(repoDirectoryName)
         documentTreeSegment = "/document/primary%3A$encodedRepoDirName%2F"
         treeDocumentFileUrl = "content://com.android.externalstorage.documents/tree/primary%3A$encodedRepoDirName"
-        Assert.assertEquals(treeDocumentFileUrl, repo.url)
+        assertEquals(treeDocumentFileUrl, repo.url)
     }
 
     private fun tearDownContentRepo() {
