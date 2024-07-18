@@ -2,6 +2,7 @@ package com.orgzly.android.espresso
 
 import android.net.Uri
 import android.os.Build
+import android.os.SystemClock
 import androidx.documentfile.provider.DocumentFile
 import androidx.test.core.app.ActivityScenario
 import androidx.test.espresso.Espresso.onView
@@ -87,6 +88,15 @@ class ContentRepoTest : OrgzlyTest() {
         testUtils.sync()
         assertEquals(1, dataRepository.getBooks().size.toLong())
         assertEquals("content://com.android.externalstorage.documents/tree/primary%3Aspace%20separated", syncRepo.uri.toString())
+    }
+
+    @Test
+    fun testCreateBookInSubfolder() {
+        setupContentRepo()
+        testUtils.setupBook("a folder/a book", "")
+        testUtils.sync()
+        assertEquals(1, syncRepo.books.size)
+        assertTrue(dataRepository.getBooks()[0].syncedTo!!.uri.toString().contains("a%20folder%2Fa%20book.org"))
     }
 
     @Test
@@ -263,21 +273,7 @@ class ContentRepoTest : OrgzlyTest() {
      */
     @Throws(UiObjectNotFoundException::class)
     private fun setupContentRepo() {
-        ActivityScenario.launch(ReposActivity::class.java).use {
-            onView(withId(R.id.activity_repos_directory)).perform(click())
-            onView(withId(R.id.activity_repo_directory_browse_button))
-                .perform(click())
-            // In Android file browser (Espresso cannot be used):
-            val mDevice = UiDevice.getInstance(InstrumentationRegistry.getInstrumentation())
-            mDevice.findObject(UiSelector().text("CREATE NEW FOLDER")).click()
-            mDevice.findObject(UiSelector().text("Folder name")).text = repoDirName
-            mDevice.findObject(UiSelector().text("OK")).click()
-            mDevice.findObject(UiSelector().text("USE THIS FOLDER")).click()
-            mDevice.findObject(UiSelector().text("ALLOW")).click()
-            // Back in Orgzly:
-            onView(isRoot()).perform(waitId(R.id.fab, 5000))
-            onView(allOf(withId(R.id.fab), isDisplayed())).perform(click())
-        }
+        addContentRepoInUi(repoDirName)
         repo = dataRepository.getRepos()[0]
         repoUri = Uri.parse(repo.url)
         syncRepo = testUtils.repoInstance(RepoType.DOCUMENT, repo.url, repo.id) as ContentRepo
@@ -285,5 +281,28 @@ class ContentRepoTest : OrgzlyTest() {
         documentTreeSegment = "/document/primary%3A$encodedRepoDirName%2F"
         treeDocumentFileUrl = "content://com.android.externalstorage.documents/tree/primary%3A$encodedRepoDirName"
         assertEquals(treeDocumentFileUrl, repo.url)
+    }
+
+    companion object {
+        fun addContentRepoInUi(repoDirName: String) {
+            ActivityScenario.launch(ReposActivity::class.java).use {
+                onView(withId(R.id.activity_repos_directory)).perform(click())
+                onView(withId(R.id.activity_repo_directory_browse_button))
+                    .perform(click())
+                SystemClock.sleep(200)
+                // In Android file browser (Espresso cannot be used):
+                val mDevice = UiDevice.getInstance(InstrumentationRegistry.getInstrumentation())
+                mDevice.findObject(UiSelector().text("CREATE NEW FOLDER")).click()
+                SystemClock.sleep(100)
+                mDevice.findObject(UiSelector().text("Folder name")).text = repoDirName
+                mDevice.findObject(UiSelector().text("OK")).click()
+                mDevice.findObject(UiSelector().text("USE THIS FOLDER")).click()
+                mDevice.findObject(UiSelector().text("ALLOW")).click()
+                // Back in Orgzly:
+                SystemClock.sleep(200)
+                onView(isRoot()).perform(waitId(R.id.fab, 5000))
+                onView(allOf(withId(R.id.fab), isDisplayed())).perform(click())
+            }
+        }
     }
 }

@@ -2,23 +2,15 @@ package com.orgzly.android.repos
 
 import android.net.Uri
 import android.os.Build
-import android.os.SystemClock
 import androidx.core.net.toUri
 import androidx.documentfile.provider.DocumentFile
-import androidx.test.core.app.ActivityScenario
-import androidx.test.espresso.Espresso
-import androidx.test.espresso.action.ViewActions
-import androidx.test.espresso.matcher.ViewMatchers
-import androidx.test.platform.app.InstrumentationRegistry
-import androidx.test.uiautomator.UiDevice
-import androidx.test.uiautomator.UiSelector
 import com.orgzly.BuildConfig
 import com.orgzly.R
 import com.orgzly.android.BookName
 import com.orgzly.android.OrgzlyTest
 import com.orgzly.android.db.entity.BookView
 import com.orgzly.android.db.entity.Repo
-import com.orgzly.android.espresso.util.EspressoUtils
+import com.orgzly.android.espresso.ContentRepoTest
 import com.orgzly.android.git.GitFileSynchronizer
 import com.orgzly.android.git.GitPreferencesFromRepoPrefs
 import com.orgzly.android.prefs.AppPreferences
@@ -29,11 +21,9 @@ import com.orgzly.android.repos.RepoType.DROPBOX
 import com.orgzly.android.repos.RepoType.GIT
 import com.orgzly.android.repos.RepoType.MOCK
 import com.orgzly.android.repos.RepoType.WEBDAV
-import com.orgzly.android.ui.repos.ReposActivity
 import com.orgzly.android.util.MiscUtils
 import com.thegrizzlylabs.sardineandroid.impl.SardineException
 import org.eclipse.jgit.api.Git
-import org.hamcrest.core.AllOf
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
 import org.junit.Assume
@@ -68,8 +58,8 @@ class SyncRepoTest(private val param: Parameter) : OrgzlyTest() {
         @Parameterized.Parameters(name = "{0}")
         fun data(): Collection<Parameter> {
             return listOf(
-                Parameter(repoType = WEBDAV),
                 Parameter(repoType = DOCUMENT),
+                Parameter(repoType = WEBDAV),
                 Parameter(repoType = GIT),
                 Parameter(repoType = DROPBOX),
             )
@@ -315,26 +305,7 @@ class SyncRepoTest(private val param: Parameter) : OrgzlyTest() {
         treeDocumentFileUrl = "content://com.android.externalstorage.documents/tree/primary%3A$encodedRepoDirName"
         val repoDirDocumentFile = DocumentFile.fromTreeUri(context, treeDocumentFileUrl.toUri())
         if (repoDirDocumentFile?.exists() == false) {
-            ActivityScenario.launch(ReposActivity::class.java).use {
-                Espresso.onView(ViewMatchers.withId(R.id.activity_repos_directory))
-                    .perform(ViewActions.click())
-                Espresso.onView(ViewMatchers.withId(R.id.activity_repo_directory_browse_button))
-                    .perform(ViewActions.click())
-                SystemClock.sleep(300)
-                // In Android file browser (Espresso cannot be used):
-                val mDevice = UiDevice.getInstance(InstrumentationRegistry.getInstrumentation())
-                mDevice.findObject(UiSelector().text("CREATE NEW FOLDER")).click()
-                SystemClock.sleep(100)
-                mDevice.findObject(UiSelector().text("Folder name")).text = repoDirectoryName
-                mDevice.findObject(UiSelector().text("OK")).click()
-                mDevice.findObject(UiSelector().text("USE THIS FOLDER")).click()
-                mDevice.findObject(UiSelector().text("ALLOW")).click()
-                // Back in Orgzly:
-                SystemClock.sleep(200)
-                Espresso.onView(ViewMatchers.isRoot()).perform(EspressoUtils.waitId(R.id.fab, 5000))
-                Espresso.onView(AllOf.allOf(ViewMatchers.withId(R.id.fab), ViewMatchers.isDisplayed()))
-                    .perform(ViewActions.click())
-            }
+            ContentRepoTest.addContentRepoInUi(repoDirectoryName)
             repo = dataRepository.getRepos()[0]
         } else {
             repo = testUtils.setupRepo(DOCUMENT, treeDocumentFileUrl)
