@@ -66,9 +66,9 @@ class SyncRepoTest(private val param: Parameter) : OrgzlyTest() {
             return listOf(
                 Parameter(repoType = DOCUMENT),
                 Parameter(repoType = WEBDAV),
+                Parameter(repoType = DOCUMENT),
                 Parameter(repoType = GIT),
                 Parameter(repoType = DROPBOX),
-                Parameter(repoType = DOCUMENT),
             )
         }
     }
@@ -176,7 +176,7 @@ class SyncRepoTest(private val param: Parameter) : OrgzlyTest() {
     }
 
     @Test
-    fun testRenameBookToExistingFileName() {
+    fun testRenameBookToExistingRepoFileName() {
         setupSyncRepo(param.repoType, null)
         testUtils.setupBook("a", "")
         testUtils.sync()
@@ -186,8 +186,13 @@ class SyncRepoTest(private val param: Parameter) : OrgzlyTest() {
         MiscUtils.writeStringToFile("bla bla", tmpFile)
         syncRepo.storeBook(tmpFile, "b.org")
         tmpFile.delete()
+        assertEquals(2, syncRepo.books.size) // The remote repo should now contain 2 books
 
         dataRepository.renameBook(dataRepository.getBookView("a")!!, "b")
+
+        // The remote repo should still contain 2 books - otherwise the existing b.org has been
+        // overwritten.
+        assertEquals(2, syncRepo.books.size)
         assertTrue(dataRepository.getBook("a")!!.lastAction!!.message.contains("Renaming failed:"))
     }
 
@@ -436,28 +441,6 @@ class SyncRepoTest(private val param: Parameter) : OrgzlyTest() {
     }
 
     private fun setupContentRepo() {
-        ActivityScenario.launch(ReposActivity::class.java).use {
-            Espresso.onView(ViewMatchers.withId(R.id.activity_repos_directory))
-                .perform(ViewActions.click())
-            Espresso.onView(ViewMatchers.withId(R.id.activity_repo_directory_browse_button))
-                .perform(ViewActions.click())
-            SystemClock.sleep(200)
-            // In Android file browser (Espresso cannot be used):
-            val mDevice = UiDevice.getInstance(InstrumentationRegistry.getInstrumentation())
-            mDevice.findObject(UiSelector().text("CREATE NEW FOLDER")).click()
-            SystemClock.sleep(100)
-            mDevice.findObject(UiSelector().text("Folder name")).text = repoDirectoryName
-            mDevice.findObject(UiSelector().text("OK")).click()
-            mDevice.findObject(UiSelector().text("USE THIS FOLDER")).click()
-            mDevice.findObject(UiSelector().text("ALLOW")).click()
-            // Back in Orgzly:
-            SystemClock.sleep(200)
-            Espresso.onView(ViewMatchers.isRoot()).perform(EspressoUtils.waitId(R.id.fab, 5000))
-            Espresso.onView(AllOf.allOf(ViewMatchers.withId(R.id.fab), ViewMatchers.isDisplayed()))
-                .perform(ViewActions.click())
-        }
-        repo = dataRepository.getRepos()[0]
-        syncRepo = testUtils.repoInstance(DOCUMENT, repo.url, repo.id)
         val encodedRepoDirName = Uri.encode(repoDirectoryName)
         documentTreeSegment = "/document/primary%3A$encodedRepoDirName%2F"
         treeDocumentFileUrl = "content://com.android.externalstorage.documents/tree/primary%3A$encodedRepoDirName"
@@ -473,7 +456,10 @@ class SyncRepoTest(private val param: Parameter) : OrgzlyTest() {
     }
 
     private fun tearDownContentRepo() {
-        DocumentFile.fromTreeUri(context, treeDocumentFileUrl.toUri())!!.delete()
+        val repoDirectory = DocumentFile.fromTreeUri(context, treeDocumentFileUrl.toUri())
+        for (file in repoDirectory!!.listFiles()) {
+            file.delete()
+        }
     }
 
     private fun setupWebdavRepo() {
