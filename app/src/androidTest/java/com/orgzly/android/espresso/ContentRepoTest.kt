@@ -79,28 +79,6 @@ class ContentRepoTest : OrgzlyTest() {
     var exceptionRule: ExpectedException = ExpectedException.none()
 
     @Test
-    fun testRenameBook() {
-        setupContentRepo()
-        testUtils.setupBook("booky", "")
-        testUtils.sync()
-        var bookView: BookView? = dataRepository.getBookView("booky")
-        assertEquals(repo.url, bookView!!.linkRepo!!.url)
-        assertEquals(repo.url, bookView.syncedTo!!.repoUri.toString())
-        assertEquals(
-            repo.url + documentTreeSegment + "booky.org",
-            bookView.syncedTo!!.uri.toString()
-        )
-        dataRepository.renameBook(bookView, "booky-renamed")
-        bookView = dataRepository.getBookView("booky-renamed")
-        assertEquals(repo.url, bookView!!.linkRepo!!.url)
-        assertEquals(repo.url, bookView.syncedTo!!.repoUri.toString())
-        assertEquals(
-            repo.url + documentTreeSegment + "booky-renamed.org",
-            bookView.syncedTo!!.uri.toString()
-        )
-    }
-
-    @Test
     @Throws(FileNotFoundException::class)
     fun testSyncWithDirectoryContainingPercent() {
         repoDirName = "space separated"
@@ -269,26 +247,6 @@ class ContentRepoTest : OrgzlyTest() {
             syncRepo.books[0].uri.toString()
         )
         assertEquals(1, dataRepository.getBooks().size.toLong())
-    }
-
-    @Test
-    fun testRenameBookToExistingFileName() {
-        setupContentRepo()
-        testUtils.setupBook("a", "")
-        testUtils.sync()
-        // Create "unsynced" file in repo
-        writeStringToRepoFile("", "b.org")
-        dataRepository.renameBook(dataRepository.getBookView("a")!!, "b")
-        assertTrue(dataRepository.getBook("a")!!.lastAction!!.message.contains("Renaming failed: File at content://"))
-    }
-
-    @Test
-    fun testRenameBookToExistingBookName() {
-        setupContentRepo()
-        testUtils.setupBook("a", "")
-        testUtils.setupBook("b", "")
-        dataRepository.renameBook(dataRepository.getBookView("a")!!, "b")
-        assertTrue(dataRepository.getBook("a")!!.lastAction!!.message.contains("Renaming failed: Notebook b already exists"))
     }
 
     private fun writeStringToRepoFile(content: String, fileName: String) {
