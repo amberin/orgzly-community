@@ -34,7 +34,6 @@ import com.orgzly.android.util.MiscUtils
 import com.thegrizzlylabs.sardineandroid.impl.SardineException
 import org.eclipse.jgit.api.Git
 import org.hamcrest.core.AllOf
-import org.junit.Assert
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
 import org.junit.Assume
@@ -259,7 +258,7 @@ class SyncRepoTest(private val param: Parameter) : OrgzlyTest() {
         var bookView: BookView? = dataRepository.getBookView("good name")
         dataRepository.renameBook(bookView!!, "bad name")
         bookView = dataRepository.getBooks()[0]
-        Assert.assertTrue(
+        assertTrue(
             bookView.book.lastAction.toString().contains("matches a rule in .orgzlyignore")
         )
     }
@@ -311,7 +310,7 @@ class SyncRepoTest(private val param: Parameter) : OrgzlyTest() {
                 .perform(ViewActions.click())
             Espresso.onView(ViewMatchers.withId(R.id.activity_repo_directory_browse_button))
                 .perform(ViewActions.click())
-            SystemClock.sleep(100)
+            SystemClock.sleep(200)
             // In Android file browser (Espresso cannot be used):
             val mDevice = UiDevice.getInstance(InstrumentationRegistry.getInstrumentation())
             mDevice.findObject(UiSelector().text("CREATE NEW FOLDER")).click()
@@ -321,6 +320,7 @@ class SyncRepoTest(private val param: Parameter) : OrgzlyTest() {
             mDevice.findObject(UiSelector().text("USE THIS FOLDER")).click()
             mDevice.findObject(UiSelector().text("ALLOW")).click()
             // Back in Orgzly:
+            SystemClock.sleep(200)
             Espresso.onView(ViewMatchers.isRoot()).perform(EspressoUtils.waitId(R.id.fab, 5000))
             Espresso.onView(AllOf.allOf(ViewMatchers.withId(R.id.fab), ViewMatchers.isDisplayed()))
                 .perform(ViewActions.click())
