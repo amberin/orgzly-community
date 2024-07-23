@@ -203,12 +203,23 @@ class ContentRepoTest : OrgzlyTest() {
                 SystemClock.sleep(200)
                 // In Android file browser (Espresso cannot be used):
                 val mDevice = UiDevice.getInstance(InstrumentationRegistry.getInstrumentation())
-                mDevice.findObject(UiSelector().text("CREATE NEW FOLDER")).click()
-                SystemClock.sleep(100)
-                mDevice.findObject(UiSelector().text("Folder name")).text = repoDirName
-                mDevice.findObject(UiSelector().text("OK")).click()
-                mDevice.findObject(UiSelector().text("USE THIS FOLDER")).click()
-                mDevice.findObject(UiSelector().text("ALLOW")).click()
+                if (Build.VERSION.SDK_INT < 33) {
+                    // Older system file picker UI
+                    mDevice.findObject(UiSelector().description("More options")).click()
+                    mDevice.findObject(UiSelector().text("New folder")).click()
+                    SystemClock.sleep(100)
+                    mDevice.findObject(UiSelector().text("Folder name")).text = repoDirName
+                    mDevice.findObject(UiSelector().text("OK")).click()
+                    mDevice.findObject(UiSelector().textContains("ALLOW ACCESS TO")).click()
+                    mDevice.findObject(UiSelector().text("ALLOW")).click()
+                } else {
+                    mDevice.findObject(UiSelector().text("CREATE NEW FOLDER")).click()
+                    SystemClock.sleep(100)
+                    mDevice.findObject(UiSelector().text("Folder name")).text = repoDirName
+                    mDevice.findObject(UiSelector().text("OK")).click()
+                    mDevice.findObject(UiSelector().text("USE THIS FOLDER")).click()
+                    mDevice.findObject(UiSelector().text("ALLOW")).click()
+                }
                 // Back in Orgzly:
                 SystemClock.sleep(200)
                 onView(isRoot()).perform(waitId(R.id.fab, 5000))

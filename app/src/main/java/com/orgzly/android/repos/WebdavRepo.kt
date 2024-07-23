@@ -2,7 +2,6 @@ package com.orgzly.android.repos
 
 import android.net.Uri
 import android.os.Build
-import androidx.documentfile.provider.DocumentFile
 import com.burgstaller.okhttp.AuthenticationCacheInterceptor
 import com.burgstaller.okhttp.CachingAuthenticatorDecorator
 import com.burgstaller.okhttp.DispatchingAuthenticator
@@ -29,6 +28,7 @@ import java.util.concurrent.TimeUnit
 import javax.net.ssl.SSLContext
 import javax.net.ssl.TrustManagerFactory
 import javax.net.ssl.X509TrustManager
+import kotlin.collections.ArrayList
 
 
 class WebdavRepo(
@@ -168,16 +168,16 @@ class WebdavRepo(
         val ignores = RepoIgnoreNode(this)
 
         return sardine
-                .list(url)
+                .list(url, -1)
                 .mapNotNull {
                     if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-                        if (it.isDirectory || !BookName.isSupportedFormatFileName(it.name) || ignores.isPathIgnored(it.name, false)) {
+                        if (!BookName.isSupportedFormatFileName(it.name) || ignores.isPathIgnored(it.name, false)) {
                             null
                         } else {
                             it.toVersionedRook()
                         }
                     } else {
-                        if (it.isDirectory || !BookName.isSupportedFormatFileName(it.name)) {
+                        if (!BookName.isSupportedFormatFileName(it.name)) {
                             null
                         } else {
                             it.toVersionedRook()
@@ -206,8 +206,26 @@ class WebdavRepo(
         return sardine.get(fileUrl)
      }
 
+    private fun ensureDirectoryHierarchy(relativePath: String) {
+        val levels: ArrayList<String> = ArrayList(relativePath.split("/"))
+        var currentDir: String = uri.toString()
+        while (levels.size > 1) {
+            val nextDirName: String = levels.removeAt(0)
+            currentDir = "$currentDir/$nextDirName"
+            if (!sardine.exists(currentDir)) {
+                sardine.createDirectory(currentDir)
+            }
+        }
+    }
+
     override fun storeBook(file: File?, fileName: String?): VersionedRook {
-        val fileUrl = Uri.withAppendedPath(uri, fileName).toUrl()
+        val encodedFileName = Uri.encode(fileName, "/")
+        if (encodedFileName != null) {
+            if (encodedFileName.contains("/")) {
+                ensureDirectoryHierarchy(encodedFileName)
+            }
+        }
+        val fileUrl = uri.buildUpon().appendEncodedPath(encodedFileName).build().toUrl()
 
         sardine.put(fileUrl, file, null)
 
@@ -231,12 +249,13 @@ class WebdavRepo(
     }
 
     private fun DavResource.toVersionedRook(): VersionedRook {
+        val fullUrl = Uri.parse(uri.scheme + "://" + uri.authority + this.href.toString())
         return VersionedRook(
                 repoId,
                 RepoType.WEBDAV,
                 uri,
-                Uri.withAppendedPath(uri, this.name),
-                this.name + this.modified.time.toString(),
+                fullUrl,
+                this.modified.time.toString(),
                 this.modified.time
         )
     }
