@@ -59,8 +59,8 @@ class SyncRepoTest(private val param: Parameter) : OrgzlyTest() {
         fun data(): Collection<Parameter> {
             return listOf(
                 Parameter(repoType = DOCUMENT),
-                Parameter(repoType = WEBDAV),
                 Parameter(repoType = GIT),
+                Parameter(repoType = WEBDAV),
                 Parameter(repoType = DROPBOX),
             )
         }
@@ -86,7 +86,7 @@ class SyncRepoTest(private val param: Parameter) : OrgzlyTest() {
 
     @Test
     @Throws(IOException::class)
-    fun testStoringFile() {
+    fun testLoadBook() {
         setupSyncRepo(param.repoType, null)
         val tmpFile = dataRepository.getTempBookFile()
         try {
@@ -95,11 +95,54 @@ class SyncRepoTest(private val param: Parameter) : OrgzlyTest() {
         } finally {
             tmpFile.delete()
         }
-        val books = syncRepo.books
-        assertEquals(1, books.size.toLong())
-        assertEquals("booky", BookName.getInstance(context, books[0]).name)
-        assertEquals("booky.org", BookName.getInstance(context, books[0]).fileName)
-        assertEquals(repo.url, books[0].repoUri.toString())
+        val repoBooks = syncRepo.books
+        assertEquals(1, repoBooks.size.toLong())
+        assertEquals(repo.url, repoBooks[0].repoUri.toString())
+        testUtils.sync()
+        val books = dataRepository.getBooks()
+        assertEquals(1, books.size)
+        // Check that the resulting notebook gets the right name
+        assertEquals("booky", books[0].book.name)
+    }
+
+    @Test
+    @Throws(IOException::class)
+    fun testForceLoadBook() {
+        setupSyncRepo(param.repoType, null)
+        val bookView = testUtils.setupBook("booky", "content")
+        testUtils.sync()
+        var books = dataRepository.getBooks()
+        assertEquals(1, books.size)
+        assertEquals("booky", books[0].book.name)
+        dataRepository.forceLoadBook(bookView.book.id)
+        books = dataRepository.getBooks()
+        assertEquals(1, books.size)
+        // Check that the name has not changed
+        assertEquals("booky", books[0].book.name)
+    }
+
+    @Test
+    fun testLoadBookWithSpaceInName() {
+        setupSyncRepo(param.repoType, null)
+        val tmpFile = dataRepository.getTempBookFile()
+        try {
+            MiscUtils.writeStringToFile("...", tmpFile)
+            syncRepo.storeBook(tmpFile, "book one.org")
+        } finally {
+            tmpFile.delete()
+        }
+        val repoBooks = syncRepo.books
+        assertEquals(1, repoBooks.size.toLong())
+        assertEquals(repo.url, repoBooks[0].repoUri.toString())
+        // Check that the notebook gets the right name based on the repository file's name
+        assertEquals("book one", BookName.getInstance(context, repoBooks[0]).name)
+        // Check that the remote filename is parsed and stored correctly
+        assertEquals("book one.org", BookName.getInstance(context, repoBooks[0]).fileName)
+        // Check that the resulting local book gets the right name
+        testUtils.sync()
+        val books = dataRepository.getBooks()
+        assertEquals(1, books.size)
+        assertEquals("book one", books[0].book.name)
     }
 
     @Test
@@ -124,7 +167,7 @@ class SyncRepoTest(private val param: Parameter) : OrgzlyTest() {
     @Test
     fun testSyncNewBookWithoutLinkAndOneRepo() {
         setupSyncRepo(param.repoType, null)
-        testUtils.setupBook("book 1", "content")
+        testUtils.setupBook("Book 1", "content")
         testUtils.sync()
         val bookView = dataRepository.getBooks()[0]
         assertEquals(repo.url, bookView.linkRepo?.url)
@@ -135,12 +178,12 @@ class SyncRepoTest(private val param: Parameter) : OrgzlyTest() {
             bookView.book.lastAction!!.message
         )
         val expectedUriString = when (param.repoType) {
-            GIT -> "/book 1.org"
+            GIT -> "/Book 1.org"
             MOCK -> TODO()
-            DROPBOX -> "dropbox:/orgzly-android-tests/book%201.org"
+            DROPBOX -> "dropbox:/orgzly-android-tests/Book%201.org"
             DIRECTORY -> TODO()
-            DOCUMENT -> "content://com.android.externalstorage.documents/tree/primary%3A$repoDirectoryName/document/primary%3A$repoDirectoryName%2Fbook%201.org"
-            WEBDAV -> "https://use10.thegood.cloud/remote.php/dav/files/orgzlyrevived%40gmail.com/$repoDirectoryName/book 1.org"
+            DOCUMENT -> "content://com.android.externalstorage.documents/tree/primary%3A$repoDirectoryName/document/primary%3A$repoDirectoryName%2FBook%201.org"
+            WEBDAV -> "https://use10.thegood.cloud/remote.php/dav/files/orgzlyrevived@gmail.com/$repoDirectoryName/Book%201.org"
         }
         assertEquals(expectedUriString, bookView.syncedTo!!.uri.toString())
     }
@@ -166,6 +209,33 @@ class SyncRepoTest(private val param: Parameter) : OrgzlyTest() {
         assertEquals(repo.url, bookView!!.linkRepo!!.url)
         assertEquals(repo.url, bookView.syncedTo!!.repoUri.toString())
         assertTrue(bookView.syncedTo!!.uri.toString().contains("newname.org"))
+    }
+
+    @Test
+    fun testRenameBookToNameWithSpace() {
+        setupSyncRepo(param.repoType, null)
+        testUtils.setupBook("oldname", "")
+        testUtils.sync()
+        var bookView = dataRepository.getBookView("oldname")
+        assertEquals(repo.url, bookView!!.linkRepo!!.url)
+        assertEquals(repo.url, bookView.syncedTo!!.repoUri.toString())
+        assertTrue(bookView.syncedTo!!.uri.toString().contains("oldname.org"))
+
+        dataRepository.renameBook(bookView, "new name")
+
+        assertEquals(1, syncRepo.books.size.toLong())
+        assertEquals(
+            "new name.org",
+            BookName.getInstance(context, syncRepo.books[0]).fileName
+        )
+        bookView = dataRepository.getBookView("new name")
+        assertEquals(repo.url, bookView!!.linkRepo!!.url)
+        assertEquals(repo.url, bookView.syncedTo!!.repoUri.toString())
+        val expectedRookUriName = when (param.repoType) {
+            GIT -> "new name.org"
+            else -> { "new%20name.org" }
+        }
+        assertTrue(bookView.syncedTo!!.uri.toString().endsWith(expectedRookUriName))
     }
 
     @Test
@@ -267,6 +337,66 @@ class SyncRepoTest(private val param: Parameter) : OrgzlyTest() {
         exceptionRule.expect(IOException::class.java)
         exceptionRule.expectMessage("matches a rule in .orgzlyignore")
         testUtils.syncOrThrow()
+    }
+
+    @Test
+    // @Ignore("Not yet implemented for all repo types")
+    fun testStoreBookInSubfolder() {
+        setupSyncRepo(param.repoType, null)
+        testUtils.setupBook("a folder/a book", "")
+        testUtils.sync()
+        assertEquals(1, syncRepo.books.size)
+        val expectedRookUri = when (param.repoType) {
+            WEBDAV -> "https://use10.thegood.cloud/remote.php/dav/files/orgzlyrevived@gmail.com/orgzly-android-tests/a%20folder/a%20book.org"
+            DOCUMENT -> "content://com.android.externalstorage.documents/tree/primary%3Aorgzly-android-tests/document/primary%3Aorgzly-android-tests%2Fa%20folder%2Fa%20book.org"
+            MOCK -> TODO()
+            DROPBOX -> "dropbox:/orgzly-android-tests/a%20folder/a%20book.org"
+            DIRECTORY -> TODO()
+            GIT -> "/a folder/a book.org"
+        }
+        assertEquals(expectedRookUri, dataRepository.getBooks()[0].syncedTo!!.uri.toString())
+        assertEquals("a folder/a book", dataRepository.getBooks()[0].book.name)
+    }
+
+    @Test
+    @Throws(IOException::class)
+    fun testLoadBookFromSubfolder() {
+        setupSyncRepo(param.repoType, null)
+        val tmpFile = dataRepository.getTempBookFile()
+        try {
+            MiscUtils.writeStringToFile("...", tmpFile)
+            syncRepo.storeBook(tmpFile, "a folder/a book.org")
+        } finally {
+            tmpFile.delete()
+        }
+        val repoBooks = syncRepo.books
+        assertEquals(1, repoBooks.size.toLong())
+        assertEquals(repo.url, repoBooks[0].repoUri.toString())
+        testUtils.sync()
+        val books = dataRepository.getBooks()
+        assertEquals(1, books.size)
+        // Check that the resulting notebook gets the right name
+        assertEquals("a folder/a book", books[0].book.name)
+    }
+
+    *//**
+     * Ensures that file names and book names are not parsed/created differently during
+     * force-loading.
+     *//*
+    @Test
+    @Throws(IOException::class)
+    fun testForceLoadBookInSubfolder() {
+        setupSyncRepo(param.repoType, null)
+        val bookView = testUtils.setupBook("a folder/a book", "content")
+        testUtils.sync()
+        var books = dataRepository.getBooks()
+        assertEquals(1, books.size)
+        assertEquals("a folder/a book", books[0].book.name)
+        dataRepository.forceLoadBook(bookView.book.id)
+        books = dataRepository.getBooks()
+        assertEquals(1, books.size)
+        // Check that the name has not changed
+        assertEquals("a folder/a book", books[0].book.name)
     }
 
     private fun setupSyncRepo(repoType: RepoType, ignoreRules: String?) {
