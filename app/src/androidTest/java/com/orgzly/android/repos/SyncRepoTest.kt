@@ -66,8 +66,8 @@ class SyncRepoTest(private val param: Parameter) : OrgzlyTest() {
             return listOf(
                 Parameter(repoType = DOCUMENT),
                 Parameter(repoType = GIT),
-                Parameter(repoType = WEBDAV),
                 Parameter(repoType = DROPBOX),
+                Parameter(repoType = WEBDAV),
             )
         }
     }
@@ -188,7 +188,7 @@ class SyncRepoTest(private val param: Parameter) : OrgzlyTest() {
             MOCK -> TODO()
             DROPBOX -> "dropbox:/orgzly-android-tests/Book%201.org"
             DIRECTORY -> TODO()
-            DOCUMENT -> "content://com.android.externalstorage.documents/tree/primary%3A$repoDirectoryName/document/primary%3A$repoDirectoryName%2FBook%201.org"
+            DOCUMENT -> "$treeDocumentFileUrl/document/primary%3A$repoDirectoryName%2FBook%201.org"
             WEBDAV -> "https://use10.thegood.cloud/remote.php/dav/files/orgzlyrevived@gmail.com/$repoDirectoryName/Book%201.org"
         }
         assertEquals(expectedUriString, bookView.syncedTo!!.uri.toString())
@@ -354,7 +354,7 @@ class SyncRepoTest(private val param: Parameter) : OrgzlyTest() {
         assertEquals(1, syncRepo.books.size)
         val expectedRookUri = when (param.repoType) {
             WEBDAV -> "https://use10.thegood.cloud/remote.php/dav/files/orgzlyrevived@gmail.com/orgzly-android-tests/a%20folder/a%20book.org"
-            DOCUMENT -> "content://com.android.externalstorage.documents/tree/primary%3Aorgzly-android-tests/document/primary%3Aorgzly-android-tests%2Fa%20folder%2Fa%20book.org"
+            DOCUMENT -> "$treeDocumentFileUrl/document/primary%3Aorgzly-android-tests%2Fa%20folder%2Fa%20book.org"
             MOCK -> TODO()
             DROPBOX -> "dropbox:/orgzly-android-tests/a%20folder/a%20book.org"
             DIRECTORY -> TODO()
@@ -512,7 +512,11 @@ class SyncRepoTest(private val param: Parameter) : OrgzlyTest() {
     private fun setupContentRepo() {
         val encodedRepoDirName = Uri.encode(repoDirectoryName)
         documentTreeSegment = "/document/primary%3A$encodedRepoDirName%2F"
-        treeDocumentFileUrl = "content://com.android.externalstorage.documents/tree/primary%3A$encodedRepoDirName"
+        treeDocumentFileUrl = if (Build.VERSION.SDK_INT < 33) {
+            "content://com.android.providers.downloads.documents/tree/raw%3A%2Fstorage%2Femulated%2F0%2FDownload%2F$encodedRepoDirName"
+        } else {
+            "content://com.android.externalstorage.documents/tree/primary%3A$encodedRepoDirName"
+        }
         val repoDirDocumentFile = DocumentFile.fromTreeUri(context, treeDocumentFileUrl.toUri())
         if (repoDirDocumentFile?.exists() == false) {
             ContentRepoTest.addContentRepoInUi(repoDirectoryName)
