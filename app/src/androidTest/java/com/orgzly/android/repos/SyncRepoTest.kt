@@ -4,6 +4,10 @@ import android.net.Uri
 import android.os.Build
 import androidx.core.net.toUri
 import androidx.documentfile.provider.DocumentFile
+import androidx.test.core.app.ActivityScenario
+import androidx.test.espresso.Espresso
+import androidx.test.espresso.action.ViewActions
+import androidx.test.espresso.matcher.ViewMatchers
 import com.orgzly.BuildConfig
 import com.orgzly.R
 import com.orgzly.android.BookName
@@ -11,6 +15,7 @@ import com.orgzly.android.OrgzlyTest
 import com.orgzly.android.db.entity.BookView
 import com.orgzly.android.db.entity.Repo
 import com.orgzly.android.espresso.ContentRepoTest
+import com.orgzly.android.espresso.util.EspressoUtils
 import com.orgzly.android.git.GitFileSynchronizer
 import com.orgzly.android.git.GitPreferencesFromRepoPrefs
 import com.orgzly.android.prefs.AppPreferences
@@ -21,6 +26,7 @@ import com.orgzly.android.repos.RepoType.DROPBOX
 import com.orgzly.android.repos.RepoType.GIT
 import com.orgzly.android.repos.RepoType.MOCK
 import com.orgzly.android.repos.RepoType.WEBDAV
+import com.orgzly.android.ui.main.MainActivity
 import com.orgzly.android.util.MiscUtils
 import com.thegrizzlylabs.sardineandroid.impl.SardineException
 import org.eclipse.jgit.api.Git
@@ -379,10 +385,10 @@ class SyncRepoTest(private val param: Parameter) : OrgzlyTest() {
         assertEquals("a folder/a book", books[0].book.name)
     }
 
-    *//**
+    /**
      * Ensures that file names and book names are not parsed/created differently during
      * force-loading.
-     *//*
+     */
     @Test
     @Throws(IOException::class)
     fun testForceLoadBookInSubfolder() {
@@ -397,6 +403,80 @@ class SyncRepoTest(private val param: Parameter) : OrgzlyTest() {
         assertEquals(1, books.size)
         // Check that the name has not changed
         assertEquals("a folder/a book", books[0].book.name)
+    }
+
+    @Test
+    fun testIgnoreFileInSubfolder() {
+        Assume.assumeTrue(Build.VERSION.SDK_INT >= 26)
+        setupSyncRepo(param.repoType, "subfolder1/book1.org")
+        // Write 2 org files to subfolder in repo
+        for (fileName in arrayOf("subfolder1/book1.org", "subfolder1/book2.org")) {
+            val tmpFile = File.createTempFile("orgzlytest", null)
+            MiscUtils.writeStringToFile("book content", tmpFile)
+            syncRepo.storeBook(tmpFile, fileName)
+            tmpFile.delete()
+        }
+
+        testUtils.sync()
+
+        val books = dataRepository.getBooks()
+        assertEquals(1, books.size.toLong())
+        assertEquals("subfolder1/book2", books[0].book.name)
+    }
+
+    @Test
+    fun testUnIgnoreSingleFileInSubfolder() {
+        Assume.assumeTrue(Build.VERSION.SDK_INT >= 26)
+        setupSyncRepo(param.repoType, "subfolder1/**\n!subfolder1/book2.org")
+        // Write 2 org files to subfolder in repo
+        for (fileName in arrayOf("subfolder1/book1.org", "subfolder1/book2.org")) {
+            val tmpFile = File.createTempFile("orgzlytest", null)
+            MiscUtils.writeStringToFile("book content", tmpFile)
+            syncRepo.storeBook(tmpFile, fileName)
+            tmpFile.delete()
+        }
+
+        testUtils.sync()
+
+        val books = dataRepository.getBooks()
+        assertEquals(1, books.size.toLong())
+        assertEquals("subfolder1/book2", books[0].book.name)
+    }
+
+    @Test
+    fun testUpdateBookInSubfolder() {
+        setupSyncRepo(param.repoType, null)
+        // Create org file in subfolder
+        val tmpFile = dataRepository.getTempBookFile()
+        try {
+            MiscUtils.writeStringToFile("* DONE Heading 1", tmpFile)
+            syncRepo.storeBook(tmpFile, "folder one/book one.org")
+        } finally {
+            tmpFile.delete()
+        }
+
+        testUtils.sync()
+        assertEquals(1, dataRepository.getBooks().size.toLong())
+
+        ActivityScenario.launch(MainActivity::class.java).use {
+            // Modify book
+            EspressoUtils.onBook(0).perform(ViewActions.click())
+            EspressoUtils.onNoteInBook(1).perform(ViewActions.longClick())
+            Espresso.onView(ViewMatchers.withId(R.id.toggle_state)).perform(ViewActions.click())
+            Espresso.pressBack()
+            Espresso.pressBack()
+            EspressoUtils.sync()
+            // EspressoUtils.onBook(0, R.id.item_book_last_action).check(ViewAssertions.matches(ViewMatchers.withText(CoreMatchers.endsWith("Saved to content://com.android.externalstorage.documents/tree/primary%3A$repoDirName"))) )
+            // Delete notebook from Orgzly and reload it to verify that our change was successfully written
+            EspressoUtils.onBook(0).perform(ViewActions.longClick())
+            EspressoUtils.contextualToolbarOverflowMenu().perform(ViewActions.click())
+            Espresso.onView(ViewMatchers.withText(R.string.delete)).perform(ViewActions.click())
+            Espresso.onView(ViewMatchers.withText(R.string.delete)).perform(ViewActions.click())
+        }
+
+        testUtils.sync()
+        assertEquals(1, dataRepository.getBooks().size.toLong())
+        testUtils.assertBook("folder one/book one", "* TODO Heading 1\n")
     }
 
     private fun setupSyncRepo(repoType: RepoType, ignoreRules: String?) {
