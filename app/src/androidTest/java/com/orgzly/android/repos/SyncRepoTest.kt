@@ -443,6 +443,34 @@ class SyncRepoTest(private val param: Parameter) : OrgzlyTest() {
     }
 
     @Test
+    fun testStoreBookAndRetrieveBookProducesSameRookUri() {
+        setupSyncRepo(param.repoType, null)
+
+        val repoFilePath = "folder one/book one.org"
+
+        // Upload file to repo
+        val storedBook: VersionedRook?
+        var tmpFile = dataRepository.getTempBookFile()
+        try {
+            MiscUtils.writeStringToFile("content", tmpFile)
+            storedBook = syncRepo.storeBook(tmpFile, repoFilePath)
+        } finally {
+            tmpFile.delete()
+        }
+
+        // Download file from repo
+        tmpFile = dataRepository.getTempBookFile()
+        val retrievedBook: VersionedRook?
+        try {
+            retrievedBook = syncRepo.retrieveBook(repoFilePath, tmpFile)
+        } finally {
+            tmpFile.delete()
+        }
+
+        assertEquals(storedBook!!.uri, retrievedBook!!.uri!!)
+    }
+
+    @Test
     fun testUpdateBookInSubfolder() {
         setupSyncRepo(param.repoType, null)
         // Create org file in subfolder
