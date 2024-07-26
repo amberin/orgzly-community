@@ -219,13 +219,18 @@ public class DropboxClient {
         return list;
     }
 
+    private Uri getFullUriFromRelativePath(Uri repoUri, String relativePath) {
+        String encodedFileName = Uri.encode(relativePath, "/");
+        return Uri.withAppendedPath(repoUri, encodedFileName);
+    }
+
     /**
      * Download file from Dropbox and store it to a local file.
      */
-    public VersionedRook download(Uri repoUri, String fileName, File localFile) throws IOException {
+    public VersionedRook download(Uri repoUri, String relativePath, File localFile) throws IOException {
         linkedOrThrow();
 
-        Uri uri = repoUri.buildUpon().appendPath(fileName).build();
+        Uri uri = getFullUriFromRelativePath(repoUri, relativePath);
 
         OutputStream out = new BufferedOutputStream(new FileOutputStream(localFile));
 
@@ -282,11 +287,10 @@ public class DropboxClient {
     }
 
     /** Upload file to Dropbox. */
-    public VersionedRook upload(File file, Uri repoUri, String fileName) throws IOException {
+    public VersionedRook upload(File file, Uri repoUri, String relativePath) throws IOException {
         linkedOrThrow();
 
-        String encodedFileName = Uri.encode(fileName).replace("%2F", "/");
-        Uri bookUri = Uri.withAppendedPath(repoUri, encodedFileName);
+        Uri bookUri = getFullUriFromRelativePath(repoUri, relativePath);
 
         if (file.length() > UPLOAD_FILE_SIZE_LIMIT * 1024 * 1024) {
             throw new IOException(LARGE_FILE);
