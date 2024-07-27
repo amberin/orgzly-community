@@ -74,11 +74,18 @@ jobs:
             ~/.android/adb*
           key: avd-${{ matrix.api-level }}
 
-      - name: Add Dropbox API credentials
+      - name: Add Dropbox API credentials (for DropboxRepo tests)
         shell: bash
         run: |
           echo "dropbox.refresh_token = \"${{ secrets.DROPBOX_REFRESH_TOKEN }}\"" >> app.properties
           echo "dropbox.app_key = \"${{ secrets.DROPBOX_APP_KEY }}\"" >> app.properties
+
+      - name: Add thegood.cloud credentials (for WebdavRepo tests)
+        shell: bash
+        run: |
+          echo "webdav.repo_url = \"${{ secrets.WEBDAV_TEST_REPO_URL }}\"" >> app.properties
+          echo "webdav.username = \"${{ secrets.WEBDAV_TEST_USERNAME }}\"" >> app.properties
+          echo "webdav.password = \"${{ secrets.WEBDAV_TEST_PASSWORD }}\"" >> app.properties
 
       - name: Run tests
         uses: reactivecircus/android-emulator-runner@v2
