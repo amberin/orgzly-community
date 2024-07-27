@@ -86,28 +86,28 @@ class DocumentRepoTest : OrgzlyTest() {
                 onView(withId(R.id.activity_repos_directory)).perform(click())
                 onView(withId(R.id.activity_repo_directory_browse_button))
                     .perform(click())
-                SystemClock.sleep(200)
+                SystemClock.sleep(500)
                 // In Android file browser (Espresso cannot be used):
                 val mDevice = UiDevice.getInstance(InstrumentationRegistry.getInstrumentation())
                 if (Build.VERSION.SDK_INT < 30) {
                     // Older system file picker UI
                     mDevice.findObject(UiSelector().description("More options")).click()
                     mDevice.findObject(UiSelector().text("New folder")).click()
-                    SystemClock.sleep(100)
+                    SystemClock.sleep(500)
                     mDevice.findObject(UiSelector().text("Folder name")).text = repoDirName
                     mDevice.findObject(UiSelector().text("OK")).click()
                     mDevice.findObject(UiSelector().textContains("ALLOW ACCESS TO")).click()
                     mDevice.findObject(UiSelector().text("ALLOW")).click()
                 } else {
                     mDevice.findObject(UiSelector().text("CREATE NEW FOLDER")).click()
-                    SystemClock.sleep(100)
+                    SystemClock.sleep(500)
                     mDevice.findObject(UiSelector().text("Folder name")).text = repoDirName
                     mDevice.findObject(UiSelector().text("OK")).click()
                     mDevice.findObject(UiSelector().text("USE THIS FOLDER")).click()
                     mDevice.findObject(UiSelector().text("ALLOW")).click()
                 }
                 // Back in Orgzly:
-                SystemClock.sleep(200)
+                SystemClock.sleep(500)
                 onView(isRoot()).perform(waitId(R.id.fab, 5000))
                 onView(allOf(withId(R.id.fab), isDisplayed())).perform(click())
             }
