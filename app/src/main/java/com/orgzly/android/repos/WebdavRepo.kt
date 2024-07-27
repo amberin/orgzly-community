@@ -10,7 +10,6 @@ import com.burgstaller.okhttp.digest.CachingAuthenticator
 import com.burgstaller.okhttp.digest.Credentials
 import com.burgstaller.okhttp.digest.DigestAuthenticator
 import com.orgzly.android.BookName
-import com.orgzly.android.util.UriUtils
 import com.thegrizzlylabs.sardineandroid.DavResource
 import com.thegrizzlylabs.sardineandroid.impl.OkHttpSardine
 import okhttp3.OkHttpClient
@@ -28,7 +27,6 @@ import java.util.concurrent.TimeUnit
 import javax.net.ssl.SSLContext
 import javax.net.ssl.TrustManagerFactory
 import javax.net.ssl.X509TrustManager
-import kotlin.collections.ArrayList
 
 
 class WebdavRepo(
@@ -171,7 +169,8 @@ class WebdavRepo(
                 .list(url, -1)
                 .mapNotNull {
                     if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-                        if (!BookName.isSupportedFormatFileName(it.name) || ignores.isPathIgnored(it.name, false)) {
+                        val relativePath = it.getRelativePath()
+                        if (!BookName.isSupportedFormatFileName(it.name) || ignores.isPathIgnored(it.getRelativePath(), it.isDirectory)) {
                             null
                         } else {
                             it.toVersionedRook()
@@ -232,16 +231,23 @@ class WebdavRepo(
         return sardine.list(fileUrl).first().toVersionedRook()
     }
 
-    override fun renameBook(from: Uri, name: String?): VersionedRook {
-        val destUrl = UriUtils.getUriForNewName(from, name).toUrl()
+    override fun renameBook(oldFullUri: Uri, newName: String): VersionedRook {
+        val oldBookName = BookName.fromFileName(BookName.getFileName(uri, oldFullUri))
+        val newRelativePath = BookName.fileName(newName, oldBookName.format)
+        val newEncodedRelativePath = Uri.encode(newRelativePath, "/")
+        val newFullUrl = uri.buildUpon().appendEncodedPath(newEncodedRelativePath).build().toUrl()
 
         /* Abort if destination file already exists. */
-        if (sardine.exists(destUrl)) {
-            throw IOException("File at $destUrl already exists")
+        if (sardine.exists(newFullUrl)) {
+            throw IOException("File at $newFullUrl already exists")
         }
 
-        sardine.move(from.toUrl(), destUrl)
-        return sardine.list(destUrl).first().toVersionedRook()
+        if (newName.contains("/")) {
+            ensureDirectoryHierarchy(newEncodedRelativePath)
+        }
+
+        sardine.move(oldFullUri.toUrl(), newFullUrl)
+        return sardine.list(newFullUrl).first().toVersionedRook()
     }
 
     override fun delete(uri: Uri) {
@@ -249,15 +255,28 @@ class WebdavRepo(
     }
 
     private fun DavResource.toVersionedRook(): VersionedRook {
-        val fullUrl = Uri.parse(uri.scheme + "://" + uri.authority + this.href.toString())
         return VersionedRook(
                 repoId,
                 RepoType.WEBDAV,
                 uri,
-                fullUrl,
+                this.getFullUrl(),
                 this.modified.time.toString(),
                 this.modified.time
         )
+    }
+
+    private fun DavResource.getFullUrl(): Uri {
+        return Uri.parse(uri.scheme + "://" + uri.authority + this.href.toString())
+
+    }
+
+    private fun DavResource.getRelativePath(): String {
+        val fullUrlString = this.getFullUrl().toString()
+        return fullUrlString.replace(Regex("^$uri/"), "")
+    }
+
+    private fun extractRelativePathFromFullUrl(fullUrl: Uri): String {
+        return fullUrl.toString().replace(Regex("^$uri/"), "")
     }
 
     private fun Uri.toUrl(): String {
