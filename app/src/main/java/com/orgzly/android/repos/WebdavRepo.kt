@@ -169,7 +169,6 @@ class WebdavRepo(
                 .list(url, -1)
                 .mapNotNull {
                     if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-                        val relativePath = it.getRelativePath()
                         if (!BookName.isSupportedFormatFileName(it.name) || ignores.isPathIgnored(it.getRelativePath(), it.isDirectory)) {
                             null
                         } else {
@@ -217,7 +216,7 @@ class WebdavRepo(
         }
     }
 
-    override fun storeBook(file: File?, fileName: String?): VersionedRook {
+    override fun storeBook(file: File, fileName: String): VersionedRook {
         val encodedFileName = Uri.encode(fileName, "/")
         if (encodedFileName != null) {
             if (encodedFileName.contains("/")) {
@@ -273,10 +272,6 @@ class WebdavRepo(
     private fun DavResource.getRelativePath(): String {
         val fullUrlString = this.getFullUrl().toString()
         return fullUrlString.replace(Regex("^$uri/"), "")
-    }
-
-    private fun extractRelativePathFromFullUrl(fullUrl: Uri): String {
-        return fullUrl.toString().replace(Regex("^$uri/"), "")
     }
 
     private fun Uri.toUrl(): String {
