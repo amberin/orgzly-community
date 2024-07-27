@@ -71,10 +71,10 @@ class SyncRepoTest(private val param: Parameter) : OrgzlyTest() {
         @Parameterized.Parameters(name = "{0}")
         fun data(): Collection<Parameter> {
             return listOf(
-//                Parameter(repoType = GIT),
-//                Parameter(repoType = DOCUMENT),
+                Parameter(repoType = GIT),
+                Parameter(repoType = DOCUMENT),
                 Parameter(repoType = DROPBOX),
-//                Parameter(repoType = WEBDAV),
+                Parameter(repoType = WEBDAV),
             )
         }
 
@@ -685,11 +685,11 @@ class SyncRepoTest(private val param: Parameter) : OrgzlyTest() {
             "content://com.android.externalstorage.documents/tree/primary%3A$encodedRepoDirName"
         }
         val repoDirDocumentFile = DocumentFile.fromTreeUri(context, treeDocumentFileUrl.toUri())
-        if (repoDirDocumentFile?.exists() == false) {
+        repo = if (repoDirDocumentFile?.exists() == false) {
             ContentRepoTest.addContentRepoInUi(permanentRepoTestDir)
-            repo = dataRepository.getRepos()[0]
+            dataRepository.getRepos()[0]
         } else {
-            repo = testUtils.setupRepo(DOCUMENT, treeDocumentFileUrl)
+            testUtils.setupRepo(DOCUMENT, treeDocumentFileUrl)
         }
         syncRepo = testUtils.repoInstance(DOCUMENT, repo.url, repo.id)
         assertEquals(treeDocumentFileUrl, repo.url)
