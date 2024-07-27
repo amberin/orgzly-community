@@ -2,6 +2,7 @@ package com.orgzly.android.repos
 
 import android.net.Uri
 import android.os.Build
+import android.os.SystemClock
 import androidx.core.net.toUri
 import androidx.documentfile.provider.DocumentFile
 import androidx.test.core.app.ActivityScenario
@@ -652,6 +653,10 @@ class SyncRepoTest(private val param: Parameter) : OrgzlyTest() {
             WEBDAV -> setupWebdavRepo()
         }
         if (ignoreRules != null) {
+            if (param.repoType == WEBDAV) {
+                // thegood.cloud sometimes takes a while to create the repo directory
+                SystemClock.sleep(500)
+            }
             val tmpFile = File.createTempFile("orgzly-test", null)
             MiscUtils.writeStringToFile(ignoreRules, tmpFile)
             syncRepo.storeBook(tmpFile, RepoIgnoreNode.IGNORE_FILE)
