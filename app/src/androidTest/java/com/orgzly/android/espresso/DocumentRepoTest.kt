@@ -89,7 +89,7 @@ class DocumentRepoTest : OrgzlyTest() {
                 SystemClock.sleep(200)
                 // In Android file browser (Espresso cannot be used):
                 val mDevice = UiDevice.getInstance(InstrumentationRegistry.getInstrumentation())
-                if (Build.VERSION.SDK_INT < 33) {
+                if (Build.VERSION.SDK_INT < 30) {
                     // Older system file picker UI
                     mDevice.findObject(UiSelector().description("More options")).click()
                     mDevice.findObject(UiSelector().text("New folder")).click()
