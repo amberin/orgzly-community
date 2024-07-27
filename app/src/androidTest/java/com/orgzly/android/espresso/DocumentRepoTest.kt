@@ -16,7 +16,7 @@ import androidx.test.uiautomator.UiSelector
 import com.orgzly.R
 import com.orgzly.android.OrgzlyTest
 import com.orgzly.android.espresso.util.EspressoUtils.waitId
-import com.orgzly.android.repos.ContentRepo
+import com.orgzly.android.repos.DocumentRepo
 import com.orgzly.android.repos.RepoType
 import com.orgzly.android.ui.repos.ReposActivity
 import com.orgzly.android.util.MiscUtils
@@ -30,10 +30,10 @@ import java.io.File
 import java.io.FileNotFoundException
 
 
-class ContentRepoTest : OrgzlyTest() {
+class DocumentRepoTest : OrgzlyTest() {
 
     private var repoDirName = "orgzly-android-tests"
-    private lateinit var syncRepo: ContentRepo
+    private lateinit var syncRepo: DocumentRepo
 
     @Before
     @Throws(Exception::class)
@@ -54,7 +54,7 @@ class ContentRepoTest : OrgzlyTest() {
     @Throws(FileNotFoundException::class)
     fun testSyncWithDirectoryContainingPercent() {
         repoDirName = "space separated"
-        setupContentRepo()
+        setupDocumentRepo()
         writeStringToRepoFile("Notebook content 1", "notebook.org")
         testUtils.sync()
         assertEquals(1, dataRepository.getBooks().size.toLong())
@@ -74,14 +74,14 @@ class ContentRepoTest : OrgzlyTest() {
      * @throws UiObjectNotFoundException
      */
     @Throws(UiObjectNotFoundException::class)
-    private fun setupContentRepo() {
-        addContentRepoInUi(repoDirName)
+    private fun setupDocumentRepo() {
+        setupDocumentRepoInUi(repoDirName)
         val repo = dataRepository.getRepos()[0]
-        syncRepo = testUtils.repoInstance(RepoType.DOCUMENT, repo.url, repo.id) as ContentRepo
+        syncRepo = testUtils.repoInstance(RepoType.DOCUMENT, repo.url, repo.id) as DocumentRepo
     }
 
     companion object {
-        fun addContentRepoInUi(repoDirName: String) {
+        fun setupDocumentRepoInUi(repoDirName: String) {
             ActivityScenario.launch(ReposActivity::class.java).use {
                 onView(withId(R.id.activity_repos_directory)).perform(click())
                 onView(withId(R.id.activity_repo_directory_browse_button))
