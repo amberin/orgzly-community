@@ -15,7 +15,7 @@ import com.orgzly.android.BookName
 import com.orgzly.android.OrgzlyTest
 import com.orgzly.android.db.entity.BookView
 import com.orgzly.android.db.entity.Repo
-import com.orgzly.android.espresso.ContentRepoTest
+import com.orgzly.android.espresso.DocumentRepoTest
 import com.orgzly.android.espresso.util.EspressoUtils
 import com.orgzly.android.git.GitFileSynchronizer
 import com.orgzly.android.git.GitPreferencesFromRepoPrefs
@@ -61,7 +61,7 @@ class SyncRepoTest(private val param: Parameter) : OrgzlyTest() {
     private lateinit var gitBareRepoPath: Path
     private lateinit var gitFileSynchronizer: GitFileSynchronizer
 
-    // used by ContentRepo
+    // used by DocumentRepo
     private lateinit var documentTreeSegment: String
 
     data class Parameter(val repoType: RepoType)
@@ -92,7 +92,7 @@ class SyncRepoTest(private val param: Parameter) : OrgzlyTest() {
                 MOCK -> TODO()
                 DROPBOX -> tearDownDropboxRepo()
                 DIRECTORY -> TODO()
-                DOCUMENT -> tearDownContentRepo()
+                DOCUMENT -> tearDownDocumentRepo()
                 WEBDAV -> tearDownWebdavRepo()
             }
         }
@@ -627,7 +627,7 @@ class SyncRepoTest(private val param: Parameter) : OrgzlyTest() {
     @Throws(FileNotFoundException::class)
     fun testSyncWithDirectoryContainingPercent() {
         Assume.assumeTrue(param.repoType != GIT) // Git repo URLs will never contain a space
-        Assume.assumeTrue(param.repoType != DOCUMENT) // Tested in espresso.ContentRepoTest because of UI behavior
+        Assume.assumeTrue(param.repoType != DOCUMENT) // Tested in espresso.DocumentRepoTest because of UI behavior
         topDirName = "space separated"
         setupSyncRepo(param.repoType, "")
         val tmpFile = dataRepository.getTempBookFile()
@@ -648,7 +648,7 @@ class SyncRepoTest(private val param: Parameter) : OrgzlyTest() {
             MOCK -> TODO()
             DROPBOX -> setupDropboxRepo()
             DIRECTORY -> TODO()
-            DOCUMENT -> setupContentRepo()
+            DOCUMENT -> setupDocumentRepo()
             WEBDAV -> setupWebdavRepo()
         }
         if (ignoreRules != null) {
@@ -672,7 +672,7 @@ class SyncRepoTest(private val param: Parameter) : OrgzlyTest() {
         } catch (_: IOException) {}
     }
 
-    private fun setupContentRepo() {
+    private fun setupDocumentRepo() {
         val encodedRepoDirName = Uri.encode(permanentRepoTestDir)
         documentTreeSegment = if (Build.VERSION.SDK_INT < 33) {
             "/document/raw%3A%2Fstorage%2Femulated%2F0%2FDownload%2F$encodedRepoDirName%2F"
@@ -686,7 +686,7 @@ class SyncRepoTest(private val param: Parameter) : OrgzlyTest() {
         }
         val repoDirDocumentFile = DocumentFile.fromTreeUri(context, treeDocumentFileUrl.toUri())
         repo = if (repoDirDocumentFile?.exists() == false) {
-            ContentRepoTest.addContentRepoInUi(permanentRepoTestDir)
+            DocumentRepoTest.setupDocumentRepoInUi(permanentRepoTestDir)
             dataRepository.getRepos()[0]
         } else {
             testUtils.setupRepo(DOCUMENT, treeDocumentFileUrl)
@@ -695,7 +695,7 @@ class SyncRepoTest(private val param: Parameter) : OrgzlyTest() {
         assertEquals(treeDocumentFileUrl, repo.url)
     }
 
-    private fun tearDownContentRepo() {
+    private fun tearDownDocumentRepo() {
         val repoDirectory = DocumentFile.fromTreeUri(context, repo.url.toUri())
         for (file in repoDirectory!!.listFiles()) {
             file.delete()
