@@ -674,12 +674,12 @@ class SyncRepoTest(private val param: Parameter) : OrgzlyTest() {
 
     private fun setupDocumentRepo() {
         val encodedRepoDirName = Uri.encode(permanentRepoTestDir)
-        documentTreeSegment = if (Build.VERSION.SDK_INT < 33) {
+        documentTreeSegment = if (Build.VERSION.SDK_INT < 30) {
             "/document/raw%3A%2Fstorage%2Femulated%2F0%2FDownload%2F$encodedRepoDirName%2F"
         } else {
             "/document/primary%3A$encodedRepoDirName%2F"
         }
-        val treeDocumentFileUrl = if (Build.VERSION.SDK_INT < 33) {
+        val treeDocumentFileUrl = if (Build.VERSION.SDK_INT < 30) {
             "content://com.android.providers.downloads.documents/tree/raw%3A%2Fstorage%2Femulated%2F0%2FDownload%2F$encodedRepoDirName"
         } else {
             "content://com.android.externalstorage.documents/tree/primary%3A$encodedRepoDirName"
