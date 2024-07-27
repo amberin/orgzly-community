@@ -14,6 +14,7 @@ import com.orgzly.BuildConfig
 import com.orgzly.R
 import com.orgzly.android.BookName
 import com.orgzly.android.OrgzlyTest
+import com.orgzly.android.RetryTestRule
 import com.orgzly.android.db.entity.BookView
 import com.orgzly.android.db.entity.Repo
 import com.orgzly.android.espresso.DocumentRepoTest
@@ -84,6 +85,10 @@ class SyncRepoTest(private val param: Parameter) : OrgzlyTest() {
         different devices. */
         val RANDOM_UUID = UUID.randomUUID().toString()
     }
+
+    @Rule
+    @JvmField
+    val mRetryTestRule = RetryTestRule()
 
     override fun tearDown() {
         super.tearDown()
