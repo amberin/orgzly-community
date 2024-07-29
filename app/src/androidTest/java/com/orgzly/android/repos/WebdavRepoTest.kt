@@ -20,7 +20,7 @@ import java.util.UUID
 
 class WebdavRepoTest : OrgzlyTest() {
 
-    private val repoUriString = BuildConfig.WEBDAV_REPO_URL + "/orgzly-android-tests"
+    private val repoUriString = BuildConfig.WEBDAV_REPO_URL + "/orgzly-android-tests" + UUID.randomUUID().toString()
     private lateinit var syncRepo: SyncRepo
 
     @Before
