@@ -92,6 +92,7 @@ class DocumentRepoTest : OrgzlyTest() {
                 if (Build.VERSION.SDK_INT < 30) {
                     // Older system file picker UI
                     mDevice.findObject(UiSelector().description("More options")).click()
+                    SystemClock.sleep(300)
                     mDevice.findObject(UiSelector().text("New folder")).click()
                     SystemClock.sleep(500)
                     mDevice.findObject(UiSelector().text("Folder name")).text = repoDirName
