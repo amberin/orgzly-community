@@ -10,6 +10,9 @@ import androidx.test.espresso.Espresso
 import androidx.test.espresso.action.ViewActions
 import androidx.test.espresso.assertion.ViewAssertions.matches
 import androidx.test.espresso.matcher.ViewMatchers
+import androidx.test.platform.app.InstrumentationRegistry
+import androidx.test.uiautomator.UiDevice
+import androidx.test.uiautomator.UiSelector
 import com.orgzly.BuildConfig
 import com.orgzly.R
 import com.orgzly.android.BookName
@@ -17,7 +20,6 @@ import com.orgzly.android.OrgzlyTest
 import com.orgzly.android.RetryTestRule
 import com.orgzly.android.db.entity.BookView
 import com.orgzly.android.db.entity.Repo
-import com.orgzly.android.espresso.DocumentRepoTest
 import com.orgzly.android.espresso.util.EspressoUtils
 import com.orgzly.android.git.GitFileSynchronizer
 import com.orgzly.android.git.GitPreferencesFromRepoPrefs
@@ -31,10 +33,12 @@ import com.orgzly.android.repos.RepoType.MOCK
 import com.orgzly.android.repos.RepoType.WEBDAV
 import com.orgzly.android.sync.BookSyncStatus
 import com.orgzly.android.ui.main.MainActivity
+import com.orgzly.android.ui.repos.ReposActivity
 import com.orgzly.android.util.MiscUtils
 import com.thegrizzlylabs.sardineandroid.impl.SardineException
 import org.eclipse.jgit.api.Git
 import org.hamcrest.CoreMatchers.containsString
+import org.hamcrest.core.AllOf
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
 import org.junit.Assume
@@ -111,7 +115,7 @@ class SyncRepoTest(private val param: Parameter) : OrgzlyTest() {
     @Test
     @Throws(IOException::class)
     fun testLoadBook() {
-        setupSyncRepo(param.repoType, null)
+        setupSyncRepo(param.repoType)
         val tmpFile = dataRepository.getTempBookFile()
         try {
             MiscUtils.writeStringToFile("...", tmpFile)
@@ -132,7 +136,7 @@ class SyncRepoTest(private val param: Parameter) : OrgzlyTest() {
     @Test
     @Throws(IOException::class)
     fun testForceLoadBook() {
-        setupSyncRepo(param.repoType, null)
+        setupSyncRepo(param.repoType)
         val bookView = testUtils.setupBook("booky", "content")
         testUtils.sync()
         var books = dataRepository.getBooks()
@@ -147,7 +151,7 @@ class SyncRepoTest(private val param: Parameter) : OrgzlyTest() {
 
     @Test
     fun testLoadBookWithSpaceInName() {
-        setupSyncRepo(param.repoType, null)
+        setupSyncRepo(param.repoType)
         val tmpFile = dataRepository.getTempBookFile()
         try {
             MiscUtils.writeStringToFile("...", tmpFile)
@@ -172,7 +176,7 @@ class SyncRepoTest(private val param: Parameter) : OrgzlyTest() {
     @Test
     @Throws(IOException::class)
     fun testExtension() {
-        setupSyncRepo(param.repoType, null)
+        setupSyncRepo(param.repoType)
         // Add multiple files to repo
         for (fileName in arrayOf("file one.txt", "file two.o", "file three.org")) {
             val tmpFile = File.createTempFile("orgzly-test", null)
@@ -190,7 +194,7 @@ class SyncRepoTest(private val param: Parameter) : OrgzlyTest() {
 
     @Test
     fun testSyncNewBookWithoutLinkAndOneRepo() {
-        setupSyncRepo(param.repoType, null)
+        setupSyncRepo(param.repoType)
         testUtils.setupBook("Book 1", "content")
         testUtils.sync()
         val bookView = dataRepository.getBooks()[0]
@@ -211,7 +215,7 @@ class SyncRepoTest(private val param: Parameter) : OrgzlyTest() {
 
     @Test
     fun testRenameBook() {
-        setupSyncRepo(param.repoType, null)
+        setupSyncRepo(param.repoType)
         testUtils.setupBook("oldname", "")
         testUtils.sync()
         var bookView = dataRepository.getBookView("oldname")
@@ -234,7 +238,7 @@ class SyncRepoTest(private val param: Parameter) : OrgzlyTest() {
 
     @Test
     fun testRenameBookToNameWithSpace() {
-        setupSyncRepo(param.repoType, null)
+        setupSyncRepo(param.repoType)
         testUtils.setupBook("oldname", "")
         testUtils.sync()
         var bookView = dataRepository.getBookView("oldname")
@@ -261,7 +265,7 @@ class SyncRepoTest(private val param: Parameter) : OrgzlyTest() {
 
     @Test
     fun testRenameBookToExistingRepoFileName() {
-        setupSyncRepo(param.repoType, null)
+        setupSyncRepo(param.repoType)
         testUtils.setupBook("a", "")
         testUtils.sync()
 
@@ -282,7 +286,7 @@ class SyncRepoTest(private val param: Parameter) : OrgzlyTest() {
 
     @Test
     fun testRenameBookToExistingBookName() {
-        setupSyncRepo(param.repoType, null)
+        setupSyncRepo(param.repoType)
         testUtils.setupBook("a", "")
         testUtils.setupBook("b", "")
         assertEquals(2, dataRepository.getBooks().size)
@@ -363,7 +367,7 @@ class SyncRepoTest(private val param: Parameter) : OrgzlyTest() {
     @Test
     // @Ignore("Not yet implemented for all repo types")
     fun testStoreBookInSubfolder() {
-        setupSyncRepo(param.repoType, null)
+        setupSyncRepo(param.repoType)
         testUtils.setupBook("a folder/a book", "")
         testUtils.sync()
         assertEquals(1, syncRepo.books.size)
@@ -379,7 +383,7 @@ class SyncRepoTest(private val param: Parameter) : OrgzlyTest() {
     @Test
     @Throws(IOException::class)
     fun testLoadBookFromSubfolder() {
-        setupSyncRepo(param.repoType, null)
+        setupSyncRepo(param.repoType)
         val tmpFile = dataRepository.getTempBookFile()
         try {
             MiscUtils.writeStringToFile("...", tmpFile)
@@ -404,7 +408,7 @@ class SyncRepoTest(private val param: Parameter) : OrgzlyTest() {
     @Test
     @Throws(IOException::class)
     fun testForceLoadBookInSubfolder() {
-        setupSyncRepo(param.repoType, null)
+        setupSyncRepo(param.repoType)
         val bookView = testUtils.setupBook("a folder/a book", "content")
         testUtils.sync()
         var books = dataRepository.getBooks()
@@ -457,7 +461,7 @@ class SyncRepoTest(private val param: Parameter) : OrgzlyTest() {
 
     @Test
     fun testStoreBookAndRetrieveBookProducesSameRookUri() {
-        setupSyncRepo(param.repoType, null)
+        setupSyncRepo(param.repoType)
 
         val repoFilePath = "folder one/book one.org"
 
@@ -485,7 +489,7 @@ class SyncRepoTest(private val param: Parameter) : OrgzlyTest() {
 
     @Test
     fun testUpdateBookInSubfolder() {
-        setupSyncRepo(param.repoType, null)
+        setupSyncRepo(param.repoType)
         // Create org file in subfolder
         val tmpFile = dataRepository.getTempBookFile()
         try {
@@ -521,7 +525,7 @@ class SyncRepoTest(private val param: Parameter) : OrgzlyTest() {
 
     @Test
     fun testRenameBookFromRootToSubfolder() {
-        setupSyncRepo(param.repoType, "")
+        setupSyncRepo(param.repoType)
         testUtils.setupBook("booky", "")
         testUtils.sync()
         dataRepository.renameBook(dataRepository.getBookView("booky")!!, "a/b")
@@ -543,7 +547,7 @@ class SyncRepoTest(private val param: Parameter) : OrgzlyTest() {
 
     @Test
     fun testRenameBookFromSubfolderToRoot() {
-        setupSyncRepo(param.repoType, "")
+        setupSyncRepo(param.repoType)
         testUtils.setupBook("a/b", "")
         testUtils.sync()
         dataRepository.renameBook(dataRepository.getBookView("a/b")!!, "booky")
@@ -565,7 +569,7 @@ class SyncRepoTest(private val param: Parameter) : OrgzlyTest() {
 
     @Test
     fun testRenameBookNewSubfolderSameLeafName() {
-        setupSyncRepo(param.repoType, "")
+        setupSyncRepo(param.repoType)
         testUtils.setupBook("a/b", "")
         testUtils.sync()
         dataRepository.renameBook(dataRepository.getBookView("a/b")!!, "b/b")
@@ -587,7 +591,7 @@ class SyncRepoTest(private val param: Parameter) : OrgzlyTest() {
 
     @Test
     fun testRenameBookNewSubfolderAndLeafName() {
-        setupSyncRepo(param.repoType, "")
+        setupSyncRepo(param.repoType)
         testUtils.setupBook("a/b", "")
         testUtils.sync()
         dataRepository.renameBook(dataRepository.getBookView("a/b")!!, "b/c")
@@ -609,7 +613,7 @@ class SyncRepoTest(private val param: Parameter) : OrgzlyTest() {
 
     @Test
     fun testRenameBookSameSubfolderNewLeafName() {
-        setupSyncRepo(param.repoType, "")
+        setupSyncRepo(param.repoType)
         testUtils.setupBook("a/b", "")
         testUtils.sync()
         dataRepository.renameBook(dataRepository.getBookView("a/b")!!, "a/c")
@@ -633,9 +637,12 @@ class SyncRepoTest(private val param: Parameter) : OrgzlyTest() {
     @Throws(FileNotFoundException::class)
     fun testSyncWithDirectoryContainingPercent() {
         Assume.assumeTrue(param.repoType != GIT) // Git repo URLs will never contain a space
-        Assume.assumeTrue(param.repoType != DOCUMENT) // Tested in espresso.DocumentRepoTest because of UI behavior
         topDirName = "space separated"
-        setupSyncRepo(param.repoType, "")
+        if (param.repoType == DOCUMENT) {
+            setupDocumentRepo(topDirName)
+        } else {
+            setupSyncRepo(param.repoType)
+        }
         val tmpFile = dataRepository.getTempBookFile()
         try {
             MiscUtils.writeStringToFile("content", tmpFile)
@@ -648,7 +655,7 @@ class SyncRepoTest(private val param: Parameter) : OrgzlyTest() {
         assertTrue(syncRepo.uri.toString().contains("space separated"))
     }
 
-    private fun setupSyncRepo(repoType: RepoType, ignoreRules: String?) {
+    private fun setupSyncRepo(repoType: RepoType, ignoreRules: String? = null) {
         when (repoType) {
             GIT -> setupGitRepo()
             MOCK -> TODO()
@@ -658,10 +665,6 @@ class SyncRepoTest(private val param: Parameter) : OrgzlyTest() {
             WEBDAV -> setupWebdavRepo()
         }
         if (ignoreRules != null) {
-            if (param.repoType == WEBDAV) {
-                // thegood.cloud sometimes takes a while to create the repo directory
-                SystemClock.sleep(500)
-            }
             val tmpFile = File.createTempFile("orgzly-test", null)
             MiscUtils.writeStringToFile(ignoreRules, tmpFile)
             syncRepo.storeBook(tmpFile, RepoIgnoreNode.IGNORE_FILE)
@@ -682,27 +685,69 @@ class SyncRepoTest(private val param: Parameter) : OrgzlyTest() {
         } catch (_: IOException) {}
     }
 
-    private fun setupDocumentRepo() {
+    private fun setupDocumentRepo(extraDir: String? = null) {
         val encodedRepoDirName = Uri.encode(permanentRepoTestDir)
         documentTreeSegment = if (Build.VERSION.SDK_INT < 30) {
             "/document/raw%3A%2Fstorage%2Femulated%2F0%2FDownload%2F$encodedRepoDirName%2F"
         } else {
             "/document/primary%3A$encodedRepoDirName%2F"
         }
-        val treeDocumentFileUrl = if (Build.VERSION.SDK_INT < 30) {
+        var treeDocumentFileUrl = if (Build.VERSION.SDK_INT < 30) {
             "content://com.android.providers.downloads.documents/tree/raw%3A%2Fstorage%2Femulated%2F0%2FDownload%2F$encodedRepoDirName"
         } else {
             "content://com.android.externalstorage.documents/tree/primary%3A$encodedRepoDirName"
         }
+        if (extraDir != null) {
+            treeDocumentFileUrl = "$treeDocumentFileUrl%2F$extraDir"
+        }
         val repoDirDocumentFile = DocumentFile.fromTreeUri(context, treeDocumentFileUrl.toUri())
         repo = if (repoDirDocumentFile?.exists() == false) {
-            DocumentRepoTest.setupDocumentRepoInUi(permanentRepoTestDir)
+            if (extraDir != null) {
+                setupDocumentRepoInUi(extraDir)
+            } else {
+                setupDocumentRepoInUi(permanentRepoTestDir)
+            }
             dataRepository.getRepos()[0]
         } else {
             testUtils.setupRepo(DOCUMENT, treeDocumentFileUrl)
         }
         syncRepo = testUtils.repoInstance(DOCUMENT, repo.url, repo.id)
         assertEquals(treeDocumentFileUrl, repo.url)
+    }
+
+    private fun setupDocumentRepoInUi(repoDirName: String) {
+        ActivityScenario.launch(ReposActivity::class.java).use {
+            Espresso.onView(ViewMatchers.withId(R.id.activity_repos_directory))
+                .perform(ViewActions.click())
+            Espresso.onView(ViewMatchers.withId(R.id.activity_repo_directory_browse_button))
+                .perform(ViewActions.click())
+            SystemClock.sleep(500)
+            // In Android file browser (Espresso cannot be used):
+            val mDevice = UiDevice.getInstance(InstrumentationRegistry.getInstrumentation())
+            if (Build.VERSION.SDK_INT < 30) {
+                // Older system file picker UI
+                mDevice.findObject(UiSelector().description("More options")).click()
+                SystemClock.sleep(300)
+                mDevice.findObject(UiSelector().text("New folder")).click()
+                SystemClock.sleep(500)
+                mDevice.findObject(UiSelector().text("Folder name")).text = repoDirName
+                mDevice.findObject(UiSelector().text("OK")).click()
+                mDevice.findObject(UiSelector().textContains("ALLOW ACCESS TO")).click()
+                mDevice.findObject(UiSelector().text("ALLOW")).click()
+            } else {
+                mDevice.findObject(UiSelector().description("New folder")).click()
+                SystemClock.sleep(500)
+                mDevice.findObject(UiSelector().text("Folder name")).text = repoDirName
+                mDevice.findObject(UiSelector().text("OK")).click()
+                mDevice.findObject(UiSelector().text("USE THIS FOLDER")).click()
+                mDevice.findObject(UiSelector().text("ALLOW")).click()
+            }
+            // Back in Orgzly:
+            SystemClock.sleep(500)
+            Espresso.onView(ViewMatchers.isRoot()).perform(EspressoUtils.waitId(R.id.fab, 5000))
+            Espresso.onView(AllOf.allOf(ViewMatchers.withId(R.id.fab), ViewMatchers.isDisplayed()))
+                .perform(ViewActions.click())
+        }
     }
 
     private fun tearDownDocumentRepo() {
