@@ -38,9 +38,11 @@ android {
         viewBinding true
     }
 
-//    testOptions {
-//        execution 'ANDROIDX_TEST_ORCHESTRATOR'
-//    }
+    testOptions {
+        unitTests {
+            includeAndroidResources = true
+        }
+    }
 
     buildTypes {
         release {
@@ -154,6 +156,8 @@ dependencies {
     implementation "androidx.work:work-runtime-ktx:$versions.android_workmanager"
 
     testImplementation "junit:junit:$versions.junit"
+    testImplementation 'org.robolectric:robolectric:4.13'
+    testImplementation "io.github.atetzner:webdav-embedded-server:0.2.1"
 
     // AndroidX Test
     androidTestImplementation "androidx.test.espresso:espresso-core:$versions.android_test_espresso"
