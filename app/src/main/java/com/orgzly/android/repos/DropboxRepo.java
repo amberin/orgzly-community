@@ -45,8 +45,8 @@ public class DropboxRepo implements SyncRepo {
     }
 
     @Override
-    public VersionedRook retrieveBook(String fileName, File file) throws IOException {
-        return client.download(repoUri, fileName, file);
+    public VersionedRook retrieveBook(String repositoryPath, File file) throws IOException {
+        return client.download(repoUri, repositoryPath, file);
     }
 
     @Override
@@ -55,8 +55,8 @@ public class DropboxRepo implements SyncRepo {
     }
 
     @Override
-    public VersionedRook storeBook(File file, String fileName) throws IOException {
-        return client.upload(file, repoUri, fileName);
+    public VersionedRook storeBook(File file, String repositoryPath) throws IOException {
+        return client.upload(file, repoUri, repositoryPath);
     }
 
     @Override

@@ -155,9 +155,15 @@ dependencies {
 
     implementation "androidx.work:work-runtime-ktx:$versions.android_workmanager"
 
+    testImplementation "androidx.test:runner:$versions.android_test"
+    testImplementation "androidx.test:rules:$versions.android_test"
+    testImplementation "androidx.test.ext:junit:$versions.android_test_ext_junit"
     testImplementation "junit:junit:$versions.junit"
     testImplementation 'org.robolectric:robolectric:4.13'
     testImplementation "io.github.atetzner:webdav-embedded-server:0.2.1"
+    testRuntimeOnly("org.junit.vintage:junit-vintage-engine:5.8.2")
+    testImplementation "org.mockito:mockito-core:2.28.2"
+    testImplementation "org.mockito.kotlin:mockito-kotlin:5.1.0"
 
     // AndroidX Test
     androidTestImplementation "androidx.test.espresso:espresso-core:$versions.android_test_espresso"
