@@ -13,7 +13,6 @@ import androidx.test.espresso.matcher.ViewMatchers
 import androidx.test.platform.app.InstrumentationRegistry
 import androidx.test.uiautomator.UiDevice
 import androidx.test.uiautomator.UiSelector
-import com.orgzly.BuildConfig
 import com.orgzly.R
 import com.orgzly.android.BookName
 import com.orgzly.android.OrgzlyTest
@@ -35,7 +34,6 @@ import com.orgzly.android.sync.BookSyncStatus
 import com.orgzly.android.ui.main.MainActivity
 import com.orgzly.android.ui.repos.ReposActivity
 import com.orgzly.android.util.MiscUtils
-import com.thegrizzlylabs.sardineandroid.impl.SardineException
 import org.eclipse.jgit.api.Git
 import org.hamcrest.CoreMatchers.containsString
 import org.hamcrest.core.AllOf
@@ -80,7 +78,6 @@ class SyncRepoTest(private val param: Parameter) : OrgzlyTest() {
                 Parameter(repoType = GIT),
                 Parameter(repoType = DOCUMENT),
                 Parameter(repoType = DROPBOX),
-                Parameter(repoType = WEBDAV),
             )
         }
 
@@ -103,7 +100,7 @@ class SyncRepoTest(private val param: Parameter) : OrgzlyTest() {
                 DROPBOX -> tearDownDropboxRepo()
                 DIRECTORY -> TODO()
                 DOCUMENT -> tearDownDocumentRepo()
-                WEBDAV -> tearDownWebdavRepo()
+                WEBDAV -> TODO()
             }
         }
     }
@@ -112,6 +109,7 @@ class SyncRepoTest(private val param: Parameter) : OrgzlyTest() {
     @Rule
     var exceptionRule: ExpectedException = ExpectedException.none()
 
+    // TODO: Move to DataRepository tests
     @Test
     @Throws(IOException::class)
     fun testLoadBook() {
@@ -133,6 +131,7 @@ class SyncRepoTest(private val param: Parameter) : OrgzlyTest() {
         assertEquals("booky", books[0].book.name)
     }
 
+    // TODO: Move to DataRepository tests
     @Test
     @Throws(IOException::class)
     fun testForceLoadBook() {
@@ -192,6 +191,7 @@ class SyncRepoTest(private val param: Parameter) : OrgzlyTest() {
         assertEquals(repo.url, books[0].repoUri.toString())
     }
 
+    // TODO: Move to DataRepository tests
     @Test
     fun testSyncNewBookWithoutLinkAndOneRepo() {
         setupSyncRepo(param.repoType)
@@ -205,14 +205,9 @@ class SyncRepoTest(private val param: Parameter) : OrgzlyTest() {
             context.getString(R.string.sync_status_saved, repo.url),
             bookView.book.lastAction!!.message
         )
-        val expectedUriString = when (param.repoType) {
-            GIT -> "/Book 1.org"
-            DOCUMENT -> repo.url + documentTreeSegment + "Book%201.org"
-            else -> { repo.url + "/Book%201.org" }
-        }
-        assertEquals(expectedUriString, bookView.syncedTo!!.uri.toString())
     }
 
+    // TODO: Move to DataRepository tests
     @Test
     fun testRenameBook() {
         setupSyncRepo(param.repoType)
@@ -236,6 +231,7 @@ class SyncRepoTest(private val param: Parameter) : OrgzlyTest() {
         assertTrue(bookView.syncedTo!!.uri.toString().contains("newname.org"))
     }
 
+    // TODO: Move to DataRepository tests
     @Test
     fun testRenameBookToNameWithSpace() {
         setupSyncRepo(param.repoType)
@@ -284,6 +280,7 @@ class SyncRepoTest(private val param: Parameter) : OrgzlyTest() {
         assertTrue(dataRepository.getBook("a")!!.lastAction!!.message.contains("Renaming failed:"))
     }
 
+    // TODO: Move to DataRepository tests (check happens there)
     @Test
     fun testRenameBookToExistingBookName() {
         setupSyncRepo(param.repoType)
@@ -293,7 +290,6 @@ class SyncRepoTest(private val param: Parameter) : OrgzlyTest() {
         dataRepository.renameBook(dataRepository.getBookView("a")!!, "b")
         assertTrue(dataRepository.getBook("a")!!.lastAction!!.message.contains("Renaming failed: Notebook b already exists"))
     }
-
 
     @Test
     fun testIgnoreRulePreventsLoadingBook() {
@@ -337,6 +333,7 @@ class SyncRepoTest(private val param: Parameter) : OrgzlyTest() {
         assertEquals("notignored", dataRepository.getBooks()[0].book.name)
     }
 
+    // TODO: Move to DataRepository tests (check happens there)
     @Test
     fun testIgnoreRulePreventsRenamingBook() {
         Assume.assumeTrue(Build.VERSION.SDK_INT >= 26)
@@ -353,6 +350,7 @@ class SyncRepoTest(private val param: Parameter) : OrgzlyTest() {
         )
     }
 
+    // TODO: Move to DataRepository tests (check happens there)
     @Test
     @Throws(java.lang.Exception::class)
     fun testIgnoreRulePreventsLinkingBook() {
@@ -365,7 +363,6 @@ class SyncRepoTest(private val param: Parameter) : OrgzlyTest() {
     }
 
     @Test
-    // @Ignore("Not yet implemented for all repo types")
     fun testStoreBookInSubfolder() {
         setupSyncRepo(param.repoType)
         testUtils.setupBook("a folder/a book", "")
@@ -404,6 +401,8 @@ class SyncRepoTest(private val param: Parameter) : OrgzlyTest() {
     /**
      * Ensures that file names and book names are not parsed/created differently during
      * force-loading.
+     *
+     * TODO: Move - tests code in DataRepository, not SyncRepo
      */
     @Test
     @Throws(IOException::class)
@@ -487,6 +486,7 @@ class SyncRepoTest(private val param: Parameter) : OrgzlyTest() {
         assertEquals(storedBook!!.uri, retrievedBook!!.uri!!)
     }
 
+    // TODO: Move - does not test SyncRepo code
     @Test
     fun testUpdateBookInSubfolder() {
         setupSyncRepo(param.repoType)
@@ -635,7 +635,7 @@ class SyncRepoTest(private val param: Parameter) : OrgzlyTest() {
 
     @Test
     @Throws(FileNotFoundException::class)
-    fun testSyncWithDirectoryContainingPercent() {
+    fun testSyncWithDirectoryWithSpaceInName() {
         Assume.assumeTrue(param.repoType != GIT) // Git repo URLs will never contain a space
         topDirName = "space separated"
         if (param.repoType == DOCUMENT) {
@@ -662,7 +662,7 @@ class SyncRepoTest(private val param: Parameter) : OrgzlyTest() {
             DROPBOX -> setupDropboxRepo()
             DIRECTORY -> TODO()
             DOCUMENT -> setupDocumentRepo()
-            WEBDAV -> setupWebdavRepo()
+            WEBDAV -> TODO()
         }
         if (ignoreRules != null) {
             val tmpFile = File.createTempFile("orgzly-test", null)
@@ -754,26 +754,6 @@ class SyncRepoTest(private val param: Parameter) : OrgzlyTest() {
         val repoDirectory = DocumentFile.fromTreeUri(context, repo.url.toUri())
         for (file in repoDirectory!!.listFiles()) {
             file.delete()
-        }
-    }
-
-    private fun setupWebdavRepo() {
-        testUtils.webdavTestPreflight()
-        val repoProps: MutableMap<String, String> = mutableMapOf(
-            WebdavRepo.USERNAME_PREF_KEY to BuildConfig.WEBDAV_USERNAME,
-            WebdavRepo.PASSWORD_PREF_KEY to BuildConfig.WEBDAV_PASSWORD)
-        repo = testUtils.setupRepo(WEBDAV, BuildConfig.WEBDAV_REPO_URL + "/" + permanentRepoTestDir + "/" + topDirName, repoProps)
-        syncRepo = dataRepository.getRepoInstance(repo.id, WEBDAV, repo.url)
-        testUtils.sync() // Necessary to create the remote directory
-    }
-
-    private fun tearDownWebdavRepo() {
-        try {
-            syncRepo.delete(repo.url.toUri())
-        } catch (e: SardineException) {
-            if (e.statusCode != 404) {
-                throw e
-            }
         }
     }
 

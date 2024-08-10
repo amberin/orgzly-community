@@ -141,13 +141,13 @@ public class DocumentRepo implements SyncRepo {
     }
 
     @Override
-    public VersionedRook retrieveBook(String fileName, File destinationFile) throws IOException {
-        DocumentFile sourceFile = getDocumentFileFromFileName(fileName);
+    public VersionedRook retrieveBook(String repositoryPath, File destinationFile) throws IOException {
+        DocumentFile sourceFile = getDocumentFileFromFileName(repositoryPath);
         if (sourceFile == null) {
-            throw new FileNotFoundException("Book " + fileName + " not found in " + repoUri);
+            throw new FileNotFoundException("Book " + repositoryPath + " not found in " + repoUri);
         } else {
             if (BuildConfig.LOG_DEBUG) {
-                LogUtils.d(TAG, "Found DocumentFile for " + fileName + ": " + sourceFile.getUri());
+                LogUtils.d(TAG, "Found DocumentFile for " + repositoryPath + ": " + sourceFile.getUri());
             }
         }
 
@@ -170,20 +170,20 @@ public class DocumentRepo implements SyncRepo {
     }
 
     @Override
-    public VersionedRook storeBook(File file, String path) throws IOException {
+    public VersionedRook storeBook(File file, String repositoryPath) throws IOException {
         if (!file.exists()) {
             throw new FileNotFoundException("File " + file + " does not exist");
         }
-        DocumentFile destinationFile = getDocumentFileFromFileName(path);
-        if (path.contains("/")) {
-            DocumentFile destinationDir = ensureDirectoryHierarchy(path);
-            String fileName = Uri.parse(path).getLastPathSegment();
+        DocumentFile destinationFile = getDocumentFileFromFileName(repositoryPath);
+        if (repositoryPath.contains("/")) {
+            DocumentFile destinationDir = ensureDirectoryHierarchy(repositoryPath);
+            String fileName = Uri.parse(repositoryPath).getLastPathSegment();
             if (destinationDir.findFile(fileName) == null) {
                 destinationFile = destinationDir.createFile("text/*", fileName);
             }
         } else {
             if (!destinationFile.exists()) {
-                repoDocumentFile.createFile("text/*", path);
+                repoDocumentFile.createFile("text/*", repositoryPath);
             }
         }
 
