@@ -1,12 +1,8 @@
-package com.orgzly.android
+package com.orgzly.android.repos
 
 import androidx.test.ext.junit.runners.AndroidJUnit4
+import com.orgzly.android.BookName
 import com.orgzly.android.db.entity.Repo
-import com.orgzly.android.repos.RepoIgnoreNode
-import com.orgzly.android.repos.RepoType
-import com.orgzly.android.repos.RepoWithProps
-import com.orgzly.android.repos.SyncRepo
-import com.orgzly.android.repos.WebdavRepo
 import com.orgzly.android.repos.WebdavRepo.Companion.PASSWORD_PREF_KEY
 import com.orgzly.android.repos.WebdavRepo.Companion.USERNAME_PREF_KEY
 import com.orgzly.android.util.MiscUtils
