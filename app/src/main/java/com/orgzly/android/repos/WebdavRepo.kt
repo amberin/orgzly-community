@@ -19,6 +19,7 @@ import java.io.FileNotFoundException
 import java.io.FileOutputStream
 import java.io.IOException
 import java.io.InputStream
+import java.net.URI
 import java.security.KeyStore
 import java.security.cert.CertificateFactory
 import java.util.*
@@ -27,6 +28,7 @@ import java.util.concurrent.TimeUnit
 import javax.net.ssl.SSLContext
 import javax.net.ssl.TrustManagerFactory
 import javax.net.ssl.X509TrustManager
+import kotlin.io.path.toPath
 
 
 class WebdavRepo(
@@ -185,8 +187,8 @@ class WebdavRepo(
                 .toMutableList()
     }
 
-    override fun retrieveBook(fileName: String?, destination: File?): VersionedRook {
-        val fileUrl = Uri.withAppendedPath(uri, fileName).toUrl()
+    override fun retrieveBook(repositoryPath: String?, destination: File?): VersionedRook {
+        val fileUrl = Uri.withAppendedPath(uri, repositoryPath).toUrl()
 
         sardine.get(fileUrl).use { inputStream ->
             FileOutputStream(destination).use { outputStream ->
@@ -206,7 +208,8 @@ class WebdavRepo(
 
     private fun ensureDirectoryHierarchy(relativePath: String) {
         val levels: ArrayList<String> = ArrayList(relativePath.split("/"))
-        var currentDir: String = uri.toString()
+        // N.B. Strip off trailing slash from repo URL, if present
+        var currentDir: String = uri.toString().replace(Regex("/$"), "")
         while (levels.size > 1) {
             val nextDirName: String = levels.removeAt(0)
             currentDir = "$currentDir/$nextDirName"
@@ -216,8 +219,8 @@ class WebdavRepo(
         }
     }
 
-    override fun storeBook(file: File, fileName: String): VersionedRook {
-        val encodedFileName = Uri.encode(fileName, "/")
+    override fun storeBook(file: File, repositoryPath: String): VersionedRook {
+        val encodedFileName = Uri.encode(repositoryPath, "/")
         if (encodedFileName != null) {
             if (encodedFileName.contains("/")) {
                 ensureDirectoryHierarchy(encodedFileName)
@@ -258,20 +261,31 @@ class WebdavRepo(
                 repoId,
                 RepoType.WEBDAV,
                 uri,
-                this.getFullUrl(),
+                Uri.parse(this.getFullUrlString()),
                 this.modified.time.toString(),
                 this.modified.time
         )
     }
 
-    private fun DavResource.getFullUrl(): Uri {
-        return Uri.parse(uri.scheme + "://" + uri.authority + this.href.toString())
-
+    /**
+     * A WebDAV href can be either an absolute (full) URI, or an "absolute path"
+     * (cf. http://www.webdav.org/specs/rfc4918.html#url-handling). The full URI can be built from
+     * the absolute path.
+     */
+    private fun DavResource.getFullUrlString(): String {
+        if (this.href.isAbsolute) {
+            // absolute-URI - return the href as-is
+            return this.href.toString()
+        } else {
+            // path-absolute - build the absolut URI
+            return uri.scheme + "://" + uri.authority + this.href.toString()
+        }
     }
 
     private fun DavResource.getRelativePath(): String {
-        val fullUrlString = this.getFullUrl().toString()
-        return fullUrlString.replace(Regex("^$uri/"), "")
+        val absoluteUri = URI.create(this.getFullUrlString())
+        val relativePath = URI.create(uri.toString()).relativize(absoluteUri)
+        return relativePath.path
     }
 
     private fun Uri.toUrl(): String {

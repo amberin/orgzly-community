@@ -53,9 +53,9 @@ public class MockRepo implements SyncRepo {
     }
 
     @Override
-    public VersionedRook retrieveBook(String fileName, File file) throws IOException {
+    public VersionedRook retrieveBook(String repositoryPath, File file) throws IOException {
         SystemClock.sleep(SLEEP_FOR_RETRIEVE_BOOK);
-        return databaseRepo.retrieveBook(fileName, file);
+        return databaseRepo.retrieveBook(repositoryPath, file);
     }
 
     @Override
@@ -64,9 +64,9 @@ public class MockRepo implements SyncRepo {
     }
 
     @Override
-    public VersionedRook storeBook(File file, String fileName) throws IOException {
+    public VersionedRook storeBook(File file, String repositoryPath) throws IOException {
         SystemClock.sleep(SLEEP_FOR_STORE_BOOK);
-        return databaseRepo.storeBook(file, fileName);
+        return databaseRepo.storeBook(file, repositoryPath);
     }
 
     @Override

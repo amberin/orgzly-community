@@ -124,8 +124,8 @@ public class DirectoryRepo implements SyncRepo {
     }
 
     @Override
-    public VersionedRook retrieveBook(String fileName, File destinationFile) throws IOException {
-        Uri uri = repoUri.buildUpon().appendPath(fileName).build();
+    public VersionedRook retrieveBook(String repositoryPath, File destinationFile) throws IOException {
+        Uri uri = repoUri.buildUpon().appendPath(repositoryPath).build();
 
         String path = uri.getPath();
 
@@ -150,12 +150,12 @@ public class DirectoryRepo implements SyncRepo {
     }
 
     @Override
-    public VersionedRook storeBook(File file, String fileName) throws IOException {
+    public VersionedRook storeBook(File file, String repositoryPath) throws IOException {
         if (!file.exists()) {
             throw new FileNotFoundException("File " + file + " does not exist");
         }
 
-        File destinationFile = new File(mDirectory, fileName);
+        File destinationFile = new File(mDirectory, repositoryPath);
 
         File destinationFileParent = destinationFile.getParentFile();
 
@@ -172,7 +172,7 @@ public class DirectoryRepo implements SyncRepo {
         String rev = String.valueOf(destinationFile.lastModified());
         long mtime = destinationFile.lastModified();
 
-        Uri uri = repoUri.buildUpon().appendPath(fileName).build();
+        Uri uri = repoUri.buildUpon().appendPath(repositoryPath).build();
 
         return new VersionedRook(repoId, RepoType.DIRECTORY, repoUri, uri, rev, mtime);
     }
