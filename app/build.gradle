@@ -185,8 +185,6 @@ dependencies {
 
     androidTestImplementation "de.sven-jacobs:loremipsum:$versions.loremipsum"
 
-    androidTestImplementation "io.github.atetzner:webdav-embedded-server:0.2.1"
-
     // Dagger
     implementation "com.google.dagger:dagger:$versions.dagger"
     kapt "com.google.dagger:dagger-compiler:$versions.dagger"
@@ -225,6 +223,8 @@ dependencies {
     implementation("androidx.biometric:biometric-ktx:$versions.biometric_ktx") {
         because 'Protect SSH key with biometric prompt'
     }
+    testImplementation(project(":shared-test"))
+    androidTestImplementation(project(":shared-test"))
 }
 
 repositories {

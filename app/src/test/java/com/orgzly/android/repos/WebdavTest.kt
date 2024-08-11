@@ -6,6 +6,7 @@ import com.orgzly.android.repos.RepoIgnoreNode
 import com.orgzly.android.repos.RepoType
 import com.orgzly.android.repos.RepoWithProps
 import com.orgzly.android.repos.SyncRepo
+import com.orgzly.android.repos.SyncRepoTests
 import com.orgzly.android.repos.WebdavRepo
 import com.orgzly.android.repos.WebdavRepo.Companion.PASSWORD_PREF_KEY
 import com.orgzly.android.repos.WebdavRepo.Companion.USERNAME_PREF_KEY
@@ -22,9 +23,9 @@ import java.io.IOException
 
 
 @RunWith(AndroidJUnit4::class)
-class WebdavTest {
+class WebdavTest : SyncRepoTests {
 
-    private val serverUrl = "http://localhost:8081/"
+    private val serverUrl = "http://localhost:8081"
 
     private lateinit var serverRootDir: File
     private lateinit var localServer: MiltonWebDAVFileServer
@@ -59,38 +60,13 @@ class WebdavTest {
     }
 
     @Test
-    fun testGetBooks_singleOrgFile() {
-        // N.B. Expected book name contains space
-        val remoteBookFile = File(serverRootDir.absolutePath + "/book one.org")
-        MiscUtils.writeStringToFile("...", remoteBookFile)
-        val books = syncRepo.books
-        assertEquals(1, books.size)
-        assertEquals(serverUrl + "book%20one.org", books[0].uri.toString())
-        val retrievedBookFile = kotlin.io.path.createTempFile().toFile()
-        syncRepo.retrieveBook("book one.org", retrievedBookFile)
-        // Assert that the two files are identical
-        assertEquals(remoteBookFile.readText(), retrievedBookFile.readText())
-        // Assert reported file name
-        val rookFileName = BookName.getFileName(syncRepo.uri, books[0].uri)
-        assertEquals("book one.org", rookFileName)
+    override fun testGetBooks_singleOrgFile() {
+        SyncRepoTests.testGetBooks_singleOrgFile(serverRootDir, syncRepo)
     }
 
     @Test
-    fun testGetBooks_singleFileInSubfolder() {
-        val subFolder = File(serverRootDir.absolutePath + "/folder")
-        subFolder.mkdir()
-        val remoteBookFile = File(subFolder.absolutePath + "/book one.org")
-        MiscUtils.writeStringToFile("...", remoteBookFile)
-        val books = syncRepo.books
-        assertEquals(1, books.size)
-        assertEquals(serverUrl + "folder/book%20one.org", books[0].uri.toString())
-        // Assert reported file name
-        val rookFileName = BookName.getFileName(syncRepo.uri, books[0].uri)
-        assertEquals("folder/book one.org", rookFileName)
-        // Assert that the two files are identical
-        val retrievedBookFile = kotlin.io.path.createTempFile().toFile()
-        syncRepo.retrieveBook(rookFileName, retrievedBookFile)
-        assertEquals(remoteBookFile.readText(), retrievedBookFile.readText())
+    override fun testGetBooks_singleFileInSubfolder() {
+        SyncRepoTests.testGetBooks_singleFileInSubfolder(serverRootDir, syncRepo)
     }
 
     @Test
