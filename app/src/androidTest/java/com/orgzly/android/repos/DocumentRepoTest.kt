@@ -23,7 +23,7 @@ import org.junit.Assert
 import org.junit.Before
 import org.junit.Test
 
-class DocumentRepoTest : SyncRepoTests, OrgzlyTest() {
+class DocumentRepoTest : SyncRepoTest, OrgzlyTest() {
 
     private lateinit var documentTreeSegment: String
     private lateinit var repo: Repo
@@ -46,16 +46,21 @@ class DocumentRepoTest : SyncRepoTests, OrgzlyTest() {
 
     @Test
     override fun testGetBooks_singleOrgFile() {
-        SyncRepoTests.testGetBooks_singleOrgFile(repoDirectory, syncRepo)
+        SyncRepoTest.testGetBooks_singleOrgFile(repoDirectory, syncRepo)
     }
 
     @Test
     override fun testGetBooks_singleFileInSubfolder() {
-        SyncRepoTests.testGetBooks_singleFileInSubfolder(repoDirectory, syncRepo)
+        SyncRepoTest.testGetBooks_singleFileInSubfolder(repoDirectory, syncRepo)
+    }
+
+    @Test
+    override fun testGetBooks_allFilesAreIgnored() {
+        SyncRepoTest.testGetBooks_allFilesAreIgnored(repoDirectory, syncRepo)
     }
 
     private fun setupDocumentRepo(extraDir: String? = null) {
-        val repoDirName = SyncRepoTests.repoDirName
+        val repoDirName = SyncRepoTest.repoDirName
         documentTreeSegment = if (Build.VERSION.SDK_INT < 30) {
             "/document/raw%3A%2Fstorage%2Femulated%2F0%2FDownload%2F$repoDirName%2F"
         } else {

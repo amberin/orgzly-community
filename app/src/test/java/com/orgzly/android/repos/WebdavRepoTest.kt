@@ -6,7 +6,7 @@ import com.orgzly.android.repos.RepoIgnoreNode
 import com.orgzly.android.repos.RepoType
 import com.orgzly.android.repos.RepoWithProps
 import com.orgzly.android.repos.SyncRepo
-import com.orgzly.android.repos.SyncRepoTests
+import com.orgzly.android.repos.SyncRepoTest
 import com.orgzly.android.repos.WebdavRepo
 import com.orgzly.android.repos.WebdavRepo.Companion.PASSWORD_PREF_KEY
 import com.orgzly.android.repos.WebdavRepo.Companion.USERNAME_PREF_KEY
@@ -23,7 +23,7 @@ import java.io.IOException
 
 
 @RunWith(AndroidJUnit4::class)
-class WebdavTest : SyncRepoTests {
+class WebdavRepoTest : SyncRepoTest {
 
     private val serverUrl = "http://localhost:8081"
 
@@ -61,24 +61,17 @@ class WebdavTest : SyncRepoTests {
 
     @Test
     override fun testGetBooks_singleOrgFile() {
-        SyncRepoTests.testGetBooks_singleOrgFile(serverRootDir, syncRepo)
+        SyncRepoTest.testGetBooks_singleOrgFile(serverRootDir, syncRepo)
     }
 
     @Test
     override fun testGetBooks_singleFileInSubfolder() {
-        SyncRepoTests.testGetBooks_singleFileInSubfolder(serverRootDir, syncRepo)
+        SyncRepoTest.testGetBooks_singleFileInSubfolder(serverRootDir, syncRepo)
     }
 
     @Test
-    fun testGetBooks_allFilesAreIgnored() {
-        val subFolder = File(serverRootDir.absolutePath, "folder")
-        subFolder.mkdir()
-        val remoteBookFile = File(subFolder.absolutePath, "book one.org")
-        MiscUtils.writeStringToFile("...", remoteBookFile)
-        val ignoreFile = File(serverRootDir.absolutePath, RepoIgnoreNode.IGNORE_FILE)
-        MiscUtils.writeStringToFile("*\n", ignoreFile)
-        val books = syncRepo.books
-        assertEquals(0, books.size)
+    override fun testGetBooks_allFilesAreIgnored() {
+        SyncRepoTest.testGetBooks_allFilesAreIgnored(serverRootDir, syncRepo)
     }
 
     @Test

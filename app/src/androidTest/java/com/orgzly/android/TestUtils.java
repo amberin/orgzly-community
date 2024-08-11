@@ -189,10 +189,4 @@ public class TestUtils {
         mockSerializedDbxCredential.put("app_key", BuildConfig.DROPBOX_APP_KEY);
         AppPreferences.dropboxSerializedCredential(App.getAppContext(), mockSerializedDbxCredential.toString());
     }
-
-    public void webdavTestPreflight() {
-        Assume.assumeTrue(BuildConfig.WEBDAV_REPO_URL.length() > 0);
-        Assume.assumeTrue(BuildConfig.WEBDAV_USERNAME.length() > 0);
-        Assume.assumeTrue(BuildConfig.WEBDAV_PASSWORD.length() > 0);
-    }
 }
