@@ -12,6 +12,7 @@ import com.dropbox.core.android.Auth;
 import com.dropbox.core.json.JsonReadException;
 import com.dropbox.core.oauth.DbxCredential;
 import com.dropbox.core.v2.DbxClientV2;
+import com.dropbox.core.v2.files.DeleteResult;
 import com.dropbox.core.v2.files.FileMetadata;
 import com.dropbox.core.v2.files.FolderMetadata;
 import com.dropbox.core.v2.files.GetMetadataErrorException;
@@ -342,6 +343,12 @@ public class DropboxClient {
 
     public VersionedRook move(Uri repoUri, Uri from, Uri to) throws IOException {
         linkedOrThrow();
+
+        /* Abort if destination file already exists. */
+        try {
+            if (dbxClient.files().getMetadata(to.getPath()) instanceof FileMetadata)
+                throw new IOException("File at " + to.getPath() + " already exists");
+        } catch (DbxException ignored) {}
 
         try {
             RelocationResult relocationRes = dbxClient.files().moveV2(from.getPath(), to.getPath());
