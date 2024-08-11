@@ -22,8 +22,9 @@ import org.junit.After
 import org.junit.Assert
 import org.junit.Before
 import org.junit.Test
+import java.io.IOException
 
-class DocumentRepoTest : SyncRepoTests, OrgzlyTest() {
+class DocumentRepoTest : SyncRepoTest, OrgzlyTest() {
 
     private lateinit var documentTreeSegment: String
     private lateinit var repo: Repo
@@ -46,16 +47,91 @@ class DocumentRepoTest : SyncRepoTests, OrgzlyTest() {
 
     @Test
     override fun testGetBooks_singleOrgFile() {
-        SyncRepoTests.testGetBooks_singleOrgFile(repoDirectory, syncRepo)
+        SyncRepoTest.testGetBooks_singleOrgFile(repoDirectory, syncRepo)
     }
 
     @Test
     override fun testGetBooks_singleFileInSubfolder() {
-        SyncRepoTests.testGetBooks_singleFileInSubfolder(repoDirectory, syncRepo)
+        SyncRepoTest.testGetBooks_singleFileInSubfolder(repoDirectory, syncRepo)
+    }
+
+    @Test
+    override fun testGetBooks_allFilesAreIgnored() {
+        SyncRepoTest.testGetBooks_allFilesAreIgnored(repoDirectory, syncRepo)
+    }
+
+    @Test
+    override fun testGetBooks_specificFileInSubfolderIsIgnored() {
+        SyncRepoTest.testGetBooks_specificFileInSubfolderIsIgnored(repoDirectory, syncRepo)
+    }
+
+    @Test
+    override fun testGetBooks_specificFileIsUnignored() {
+        SyncRepoTest.testGetBooks_specificFileIsUnignored(repoDirectory, syncRepo)
+    }
+
+    @Test
+    override fun testGetBooks_ignoredExtensions() {
+        SyncRepoTest.testGetBooks_ignoredExtensions(repoDirectory, syncRepo)
+    }
+
+    @Test
+    override fun testStoreBook_expectedUri() {
+        SyncRepoTest.testStoreBook_expectedUri(syncRepo)
+    }
+
+    @Test
+    override fun testStoreBook_producesSameUriAsRetrieveBook() {
+        SyncRepoTest.testStoreBook_producesSameUriAsRetrieveBook(syncRepo)
+    }
+
+    @Test
+    override fun testStoreBook_producesSameUriAsGetBooks() {
+        SyncRepoTest.testStoreBook_producesSameUriAsGetBooks(repoDirectory, syncRepo)
+    }
+
+    @Test
+    override fun testStoreBook_inSubfolder() {
+        SyncRepoTest.testStoreBook_inSubfolder(repoDirectory, syncRepo)
+    }
+
+    @Test
+    override fun testRenameBook_expectedUri() {
+        SyncRepoTest.testRenameBook_expectedUri(syncRepo)
+    }
+
+    @Test(expected = IOException::class)
+    override fun testRenameBook_repoFileAlreadyExists() {
+        SyncRepoTest.testRenameBook_repoFileAlreadyExists(repoDirectory, syncRepo)
+    }
+
+    @Test
+    override fun testRenameBook_fromRootToSubfolder() {
+        SyncRepoTest.testRenameBook_fromRootToSubfolder(syncRepo)
+    }
+
+    @Test
+    override fun testRenameBook_fromSubfolderToRoot() {
+        SyncRepoTest.testRenameBook_fromSubfolderToRoot(syncRepo)
+    }
+
+    @Test
+    override fun testRenameBook_newSubfolderSameLeafName() {
+        SyncRepoTest.testRenameBook_newSubfolderSameLeafName(syncRepo)
+    }
+
+    @Test
+    override fun testRenameBook_newSubfolderAndLeafName() {
+        SyncRepoTest.testRenameBook_newSubfolderAndLeafName(syncRepo)
+    }
+
+    @Test
+    override fun testRenameBook_sameSubfolderNewLeafName() {
+        SyncRepoTest.testRenameBook_sameSubfolderNewLeafName(syncRepo)
     }
 
     private fun setupDocumentRepo(extraDir: String? = null) {
-        val repoDirName = SyncRepoTests.repoDirName
+        val repoDirName = SyncRepoTest.repoDirName
         documentTreeSegment = if (Build.VERSION.SDK_INT < 30) {
             "/document/raw%3A%2Fstorage%2Femulated%2F0%2FDownload%2F$repoDirName%2F"
         } else {

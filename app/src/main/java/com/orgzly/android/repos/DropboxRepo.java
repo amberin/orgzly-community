@@ -74,7 +74,7 @@ public class DropboxRepo implements SyncRepo {
     }
 
     /**
-     * Intended for tests. The delete() method does not allow deleting directories.
+     * Only used by tests. The delete() method does not allow deleting directories.
      */
     public void deleteDirectory(Uri uri) throws IOException {
         client.deleteFolder(uri.getPath());

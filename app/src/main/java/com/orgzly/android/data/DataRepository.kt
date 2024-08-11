@@ -2356,7 +2356,8 @@ class DataRepository @Inject constructor(
 
         val repoWithProps = RepoWithProps(Repo(id, type, url), props)
 
-        return repoFactory.getInstance(repoWithProps)
+        return repoFactory.
+        getInstance(repoWithProps)
     }
 
     fun getRepoPropsMap(id: Long): Map<String, String> {
