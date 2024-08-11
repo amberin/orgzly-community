@@ -185,6 +185,8 @@ dependencies {
 
     androidTestImplementation "de.sven-jacobs:loremipsum:$versions.loremipsum"
 
+    androidTestImplementation "io.github.atetzner:webdav-embedded-server:0.2.1"
+
     // Dagger
     implementation "com.google.dagger:dagger:$versions.dagger"
     kapt "com.google.dagger:dagger-compiler:$versions.dagger"
