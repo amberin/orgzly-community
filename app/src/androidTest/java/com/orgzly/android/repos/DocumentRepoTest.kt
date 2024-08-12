@@ -59,6 +59,16 @@ class DocumentRepoTest : SyncRepoTest, OrgzlyTest() {
         SyncRepoTest.testGetBooks_allFilesAreIgnored(repoDirectory, syncRepo)
     }
 
+    @Test
+    override fun testGetBooks_specificFileInSubfolderIsIgnored() {
+        SyncRepoTest.testGetBooks_specificFileInSubfolderIsIgnored(repoDirectory, syncRepo)
+    }
+
+    @Test
+    override fun testGetBooks_specificFileIsUnignored() {
+        SyncRepoTest.testGetBooks_specificFileIsUnignored(repoDirectory, syncRepo)
+    }
+
     private fun setupDocumentRepo(extraDir: String? = null) {
         val repoDirName = SyncRepoTest.repoDirName
         documentTreeSegment = if (Build.VERSION.SDK_INT < 30) {

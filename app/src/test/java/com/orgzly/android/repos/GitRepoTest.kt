@@ -62,4 +62,14 @@ class GitRepoTest : SyncRepoTest {
     override fun testGetBooks_allFilesAreIgnored() {
         SyncRepoTest.testGetBooks_allFilesAreIgnored(gitWorkingTree, syncRepo)
     }
+
+    @Test
+    override fun testGetBooks_specificFileInSubfolderIsIgnored() {
+        SyncRepoTest.testGetBooks_specificFileInSubfolderIsIgnored(gitWorkingTree, syncRepo)
+    }
+
+    @Test
+    override fun testGetBooks_specificFileIsUnignored() {
+        SyncRepoTest.testGetBooks_specificFileIsUnignored(gitWorkingTree, syncRepo)
+    }
 }

@@ -26,8 +26,8 @@ class DropboxRepoTest : SyncRepoTest {
 
     @Before
     fun setup() {
-        assumeTrue(BuildConfig.DROPBOX_APP_KEY.length > 0)
-        assumeTrue(BuildConfig.DROPBOX_REFRESH_TOKEN.length > 0)
+        assumeTrue(BuildConfig.DROPBOX_APP_KEY.isNotEmpty())
+        assumeTrue(BuildConfig.DROPBOX_REFRESH_TOKEN.isNotEmpty())
         val mockSerializedDbxCredential = JSONObject()
         mockSerializedDbxCredential.put("access_token", "dummy")
         mockSerializedDbxCredential.put("expires_at", System.currentTimeMillis())
@@ -65,5 +65,15 @@ class DropboxRepoTest : SyncRepoTest {
     @Test
     override fun testGetBooks_allFilesAreIgnored() {
         SyncRepoTest.testGetBooks_allFilesAreIgnored(client, syncRepo)
+    }
+
+    @Test
+    override fun testGetBooks_specificFileInSubfolderIsIgnored() {
+        SyncRepoTest.testGetBooks_specificFileInSubfolderIsIgnored(client, syncRepo)
+    }
+
+    @Test
+    override fun testGetBooks_specificFileIsUnignored() {
+        SyncRepoTest.testGetBooks_specificFileIsUnignored(client, syncRepo)
     }
 }

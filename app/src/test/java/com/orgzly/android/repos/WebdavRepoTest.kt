@@ -2,7 +2,6 @@ package com.orgzly.android
 
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import com.orgzly.android.db.entity.Repo
-import com.orgzly.android.repos.RepoIgnoreNode
 import com.orgzly.android.repos.RepoType
 import com.orgzly.android.repos.RepoWithProps
 import com.orgzly.android.repos.SyncRepo
@@ -75,27 +74,13 @@ class WebdavRepoTest : SyncRepoTest {
     }
 
     @Test
-    fun testGetBooks_specificFileInSubfolderIsIgnored() {
-        val subFolder = File(serverRootDir.absolutePath, "folder")
-        subFolder.mkdir()
-        val remoteBookFile = File(subFolder.absolutePath, "book one.org")
-        MiscUtils.writeStringToFile("...", remoteBookFile)
-        val ignoreFile = File(serverRootDir.absolutePath, RepoIgnoreNode.IGNORE_FILE)
-        MiscUtils.writeStringToFile("folder/book one.org\n", ignoreFile)
-        val books = syncRepo.books
-        assertEquals(0, books.size)
+    override fun testGetBooks_specificFileInSubfolderIsIgnored() {
+        SyncRepoTest.testGetBooks_specificFileInSubfolderIsIgnored(serverRootDir, syncRepo)
     }
 
     @Test
-    fun testGetBooks_specificFileIsUnignored() {
-        val subFolder = File(serverRootDir.absolutePath, "folder")
-        subFolder.mkdir()
-        val remoteBookFile = File(subFolder.absolutePath, "book one.org")
-        MiscUtils.writeStringToFile("...", remoteBookFile)
-        val ignoreFile = File(serverRootDir.absolutePath, RepoIgnoreNode.IGNORE_FILE)
-        MiscUtils.writeStringToFile("*\n!folder/book one.org", ignoreFile)
-        val books = syncRepo.books
-        assertEquals(1, books.size)
+    override fun testGetBooks_specificFileIsUnignored() {
+        SyncRepoTest.testGetBooks_specificFileIsUnignored(serverRootDir, syncRepo)
     }
 
     @Test
