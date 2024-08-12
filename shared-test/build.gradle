@@ -8,6 +8,7 @@ android {
 
     defaultConfig {
         minSdk 21
+        buildConfigField "String", "DROPBOX_APP_KEY", gradle.ext.appProperties.getProperty("dropbox.app_key", '""')
     }
 
     buildTypes {
@@ -16,7 +17,7 @@ android {
             proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'), 'proguard-rules.pro'
         }
         debug {
-
+            buildConfigField "String", "DROPBOX_REFRESH_TOKEN", gradle.ext.appProperties.getProperty("dropbox.refresh_token", '""') 
         }
     }
     flavorDimensions "store"
@@ -35,6 +36,10 @@ android {
     }
     kotlinOptions {
         jvmTarget = 17
+    }
+
+    packagingOptions {
+        resources.merges.add("plugin.properties")
     }
 }
 
