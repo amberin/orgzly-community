@@ -22,7 +22,26 @@ on:
   workflow_dispatch:
 
 jobs:
-  test:
+
+  localUnitTests:
+    runs-on: ubuntu-latest
+    steps:
+      - name: checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Java
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 17
+
+      - name: Setup Gradle
+        uses: gradle/actions/setup-gradle@v4
+
+      - name: Run local unit tests
+        run: ./gradlew test
+
+  instrumentedTests:
     runs-on: ubuntu-latest
     strategy:
       matrix:
@@ -92,9 +111,6 @@ jobs:
           echo "webdav.repo_url = \"${{ secrets.WEBDAV_TEST_REPO_URL }}\"" >> app.properties
           echo "webdav.username = \"${{ secrets.WEBDAV_TEST_USERNAME }}\"" >> app.properties
           echo "webdav.password = \"${{ secrets.WEBDAV_TEST_PASSWORD }}\"" >> app.properties
-
-      - name: Run local unit tests
-        run: ./gradlew test
 
       - name: Run instrumented tests
         uses: reactivecircus/android-emulator-runner@v2
