@@ -20,10 +20,6 @@ class DropboxRepoTest : SyncRepoTest {
     private lateinit var syncRepo: SyncRepo
     private lateinit var client: DropboxClient
 
-    companion object {
-        val RANDOM_UUID = UUID.randomUUID().toString()
-    }
-
     @Before
     fun setup() {
         assumeTrue(BuildConfig.DROPBOX_APP_KEY.isNotEmpty())
@@ -37,7 +33,7 @@ class DropboxRepoTest : SyncRepoTest {
             ApplicationProvider.getApplicationContext(),
             mockSerializedDbxCredential.toString()
         )
-        val repo = Repo(0, RepoType.DROPBOX, "dropbox:/${SyncRepoTest.repoDirName}/$RANDOM_UUID")
+        val repo = Repo(0, RepoType.DROPBOX, "dropbox:/${SyncRepoTest.repoDirName}/" + UUID.randomUUID().toString())
         val repoPropsMap = HashMap<String, String>()
         val repoWithProps = RepoWithProps(repo, repoPropsMap)
         syncRepo = DropboxRepo(repoWithProps, ApplicationProvider.getApplicationContext())
@@ -47,9 +43,7 @@ class DropboxRepoTest : SyncRepoTest {
     @After
     fun tearDown() {
         val dropboxRepo = syncRepo as DropboxRepo
-        try {
-            dropboxRepo.deleteDirectory(syncRepo.uri)
-        } catch (_: IOException) {}
+        dropboxRepo.deleteDirectory(syncRepo.uri)
     }
 
     @Test
@@ -105,5 +99,15 @@ class DropboxRepoTest : SyncRepoTest {
     @Test
     override fun testRenameBook_expectedUri() {
         SyncRepoTest.testRenameBook_expectedUri(syncRepo)
+    }
+
+    @Test(expected = IOException::class)
+    override fun testRenameBook_repoFileAlreadyExists() {
+        SyncRepoTest.testRenameBook_repoFileAlreadyExists(client, syncRepo)
+    }
+
+    @Test
+    override fun testRenameBook_fromRootToSubfolder() {
+        SyncRepoTest.testRenameBook_fromRootToSubfolder(syncRepo)
     }
 }

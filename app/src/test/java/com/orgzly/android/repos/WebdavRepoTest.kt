@@ -1,19 +1,13 @@
-package com.orgzly.android
+package com.orgzly.android.repos
 
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import com.orgzly.android.db.entity.Repo
-import com.orgzly.android.repos.RepoType
-import com.orgzly.android.repos.RepoWithProps
-import com.orgzly.android.repos.SyncRepo
-import com.orgzly.android.repos.SyncRepoTest
-import com.orgzly.android.repos.WebdavRepo
 import com.orgzly.android.repos.WebdavRepo.Companion.PASSWORD_PREF_KEY
 import com.orgzly.android.repos.WebdavRepo.Companion.USERNAME_PREF_KEY
 import com.orgzly.android.util.MiscUtils
 import io.github.atetzner.webdav.server.MiltonWebDAVFileServer
 import org.junit.After
 import org.junit.Assert.assertEquals
-import org.junit.Assert.assertTrue
 import org.junit.Before
 import org.junit.Test
 import org.junit.runner.RunWith
@@ -114,26 +108,13 @@ class WebdavRepoTest : SyncRepoTest {
     }
 
     @Test(expected = IOException::class)
-    fun testRenameBook_repoFileAlreadyExists() {
-        for (bookName in arrayOf("Original", "Renamed")) {
-            val remoteBookFile = File(serverRootDir.absolutePath + "/" + bookName + ".org")
-            MiscUtils.writeStringToFile("...", remoteBookFile)
-        }
-        val originalRook = syncRepo.retrieveBook("Original.org", tmpFile)
-        try {
-            syncRepo.renameBook(originalRook.uri, "Renamed")
-        } catch (e: IOException) {
-            assertTrue(e.message!!.contains("File at " + syncRepo.uri.toString() + "Renamed.org already exists"))
-            throw e
-        }
+    override fun testRenameBook_repoFileAlreadyExists() {
+        SyncRepoTest.testRenameBook_repoFileAlreadyExists(serverRootDir, syncRepo)
     }
 
     @Test
-    fun testRenameBook_fromRootToSubfolder() {
-        MiscUtils.writeStringToFile("...", tmpFile)
-        val originalRook = syncRepo.storeBook(tmpFile, "Original.org")
-        val renamedRook = syncRepo.renameBook(originalRook.uri, "a folder/Renamed")
-        assertEquals(syncRepo.uri.toString() + "a%20folder/Renamed.org", renamedRook.uri.toString())
+    override fun testRenameBook_fromRootToSubfolder() {
+        SyncRepoTest.testRenameBook_fromRootToSubfolder(syncRepo)
     }
 
     @Test

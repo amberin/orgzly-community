@@ -22,6 +22,7 @@ import org.junit.After
 import org.junit.Assert
 import org.junit.Before
 import org.junit.Test
+import java.io.IOException
 
 class DocumentRepoTest : SyncRepoTest, OrgzlyTest() {
 
@@ -97,6 +98,16 @@ class DocumentRepoTest : SyncRepoTest, OrgzlyTest() {
     @Test
     override fun testRenameBook_expectedUri() {
         SyncRepoTest.testRenameBook_expectedUri(syncRepo)
+    }
+
+    @Test(expected = IOException::class)
+    override fun testRenameBook_repoFileAlreadyExists() {
+        SyncRepoTest.testRenameBook_repoFileAlreadyExists(repoDirectory, syncRepo)
+    }
+
+    @Test
+    override fun testRenameBook_fromRootToSubfolder() {
+        SyncRepoTest.testRenameBook_fromRootToSubfolder(syncRepo)
     }
 
     private fun setupDocumentRepo(extraDir: String? = null) {

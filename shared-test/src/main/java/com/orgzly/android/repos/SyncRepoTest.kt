@@ -9,6 +9,7 @@ import org.eclipse.jgit.storage.file.FileRepositoryBuilder
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
 import java.io.File
+import java.io.IOException
 
 @SuppressLint("NewApi")
 interface SyncRepoTest {
@@ -24,6 +25,9 @@ interface SyncRepoTest {
     fun testStoreBook_producesSameUriAsGetBooks()
     fun testStoreBook_inSubfolder()
     fun testRenameBook_expectedUri()
+    fun testRenameBook_repoFileAlreadyExists()
+    fun testRenameBook_fromRootToSubfolder()
+
 
         companion object {
 
@@ -385,19 +389,19 @@ interface SyncRepoTest {
         fun testStoreBook_producesSameUriAsGetBooks(repoManipulationPoint: Any, syncRepo: SyncRepo) {
             // Given
             val tmpFile = kotlin.io.path.createTempFile().toFile()
-            val repositoryPath = "a folder/a book.org"
+            val repositoryPath = "A folder/A book.org"
             when (syncRepo) {
                 is WebdavRepo -> {
                     repoManipulationPoint as File
-                    val repoSubDir = File(repoManipulationPoint.absolutePath, "a folder")
+                    val repoSubDir = File(repoManipulationPoint.absolutePath, "A folder")
                     repoSubDir.mkdir()
-                    MiscUtils.writeStringToFile("...", File(repoSubDir, "a book.org"))
+                    MiscUtils.writeStringToFile("...", File(repoSubDir, "A book.org"))
                 }
                 is GitRepo -> {
                     repoManipulationPoint as File
-                    val repoSubDir = File(repoManipulationPoint.absolutePath, "a folder")
+                    val repoSubDir = File(repoManipulationPoint.absolutePath, "A folder")
                     repoSubDir.mkdir()
-                    MiscUtils.writeStringToFile("...", File(repoSubDir, "a book.org"))
+                    MiscUtils.writeStringToFile("...", File(repoSubDir, "A book.org"))
                     val git = Git(
                         FileRepositoryBuilder()
                             .addCeilingDirectory(repoManipulationPoint)
@@ -415,8 +419,8 @@ interface SyncRepoTest {
                 }
                 is DocumentRepo -> {
                     repoManipulationPoint as DocumentFile
-                    val subFolder = repoManipulationPoint.createDirectory("a folder")
-                    MiscUtils.writeStringToDocumentFile("...", "a book.org", subFolder!!.uri)
+                    val subFolder = repoManipulationPoint.createDirectory("A folder")
+                    MiscUtils.writeStringToDocumentFile("...", "A book.org", subFolder!!.uri)
                 }
             }
             // When
@@ -501,6 +505,73 @@ interface SyncRepoTest {
                 else -> syncRepo.uri.toString() + "/Renamed%20book.org"
             }
             assertEquals(expectedRookUri, renamedVrook.uri.toString())
+        }
+
+        fun testRenameBook_repoFileAlreadyExists(repoManipulationPoint: Any, syncRepo: SyncRepo) {
+            // Given
+            for (rookRepoPath in arrayOf("Original.org", "Renamed.org")) {
+                when (syncRepo) {
+                    is WebdavRepo -> {
+                        repoManipulationPoint as File
+                        val remoteBookFile = File(repoManipulationPoint.absolutePath + "/" + rookRepoPath)
+                        MiscUtils.writeStringToFile("...", remoteBookFile)
+                    }
+                    is GitRepo -> {
+                        repoManipulationPoint as File
+                        val remoteBookFile = File(repoManipulationPoint.absolutePath + "/" + rookRepoPath)
+                        MiscUtils.writeStringToFile("...", remoteBookFile)
+                        val git = Git(
+                            FileRepositoryBuilder()
+                                .addCeilingDirectory(repoManipulationPoint)
+                                .findGitDir(repoManipulationPoint)
+                                .build()
+                        )
+                        git.add().addFilepattern(".").call()
+                        git.commit().setMessage("").call()
+                        git.push().call()
+                    }
+                    is DocumentRepo -> {
+                        repoManipulationPoint as DocumentFile
+                        MiscUtils.writeStringToDocumentFile("...", rookRepoPath, repoManipulationPoint.uri)
+                    }
+                    is DropboxRepo -> {
+                        repoManipulationPoint as DropboxClient
+                        val tmpFile = kotlin.io.path.createTempFile().toFile()
+                        MiscUtils.writeStringToFile("...", tmpFile)
+                        repoManipulationPoint.upload(tmpFile, syncRepo.uri, rookRepoPath)
+                        tmpFile.delete()
+                    }
+                }
+            }
+            val retrievedBookFile = kotlin.io.path.createTempFile().toFile()
+            // When
+            val originalRook = syncRepo.retrieveBook("Original.org", retrievedBookFile)
+            try {
+                syncRepo.renameBook(originalRook.uri, "Renamed")
+            } catch (e: IOException) {
+                // Then
+                assertTrue(e.message!!.contains("Renamed.org already exists"))
+                throw e
+            } finally {
+                retrievedBookFile.delete()
+            }
+        }
+
+        fun testRenameBook_fromRootToSubfolder(syncRepo: SyncRepo) {
+            // Given
+            val tmpFile = kotlin.io.path.createTempFile().toFile()
+            MiscUtils.writeStringToFile("...", tmpFile)
+            val originalRook = syncRepo.storeBook(tmpFile, "Original book.org")
+            tmpFile.delete()
+            // When
+            val renamedRook = syncRepo.renameBook(originalRook.uri, "A folder/Renamed book")
+            // Then
+            val expectedRookUri = when (syncRepo) {
+                is GitRepo -> "/A folder/Renamed book.org"
+                is DocumentRepo -> syncRepo.uri.toString() + treeDocumentFileExtraSegment + "A%20folder%2FRenamed%20book.org"
+                else -> syncRepo.uri.toString() + "/A%20folder/Renamed%20book.org"
+            }
+            assertEquals(expectedRookUri, renamedRook.uri.toString())
         }
     }
 }

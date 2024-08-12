@@ -15,6 +15,7 @@ import org.junit.Before
 import org.junit.Test
 import org.junit.runner.RunWith
 import java.io.File
+import java.io.IOException
 import kotlin.io.path.createTempDirectory
 
 @RunWith(AndroidJUnit4::class)
@@ -102,5 +103,15 @@ class GitRepoTest : SyncRepoTest {
     @Test
     override fun testRenameBook_expectedUri() {
         SyncRepoTest.testRenameBook_expectedUri(syncRepo)
+    }
+
+    @Test(expected = IOException::class)
+    override fun testRenameBook_repoFileAlreadyExists() {
+        SyncRepoTest.testRenameBook_repoFileAlreadyExists(gitWorkingTree, syncRepo)
+    }
+
+    @Test
+    override fun testRenameBook_fromRootToSubfolder() {
+        SyncRepoTest.testRenameBook_fromRootToSubfolder(syncRepo)
     }
 }
