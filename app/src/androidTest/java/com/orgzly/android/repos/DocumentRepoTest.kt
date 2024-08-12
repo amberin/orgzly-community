@@ -69,6 +69,36 @@ class DocumentRepoTest : SyncRepoTest, OrgzlyTest() {
         SyncRepoTest.testGetBooks_specificFileIsUnignored(repoDirectory, syncRepo)
     }
 
+    @Test
+    override fun testGetBooks_ignoredExtensions() {
+        SyncRepoTest.testGetBooks_ignoredExtensions(repoDirectory, syncRepo)
+    }
+
+    @Test
+    override fun testStoreBook_expectedUri() {
+        SyncRepoTest.testStoreBook_expectedUri(syncRepo)
+    }
+
+    @Test
+    override fun testStoreBook_producesSameUriAsRetrieveBook() {
+        SyncRepoTest.testStoreBook_producesSameUriAsRetrieveBook(syncRepo)
+    }
+
+    @Test
+    override fun testStoreBook_producesSameUriAsGetBooks() {
+        SyncRepoTest.testStoreBook_producesSameUriAsGetBooks(repoDirectory, syncRepo)
+    }
+
+    @Test
+    override fun testStoreBook_inSubfolder() {
+        SyncRepoTest.testStoreBook_inSubfolder(repoDirectory, syncRepo)
+    }
+
+    @Test
+    override fun testRenameBook_expectedUri() {
+        SyncRepoTest.testRenameBook_expectedUri(syncRepo)
+    }
+
     private fun setupDocumentRepo(extraDir: String? = null) {
         val repoDirName = SyncRepoTest.repoDirName
         documentTreeSegment = if (Build.VERSION.SDK_INT < 30) {

@@ -84,64 +84,33 @@ class WebdavRepoTest : SyncRepoTest {
     }
 
     @Test
-    fun testGetBooks_ignoredExtensions() {
-        for (fileName in arrayOf("file one.txt", "file two.o", "file three.org")) {
-            val remoteBookFile = File(serverRootDir.absolutePath, fileName)
-            MiscUtils.writeStringToFile("...", remoteBookFile)
-        }
-        val books = syncRepo.books
-        assertEquals(1, books.size.toLong())
-        assertEquals("file three", BookName.fromFileName(BookName.getFileName(syncRepo.uri, books[0].uri)).name)
+    override fun testGetBooks_ignoredExtensions() {
+        SyncRepoTest.testGetBooks_ignoredExtensions(serverRootDir, syncRepo)
     }
 
     @Test
-    fun testStoreBook_expectedUri() {
-        MiscUtils.writeStringToFile("...", tmpFile)
-        val vrook = syncRepo.storeBook(tmpFile, "Book one.org")
-        assertEquals(syncRepo.uri.toString() + "Book%20one.org", vrook.uri.toString())
+    override fun testStoreBook_expectedUri() {
+        SyncRepoTest.testStoreBook_expectedUri(syncRepo)
     }
 
     @Test
-    fun testStoreBook_producesSameUriAsRetrieveBook() {
-        val repositoryPath = "a folder/a book.org"
-        MiscUtils.writeStringToFile("...", tmpFile)
-        val storedRook = syncRepo.storeBook(tmpFile, repositoryPath)
-        val retrievedBook = syncRepo.retrieveBook(repositoryPath, tmpFile)
-        assertEquals(retrievedBook.uri, storedRook.uri)
+    override fun testStoreBook_producesSameUriAsRetrieveBook() {
+        SyncRepoTest.testStoreBook_producesSameUriAsRetrieveBook(syncRepo)
     }
 
     @Test
-    fun testStoreBook_producesSameUriAsGetBooks() {
-        val repositoryPath = "a folder/a book.org"
-        val repoSubDir = File(serverRootDir.absolutePath, "a folder")
-        repoSubDir.mkdir()
-        val repoBookFile = File(repoSubDir, "a book.org")
-        MiscUtils.writeStringToFile("...", repoBookFile)
-        val getBook = syncRepo.books[0]
-        MiscUtils.writeStringToFile(".......", tmpFile)
-        val storedRook = syncRepo.storeBook(tmpFile, repositoryPath)
-        assertEquals(getBook.uri, storedRook.uri)
+    override fun testStoreBook_producesSameUriAsGetBooks() {
+        SyncRepoTest.testStoreBook_producesSameUriAsGetBooks(serverRootDir, syncRepo)
     }
 
     @Test
-    fun testStoreBook_inSubfolder() {
-        MiscUtils.writeStringToFile("...", tmpFile)
-        syncRepo.storeBook(tmpFile, "a folder/a book.org")
-        val subFolder = File(serverRootDir, "a folder")
-        assertTrue(subFolder.exists())
-        val bookFile = File(subFolder, "a book.org")
-        assertTrue(bookFile.exists())
-        assertEquals("...", bookFile.readText())
+    override fun testStoreBook_inSubfolder() {
+        SyncRepoTest.testStoreBook_inSubfolder(serverRootDir, syncRepo)
     }
 
     @Test
-    fun testRenameBook_expectedUri() {
-        val remoteBookFile = File(serverRootDir.absolutePath + "/Book one.org")
-        MiscUtils.writeStringToFile("...", remoteBookFile)
-        val originalVrook = syncRepo.books[0]
-        assertEquals(syncRepo.uri.toString() + "Book%20one.org", originalVrook.uri.toString())
-        val renamedVrook = syncRepo.renameBook(originalVrook.uri, "Renamed book")
-        assertEquals(syncRepo.uri.toString() + "Renamed%20book.org", renamedVrook.uri.toString())
+    override fun testRenameBook_expectedUri() {
+        SyncRepoTest.testRenameBook_expectedUri(syncRepo)
     }
 
     @Test(expected = IOException::class)
@@ -151,8 +120,6 @@ class WebdavRepoTest : SyncRepoTest {
             MiscUtils.writeStringToFile("...", remoteBookFile)
         }
         val originalRook = syncRepo.retrieveBook("Original.org", tmpFile)
-//        exceptionRule.expect(IOException::class.java)
-//        exceptionRule.expectMessage("File at " + syncRepo.uri.toString() + "Renamed.org already exists")
         try {
             syncRepo.renameBook(originalRook.uri, "Renamed")
         } catch (e: IOException) {

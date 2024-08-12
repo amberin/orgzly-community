@@ -76,4 +76,34 @@ class DropboxRepoTest : SyncRepoTest {
     override fun testGetBooks_specificFileIsUnignored() {
         SyncRepoTest.testGetBooks_specificFileIsUnignored(client, syncRepo)
     }
+
+    @Test
+    override fun testGetBooks_ignoredExtensions() {
+        SyncRepoTest.testGetBooks_ignoredExtensions(client, syncRepo)
+    }
+
+    @Test
+    override fun testStoreBook_expectedUri() {
+        SyncRepoTest.testStoreBook_expectedUri(syncRepo)
+    }
+
+    @Test
+    override fun testStoreBook_producesSameUriAsRetrieveBook() {
+        SyncRepoTest.testStoreBook_producesSameUriAsRetrieveBook(syncRepo)
+    }
+
+    @Test
+    override fun testStoreBook_producesSameUriAsGetBooks() {
+        SyncRepoTest.testStoreBook_producesSameUriAsGetBooks(client, syncRepo)
+    }
+
+    @Test
+    override fun testStoreBook_inSubfolder() {
+        SyncRepoTest.testStoreBook_inSubfolder(client, syncRepo)
+    }
+
+    @Test
+    override fun testRenameBook_expectedUri() {
+        SyncRepoTest.testRenameBook_expectedUri(syncRepo)
+    }
 }

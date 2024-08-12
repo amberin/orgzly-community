@@ -45,6 +45,7 @@ class GitRepoTest : SyncRepoTest {
 
     @After
     fun tearDown() {
+        gitWorkingTree.deleteRecursively()
         bareRepoDir.deleteRecursively()
     }
 
@@ -71,5 +72,35 @@ class GitRepoTest : SyncRepoTest {
     @Test
     override fun testGetBooks_specificFileIsUnignored() {
         SyncRepoTest.testGetBooks_specificFileIsUnignored(gitWorkingTree, syncRepo)
+    }
+
+    @Test
+    override fun testGetBooks_ignoredExtensions() {
+        SyncRepoTest.testGetBooks_ignoredExtensions(gitWorkingTree, syncRepo)
+    }
+
+    @Test
+    override fun testStoreBook_expectedUri() {
+        SyncRepoTest.testStoreBook_expectedUri(syncRepo)
+    }
+
+    @Test
+    override fun testStoreBook_producesSameUriAsRetrieveBook() {
+        SyncRepoTest.testStoreBook_producesSameUriAsRetrieveBook(syncRepo)
+    }
+
+    @Test
+    override fun testStoreBook_producesSameUriAsGetBooks() {
+        SyncRepoTest.testStoreBook_producesSameUriAsGetBooks(gitWorkingTree, syncRepo)
+    }
+
+    @Test
+    override fun testStoreBook_inSubfolder() {
+        SyncRepoTest.testStoreBook_inSubfolder(gitWorkingTree, syncRepo)
+    }
+
+    @Test
+    override fun testRenameBook_expectedUri() {
+        SyncRepoTest.testRenameBook_expectedUri(syncRepo)
     }
 }

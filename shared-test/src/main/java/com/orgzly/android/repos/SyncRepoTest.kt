@@ -7,6 +7,7 @@ import com.orgzly.android.util.MiscUtils
 import org.eclipse.jgit.api.Git
 import org.eclipse.jgit.storage.file.FileRepositoryBuilder
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertTrue
 import java.io.File
 
 @SuppressLint("NewApi")
@@ -17,6 +18,12 @@ interface SyncRepoTest {
     fun testGetBooks_allFilesAreIgnored()
     fun testGetBooks_specificFileInSubfolderIsIgnored()
     fun testGetBooks_specificFileIsUnignored()
+    fun testGetBooks_ignoredExtensions()
+    fun testStoreBook_expectedUri()
+    fun testStoreBook_producesSameUriAsRetrieveBook()
+    fun testStoreBook_producesSameUriAsGetBooks()
+    fun testStoreBook_inSubfolder()
+    fun testRenameBook_expectedUri()
 
         companion object {
 
@@ -49,7 +56,7 @@ interface SyncRepoTest {
                             .findGitDir(repoManipulationPoint)
                             .build()
                     )
-                    git.add().addFilepattern("Book one.org").call()
+                    git.add().addFilepattern(".").call()
                     git.commit().setMessage("").call()
                     git.push().call()
                 }
@@ -61,7 +68,7 @@ interface SyncRepoTest {
                 is DropboxRepo -> {
                     repoManipulationPoint as DropboxClient
                     expectedRookUri = syncRepo.uri.toString() + "/Book%20one.org"
-                    val tmpFile = File.createTempFile("orgzly-test-", "")
+                    val tmpFile = kotlin.io.path.createTempFile().toFile()
                     MiscUtils.writeStringToFile(testBookContent, tmpFile)
                     repoManipulationPoint.upload(tmpFile, syncRepo.uri, "Book one.org")
                     tmpFile.delete()
@@ -112,7 +119,7 @@ interface SyncRepoTest {
                             .findGitDir(repoManipulationPoint)
                             .build()
                     )
-                    git.add().addFilepattern("Folder/Book one.org").call()
+                    git.add().addFilepattern(".").call()
                     git.commit().setMessage("").call()
                     git.push().call()
                 }
@@ -172,8 +179,7 @@ interface SyncRepoTest {
                             .findGitDir(repoManipulationPoint)
                             .build()
                     )
-                    git.add().addFilepattern("folder/book one.org").call()
-                    git.add().addFilepattern(".orgzlyignore").call()
+                    git.add().addFilepattern(".").call()
                     git.commit().setMessage("").call()
                     git.push().call()
                 }
@@ -226,8 +232,7 @@ interface SyncRepoTest {
                             .findGitDir(repoManipulationPoint)
                             .build()
                     )
-                    git.add().addFilepattern("folder/book one.org").call()
-                    git.add().addFilepattern(".orgzlyignore").call()
+                    git.add().addFilepattern(".").call()
                     git.commit().setMessage("").call()
                     git.push().call()
                 }
@@ -280,8 +285,7 @@ interface SyncRepoTest {
                             .findGitDir(repoManipulationPoint)
                             .build()
                     )
-                    git.add().addFilepattern(testBookRelativePath).call()
-                    git.add().addFilepattern(RepoIgnoreNode.IGNORE_FILE).call()
+                    git.add().addFilepattern(".").call()
                     git.commit().setMessage("").call()
                     git.push().call()
                 }
@@ -299,6 +303,204 @@ interface SyncRepoTest {
             val books = syncRepo.books
             // Then
             assertEquals(1, books.size)
+        }
+
+        fun testGetBooks_ignoredExtensions(repoManipulationPoint: Any, syncRepo: SyncRepo) {
+            // Given
+            val testBookContent = "\n\n...\n\n"
+            when (syncRepo) {
+                is WebdavRepo -> {
+                    repoManipulationPoint as File
+                    for (fileName in arrayOf("file one.txt", "file two.o", "file three.org")) {
+                        MiscUtils.writeStringToFile(testBookContent, File(repoManipulationPoint.absolutePath, fileName))
+                    }
+                }
+                is GitRepo -> {
+                    repoManipulationPoint as File
+                    for (fileName in arrayOf("file one.txt", "file two.o", "file three.org")) {
+                        MiscUtils.writeStringToFile(testBookContent, File(repoManipulationPoint.absolutePath, fileName))
+                    }
+                    val git = Git(
+                        FileRepositoryBuilder()
+                            .addCeilingDirectory(repoManipulationPoint)
+                            .findGitDir(repoManipulationPoint)
+                            .build()
+                    )
+                    git.add().addFilepattern(".").call()
+                    git.commit().setMessage("").call()
+                    git.push().call()
+                }
+                is DocumentRepo -> {
+                    repoManipulationPoint as DocumentFile
+                    for (fileName in arrayOf("file one.txt", "file two.o", "file three.org")) {
+                        MiscUtils.writeStringToDocumentFile(testBookContent, fileName, repoManipulationPoint.uri)
+                    }
+                }
+                is DropboxRepo -> {
+                    repoManipulationPoint as DropboxClient
+                    val tmpFile = kotlin.io.path.createTempFile().toFile()
+                    for (fileName in arrayOf("file one.txt", "file two.o", "file three.org")) {
+                        MiscUtils.writeStringToFile(testBookContent, tmpFile)
+                        repoManipulationPoint.upload(tmpFile, syncRepo.uri, fileName)
+                    }
+                    tmpFile.delete()
+                }
+            }
+            // When
+            val books = syncRepo.books
+            // Then
+            assertEquals(1, books.size.toLong())
+            assertEquals("file three", BookName.fromFileName(BookName.getFileName(syncRepo.uri, books[0].uri)).name)
+        }
+
+        fun testStoreBook_expectedUri(syncRepo: SyncRepo) {
+            // Given
+            val tmpFile = kotlin.io.path.createTempFile().toFile()
+            MiscUtils.writeStringToFile("...", tmpFile)
+            // When
+            val vrook = syncRepo.storeBook(tmpFile, "Book one.org")
+            tmpFile.delete()
+            // Then
+            val expectedRookUri = when (syncRepo) {
+                is GitRepo -> "/Book one.org"
+                is DocumentRepo -> syncRepo.uri.toString() + treeDocumentFileExtraSegment + "Book%20one.org"
+                else -> syncRepo.uri.toString() + "/Book%20one.org"
+            }
+            assertEquals(expectedRookUri, vrook.uri.toString())
+        }
+
+        fun testStoreBook_producesSameUriAsRetrieveBook(syncRepo: SyncRepo) {
+            // Given
+            val tmpFile = kotlin.io.path.createTempFile().toFile()
+            val repositoryPath = "a folder/a book.org"
+            MiscUtils.writeStringToFile("...", tmpFile)
+            // When
+            val storedRook = syncRepo.storeBook(tmpFile, repositoryPath)
+            val retrievedBook = syncRepo.retrieveBook(repositoryPath, tmpFile)
+            tmpFile.delete()
+            // Then
+            assertEquals(retrievedBook.uri, storedRook.uri)
+        }
+
+        fun testStoreBook_producesSameUriAsGetBooks(repoManipulationPoint: Any, syncRepo: SyncRepo) {
+            // Given
+            val tmpFile = kotlin.io.path.createTempFile().toFile()
+            val repositoryPath = "a folder/a book.org"
+            when (syncRepo) {
+                is WebdavRepo -> {
+                    repoManipulationPoint as File
+                    val repoSubDir = File(repoManipulationPoint.absolutePath, "a folder")
+                    repoSubDir.mkdir()
+                    MiscUtils.writeStringToFile("...", File(repoSubDir, "a book.org"))
+                }
+                is GitRepo -> {
+                    repoManipulationPoint as File
+                    val repoSubDir = File(repoManipulationPoint.absolutePath, "a folder")
+                    repoSubDir.mkdir()
+                    MiscUtils.writeStringToFile("...", File(repoSubDir, "a book.org"))
+                    val git = Git(
+                        FileRepositoryBuilder()
+                            .addCeilingDirectory(repoManipulationPoint)
+                            .findGitDir(repoManipulationPoint)
+                            .build()
+                    )
+                    git.add().addFilepattern(".").call()
+                    git.commit().setMessage("").call()
+                    git.push().call()
+                }
+                is DropboxRepo -> {
+                    repoManipulationPoint as DropboxClient
+                    MiscUtils.writeStringToFile("...", tmpFile)
+                    repoManipulationPoint.upload(tmpFile, syncRepo.uri, repositoryPath)
+                }
+                is DocumentRepo -> {
+                    repoManipulationPoint as DocumentFile
+                    val subFolder = repoManipulationPoint.createDirectory("a folder")
+                    MiscUtils.writeStringToDocumentFile("...", "a book.org", subFolder!!.uri)
+                }
+            }
+            // When
+            val gottenBook = syncRepo.books[0]
+            MiscUtils.writeStringToFile("......", tmpFile) // N.B. Different content to ensure the repo file is actually changed
+            val storedRook = syncRepo.storeBook(tmpFile, repositoryPath)
+            tmpFile.delete()
+            // Then
+            assertEquals(gottenBook.uri, storedRook.uri)
+        }
+
+        fun testStoreBook_inSubfolder(repoManipulationPoint: Any, syncRepo: SyncRepo) {
+            // Given
+            val tmpFile = kotlin.io.path.createTempFile().toFile()
+            val repositoryPath = "A folder/A book.org"
+            val testBookContent = "\n\n...\n\n"
+            MiscUtils.writeStringToFile(testBookContent, tmpFile)
+            // When
+            syncRepo.storeBook(tmpFile, repositoryPath)
+            tmpFile.delete()
+            // Then
+            when (syncRepo) {
+                is WebdavRepo -> {
+                    repoManipulationPoint as File
+                    val subFolder = File(repoManipulationPoint, "A folder")
+                    assertTrue(subFolder.exists())
+                    val bookFile = File(subFolder, "A book.org")
+                    assertTrue(bookFile.exists())
+                    assertEquals(testBookContent, bookFile.readText())
+                }
+                is GitRepo -> {
+                    repoManipulationPoint as File
+                    val git = Git(
+                        FileRepositoryBuilder()
+                            .addCeilingDirectory(repoManipulationPoint)
+                            .findGitDir(repoManipulationPoint)
+                            .build()
+                    )
+                    git.pull().call()
+                    val subFolder = File(repoManipulationPoint, "A folder")
+                    assertTrue(subFolder.exists())
+                    val bookFile = File(subFolder, "A book.org")
+                    assertTrue(bookFile.exists())
+                    assertEquals(testBookContent, bookFile.readText())
+                }
+                is DocumentRepo -> {
+                    repoManipulationPoint as DocumentFile
+                    val subFolder = repoManipulationPoint.findFile("A folder")
+                    assertTrue(subFolder!!.exists())
+                    assertTrue(subFolder.isDirectory)
+                    val bookFile = subFolder.findFile("A book.org")
+                    assertTrue(bookFile!!.exists())
+                    assertEquals(testBookContent, MiscUtils.readStringFromDocumentFile(bookFile))
+                }
+                is DropboxRepo -> {
+                    // Not really much to assert here; we don't really care how Dropbox implements things,
+                    // as long as URLs work as expected.
+                    repoManipulationPoint as DropboxClient
+                    val retrievedFile = kotlin.io.path.createTempFile().toFile()
+                    repoManipulationPoint.download(syncRepo.uri, repositoryPath, retrievedFile)
+                    assertEquals(testBookContent, retrievedFile.readText())
+                }
+            }
+        }
+
+        fun testRenameBook_expectedUri(syncRepo: SyncRepo) {
+            // Given
+            val tmpFile = kotlin.io.path.createTempFile().toFile()
+            val oldFileName = "Original book.org"
+            val newBookName = "Renamed book"
+            val testBookContent = "\n\n...\n\n"
+            MiscUtils.writeStringToFile(testBookContent, tmpFile)
+            // When
+            val originalVrook = syncRepo.storeBook(tmpFile, oldFileName)
+            tmpFile.delete()
+            syncRepo.renameBook(originalVrook.uri, newBookName)
+            // Then
+            val renamedVrook = syncRepo.books[0]
+            val expectedRookUri = when (syncRepo) {
+                is GitRepo -> "/Renamed book.org"
+                is DocumentRepo -> syncRepo.uri.toString() + treeDocumentFileExtraSegment + "Renamed%20book.org"
+                else -> syncRepo.uri.toString() + "/Renamed%20book.org"
+            }
+            assertEquals(expectedRookUri, renamedVrook.uri.toString())
         }
     }
 }
