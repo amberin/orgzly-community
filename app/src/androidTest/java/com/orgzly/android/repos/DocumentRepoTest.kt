@@ -110,6 +110,26 @@ class DocumentRepoTest : SyncRepoTest, OrgzlyTest() {
         SyncRepoTest.testRenameBook_fromRootToSubfolder(syncRepo)
     }
 
+    @Test
+    override fun testRenameBook_fromSubfolderToRoot() {
+        SyncRepoTest.testRenameBook_fromSubfolderToRoot(syncRepo)
+    }
+
+    @Test
+    override fun testRenameBook_newSubfolderSameLeafName() {
+        SyncRepoTest.testRenameBook_newSubfolderSameLeafName(syncRepo)
+    }
+
+    @Test
+    override fun testRenameBook_newSubfolderAndLeafName() {
+        SyncRepoTest.testRenameBook_newSubfolderAndLeafName(syncRepo)
+    }
+
+    @Test
+    override fun testRenameBook_sameSubfolderNewLeafName() {
+        SyncRepoTest.testRenameBook_sameSubfolderNewLeafName(syncRepo)
+    }
+
     private fun setupDocumentRepo(extraDir: String? = null) {
         val repoDirName = SyncRepoTest.repoDirName
         documentTreeSegment = if (Build.VERSION.SDK_INT < 30) {

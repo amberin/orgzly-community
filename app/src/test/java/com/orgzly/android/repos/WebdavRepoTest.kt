@@ -4,7 +4,6 @@ import androidx.test.ext.junit.runners.AndroidJUnit4
 import com.orgzly.android.db.entity.Repo
 import com.orgzly.android.repos.WebdavRepo.Companion.PASSWORD_PREF_KEY
 import com.orgzly.android.repos.WebdavRepo.Companion.USERNAME_PREF_KEY
-import com.orgzly.android.util.MiscUtils
 import io.github.atetzner.webdav.server.MiltonWebDAVFileServer
 import org.junit.After
 import org.junit.Assert.assertEquals
@@ -118,34 +117,22 @@ class WebdavRepoTest : SyncRepoTest {
     }
 
     @Test
-    fun testRenameBook_fromSubfolderToRoot() {
-        MiscUtils.writeStringToFile("...", tmpFile)
-        val originalRook = syncRepo.storeBook(tmpFile, "a folder/Original.org")
-        val renamedRook = syncRepo.renameBook(originalRook.uri, "Renamed")
-        assertEquals(syncRepo.uri.toString() + "Renamed.org", renamedRook.uri.toString())
+    override fun testRenameBook_fromSubfolderToRoot() {
+        SyncRepoTest.testRenameBook_fromSubfolderToRoot(syncRepo)
     }
 
     @Test
-    fun testRenameBook_newSubfolderSameLeafName() {
-        MiscUtils.writeStringToFile("...", tmpFile)
-        val originalRook = syncRepo.storeBook(tmpFile, "old folder/Original.org")
-        val renamedRook = syncRepo.renameBook(originalRook.uri, "new folder/Original")
-        assertEquals(syncRepo.uri.toString() + "new%20folder/Original.org", renamedRook.uri.toString())
+    override fun testRenameBook_newSubfolderSameLeafName() {
+        SyncRepoTest.testRenameBook_newSubfolderSameLeafName(syncRepo)
     }
 
     @Test
-    fun testRenameBook_newSubfolderAndLeafName() {
-        MiscUtils.writeStringToFile("...", tmpFile)
-        val originalRook = syncRepo.storeBook(tmpFile, "old folder/Original book.org")
-        val renamedRook = syncRepo.renameBook(originalRook.uri, "new folder/New book")
-        assertEquals(syncRepo.uri.toString() + "new%20folder/New%20book.org", renamedRook.uri.toString())
+    override fun testRenameBook_newSubfolderAndLeafName() {
+        SyncRepoTest.testRenameBook_newSubfolderAndLeafName(syncRepo)
     }
 
     @Test
-    fun testRenameBook_sameSubfolderNewLeafName() {
-        MiscUtils.writeStringToFile("...", tmpFile)
-        val originalRook = syncRepo.storeBook(tmpFile, "old folder/Original book.org")
-        val renamedRook = syncRepo.renameBook(originalRook.uri, "old folder/New book")
-        assertEquals(syncRepo.uri.toString() + "old%20folder/New%20book.org", renamedRook.uri.toString())
+    override fun testRenameBook_sameSubfolderNewLeafName() {
+        SyncRepoTest.testRenameBook_sameSubfolderNewLeafName(syncRepo)
     }
 }

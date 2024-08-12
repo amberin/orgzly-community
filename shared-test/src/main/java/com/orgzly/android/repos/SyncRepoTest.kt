@@ -27,9 +27,12 @@ interface SyncRepoTest {
     fun testRenameBook_expectedUri()
     fun testRenameBook_repoFileAlreadyExists()
     fun testRenameBook_fromRootToSubfolder()
+    fun testRenameBook_fromSubfolderToRoot()
+    fun testRenameBook_newSubfolderSameLeafName()
+    fun testRenameBook_newSubfolderAndLeafName()
+    fun testRenameBook_sameSubfolderNewLeafName()
 
-
-        companion object {
+    companion object {
 
         const val repoDirName = "orgzly-android-test"
         private const val treeDocumentFileExtraSegment = "/document/raw%3A%2Fstorage%2Femulated%2F0%2FDownload%2F$repoDirName%2F"
@@ -561,15 +564,83 @@ interface SyncRepoTest {
             // Given
             val tmpFile = kotlin.io.path.createTempFile().toFile()
             MiscUtils.writeStringToFile("...", tmpFile)
+            // When
             val originalRook = syncRepo.storeBook(tmpFile, "Original book.org")
             tmpFile.delete()
-            // When
             val renamedRook = syncRepo.renameBook(originalRook.uri, "A folder/Renamed book")
             // Then
             val expectedRookUri = when (syncRepo) {
                 is GitRepo -> "/A folder/Renamed book.org"
                 is DocumentRepo -> syncRepo.uri.toString() + treeDocumentFileExtraSegment + "A%20folder%2FRenamed%20book.org"
                 else -> syncRepo.uri.toString() + "/A%20folder/Renamed%20book.org"
+            }
+            assertEquals(expectedRookUri, renamedRook.uri.toString())
+        }
+
+        fun testRenameBook_fromSubfolderToRoot(syncRepo: SyncRepo) {
+            // Given
+            val tmpFile = kotlin.io.path.createTempFile().toFile()
+            MiscUtils.writeStringToFile("...", tmpFile)
+            // When
+            val originalRook = syncRepo.storeBook(tmpFile, "A folder/Original book.org")
+            tmpFile.delete()
+            val renamedRook = syncRepo.renameBook(originalRook.uri, "Renamed book")
+            // Then
+            val expectedRookUri = when (syncRepo) {
+                is GitRepo -> "/Renamed book.org"
+                is DocumentRepo -> syncRepo.uri.toString() + treeDocumentFileExtraSegment + "Renamed%20book.org"
+                else -> syncRepo.uri.toString() + "/Renamed%20book.org"
+            }
+            assertEquals(expectedRookUri, renamedRook.uri.toString())
+        }
+
+        fun testRenameBook_newSubfolderSameLeafName(syncRepo: SyncRepo) {
+            // Given
+            val tmpFile = kotlin.io.path.createTempFile().toFile()
+            MiscUtils.writeStringToFile("...", tmpFile)
+            // When
+            val originalRook = syncRepo.storeBook(tmpFile, "Old folder/Original book.org")
+            tmpFile.delete()
+            val renamedRook = syncRepo.renameBook(originalRook.uri, "New folder/Original book")
+            // Then
+            val expectedRookUri = when (syncRepo) {
+                is GitRepo -> "/New folder/Original book.org"
+                is DocumentRepo -> syncRepo.uri.toString() + treeDocumentFileExtraSegment + "New%20folder%2FOriginal%20book.org"
+                else -> syncRepo.uri.toString() + "/New%20folder/Original%20book.org"
+            }
+            assertEquals(expectedRookUri, renamedRook.uri.toString())
+        }
+
+        fun testRenameBook_newSubfolderAndLeafName(syncRepo: SyncRepo) {
+            // Given
+            val tmpFile = kotlin.io.path.createTempFile().toFile()
+            MiscUtils.writeStringToFile("...", tmpFile)
+            // When
+            val originalRook = syncRepo.storeBook(tmpFile, "old folder/Original book.org")
+            tmpFile.delete()
+            val renamedRook = syncRepo.renameBook(originalRook.uri, "new folder/New book")
+            // Then
+            val expectedRookUri = when (syncRepo) {
+                is GitRepo -> "/new folder/New book.org"
+                is DocumentRepo -> syncRepo.uri.toString() + treeDocumentFileExtraSegment + "new%20folder%2FNew%20book.org"
+                else -> syncRepo.uri.toString() + "/new%20folder/New%20book.org"
+            }
+            assertEquals(expectedRookUri, renamedRook.uri.toString())
+        }
+
+        fun testRenameBook_sameSubfolderNewLeafName(syncRepo: SyncRepo) {
+            // Given
+            val tmpFile = kotlin.io.path.createTempFile().toFile()
+            MiscUtils.writeStringToFile("...", tmpFile)
+            // When
+            val originalRook = syncRepo.storeBook(tmpFile, "old folder/Original book.org")
+            tmpFile.delete()
+            val renamedRook = syncRepo.renameBook(originalRook.uri, "old folder/New book")
+            // Then
+            val expectedRookUri = when (syncRepo) {
+                is GitRepo -> "/old folder/New book.org"
+                is DocumentRepo -> syncRepo.uri.toString() + treeDocumentFileExtraSegment + "old%20folder%2FNew%20book.org"
+                else -> syncRepo.uri.toString() + "/old%20folder/New%20book.org"
             }
             assertEquals(expectedRookUri, renamedRook.uri.toString())
         }
