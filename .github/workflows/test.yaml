@@ -93,7 +93,10 @@ jobs:
           echo "webdav.username = \"${{ secrets.WEBDAV_TEST_USERNAME }}\"" >> app.properties
           echo "webdav.password = \"${{ secrets.WEBDAV_TEST_PASSWORD }}\"" >> app.properties
 
-      - name: Run tests
+      - name: Run local unit tests
+        run: ./gradlew test
+
+      - name: Run instrumented tests
         uses: reactivecircus/android-emulator-runner@v2
         with:
           api-level: ${{ matrix.api-level }}
