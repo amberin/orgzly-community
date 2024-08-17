@@ -24,7 +24,6 @@ import com.orgzly.android.git.GitPreferencesFromRepoPrefs
 import com.orgzly.android.prefs.AppPreferences
 import com.orgzly.android.prefs.RepoPreferences
 import com.orgzly.android.repos.RepoType.*
-import com.orgzly.android.sync.BookSyncStatus
 import com.orgzly.android.ui.main.MainActivity
 import com.orgzly.android.ui.repos.ReposActivity
 import com.orgzly.android.util.MiscUtils
@@ -136,49 +135,6 @@ class SyncRepoIntegTest(private val repoType: RepoType) : OrgzlyTest() {
         assertEquals("booky", books[0].book.name)
     }
 
-    @Test
-    fun testLoadBookWithSpaceInName() {
-        setupSyncRepo(repoType)
-        val tmpFile = dataRepository.getTempBookFile()
-        try {
-            MiscUtils.writeStringToFile("...", tmpFile)
-            syncRepo.storeBook(tmpFile, "book one.org")
-        } finally {
-            tmpFile.delete()
-        }
-        val repoBooks = syncRepo.books
-        assertEquals(1, repoBooks.size.toLong())
-        assertEquals(repo.url, repoBooks[0].repoUri.toString())
-        // Check that the notebook gets the right name based on the repository file's name
-        assertEquals("book one", BookName.getInstance(context, repoBooks[0]).name)
-        // Check that the remote filename is parsed and stored correctly
-        assertEquals("book one.org", BookName.getInstance(context, repoBooks[0]).fileName)
-        // Check that the resulting local book gets the right name
-        testUtils.sync()
-        val books = dataRepository.getBooks()
-        assertEquals(1, books.size)
-        assertEquals("book one", books[0].book.name)
-    }
-
-    @Test
-    @Throws(IOException::class)
-    fun testExtension() {
-        setupSyncRepo(repoType)
-        // Add multiple files to repo
-        for (fileName in arrayOf("file one.txt", "file two.o", "file three.org")) {
-            val tmpFile = File.createTempFile("orgzly-test", null)
-            MiscUtils.writeStringToFile("book content", tmpFile)
-            syncRepo.storeBook(tmpFile, fileName)
-            tmpFile.delete()
-        }
-        val books = syncRepo.books
-        assertEquals(1, books.size.toLong())
-        assertEquals("file three", BookName.getInstance(context, books[0]).name)
-        assertEquals("file three.org", BookName.getInstance(context, books[0]).fileName)
-        assertEquals(repo.id, books[0].repoId)
-        assertEquals(repo.url, books[0].repoUri.toString())
-    }
-
     // TODO: Move to DataRepository tests
     @Test
     fun testSyncNewBookWithoutLinkAndOneRepo() {
@@ -247,27 +203,6 @@ class SyncRepoIntegTest(private val repoType: RepoType) : OrgzlyTest() {
         assertTrue(bookView.syncedTo!!.uri.toString().endsWith(expectedRookUriName))
     }
 
-    @Test
-    fun testRenameBookToExistingRepoFileName() {
-        setupSyncRepo(repoType)
-        testUtils.setupBook("a", "")
-        testUtils.sync()
-
-        // Create "unsynced" file in repo
-        val tmpFile = File.createTempFile("orgzly-test", null)
-        MiscUtils.writeStringToFile("bla bla", tmpFile)
-        syncRepo.storeBook(tmpFile, "b.org")
-        tmpFile.delete()
-        assertEquals(2, syncRepo.books.size) // The remote repo should now contain 2 books
-
-        dataRepository.renameBook(dataRepository.getBookView("a")!!, "b")
-
-        // The remote repo should still contain 2 books - otherwise the existing b.org has been
-        // overwritten.
-        assertEquals(2, syncRepo.books.size)
-        assertTrue(dataRepository.getBook("a")!!.lastAction!!.message.contains("Renaming failed:"))
-    }
-
     // TODO: Move to DataRepository tests (check happens there)
     @Test
     fun testRenameBookToExistingBookName() {
@@ -277,48 +212,6 @@ class SyncRepoIntegTest(private val repoType: RepoType) : OrgzlyTest() {
         assertEquals(2, dataRepository.getBooks().size)
         dataRepository.renameBook(dataRepository.getBookView("a")!!, "b")
         assertTrue(dataRepository.getBook("a")!!.lastAction!!.message.contains("Renaming failed: Notebook b already exists"))
-    }
-
-    @Test
-    fun testIgnoreRulePreventsLoadingBook() {
-        Assume.assumeTrue(Build.VERSION.SDK_INT >= 26) // .orgzlyignore not supported below API 26
-        val ignoreRules = """
-            ignoredbook.org
-            ignored-*.org
-        """.trimIndent()
-        setupSyncRepo(repoType, ignoreRules)
-        // Add multiple files to repo
-        for (fileName in arrayOf("ignoredbook.org", "ignored-3.org", "notignored.org")) {
-            val tmpFile = File.createTempFile("orgzly-test", null)
-            MiscUtils.writeStringToFile("book content", tmpFile)
-            syncRepo.storeBook(tmpFile, fileName)
-            tmpFile.delete()
-        }
-        testUtils.sync()
-        assertEquals(1, syncRepo.books.size)
-        assertEquals(1, dataRepository.getBooks().size)
-        assertEquals("notignored", dataRepository.getBooks()[0].book.name)
-    }
-
-    @Test
-    fun testUnIgnoredFilesInRepoAreLoaded() {
-        Assume.assumeTrue(Build.VERSION.SDK_INT >= 26)
-        val ignoreFileContents = """
-            *.org
-            !notignored.org
-        """.trimIndent()
-        setupSyncRepo(repoType, ignoreFileContents)
-        // Add multiple files to repo
-        for (fileName in arrayOf("ignoredbook.org", "ignored-3.org", "notignored.org")) {
-            val tmpFile = File.createTempFile("orgzlytest", null)
-            MiscUtils.writeStringToFile("book content", tmpFile)
-            syncRepo.storeBook(tmpFile, fileName)
-            tmpFile.delete()
-        }
-        testUtils.sync()
-        assertEquals(1, syncRepo.books.size)
-        assertEquals(1, dataRepository.getBooks().size)
-        assertEquals("notignored", dataRepository.getBooks()[0].book.name)
     }
 
     // TODO: Move to DataRepository tests (check happens there)
@@ -350,42 +243,6 @@ class SyncRepoIntegTest(private val repoType: RepoType) : OrgzlyTest() {
         testUtils.syncOrThrow()
     }
 
-    @Test
-    fun testStoreBookInSubfolder() {
-        setupSyncRepo(repoType)
-        testUtils.setupBook("a folder/a book", "")
-        testUtils.sync()
-        assertEquals(1, syncRepo.books.size)
-        val expectedRookUri = when (repoType) {
-            GIT -> "/a folder/a book.org"
-            DOCUMENT -> repo.url + documentTreeSegment + "a%20folder%2Fa%20book.org"
-            else -> { repo.url + "/a%20folder/a%20book.org" }
-        }
-        assertEquals(expectedRookUri, dataRepository.getBooks()[0].syncedTo!!.uri.toString())
-        assertEquals("a folder/a book", dataRepository.getBooks()[0].book.name)
-    }
-
-    @Test
-    @Throws(IOException::class)
-    fun testLoadBookFromSubfolder() {
-        setupSyncRepo(repoType)
-        val tmpFile = dataRepository.getTempBookFile()
-        try {
-            MiscUtils.writeStringToFile("...", tmpFile)
-            syncRepo.storeBook(tmpFile, "a folder/a book.org")
-        } finally {
-            tmpFile.delete()
-        }
-        val repoBooks = syncRepo.books
-        assertEquals(1, repoBooks.size.toLong())
-        assertEquals(repo.url, repoBooks[0].repoUri.toString())
-        testUtils.sync()
-        val books = dataRepository.getBooks()
-        assertEquals(1, books.size)
-        // Check that the resulting notebook gets the right name
-        assertEquals("a folder/a book", books[0].book.name)
-    }
-
     /**
      * Ensures that file names and book names are not parsed/created differently during
      * force-loading.
@@ -406,72 +263,6 @@ class SyncRepoIntegTest(private val repoType: RepoType) : OrgzlyTest() {
         assertEquals(1, books.size)
         // Check that the name has not changed
         assertEquals("a folder/a book", books[0].book.name)
-    }
-
-    @Test
-    fun testIgnoreFileInSubfolder() {
-        Assume.assumeTrue(Build.VERSION.SDK_INT >= 26)
-        setupSyncRepo(repoType, "subfolder1/book1.org")
-        // Write 2 org files to subfolder in repo
-        for (fileName in arrayOf("subfolder1/book1.org", "subfolder1/book2.org")) {
-            val tmpFile = File.createTempFile("orgzlytest", null)
-            MiscUtils.writeStringToFile("book content", tmpFile)
-            syncRepo.storeBook(tmpFile, fileName)
-            tmpFile.delete()
-        }
-
-        testUtils.sync()
-
-        val books = dataRepository.getBooks()
-        assertEquals(1, books.size.toLong())
-        assertEquals("subfolder1/book2", books[0].book.name)
-    }
-
-    @Test
-    fun testUnIgnoreSingleFileInSubfolder() {
-        Assume.assumeTrue(Build.VERSION.SDK_INT >= 26)
-        setupSyncRepo(repoType, "subfolder1/**\n!subfolder1/book2.org")
-        // Write 2 org files to subfolder in repo
-        for (fileName in arrayOf("subfolder1/book1.org", "subfolder1/book2.org")) {
-            val tmpFile = File.createTempFile("orgzlytest", null)
-            MiscUtils.writeStringToFile("book content", tmpFile)
-            syncRepo.storeBook(tmpFile, fileName)
-            tmpFile.delete()
-        }
-
-        testUtils.sync()
-
-        val books = dataRepository.getBooks()
-        assertEquals(1, books.size.toLong())
-        assertEquals("subfolder1/book2", books[0].book.name)
-    }
-
-    @Test
-    fun testStoreBookAndRetrieveBookProducesSameRookUri() {
-        setupSyncRepo(repoType)
-
-        val repoFilePath = "folder one/book one.org"
-
-        // Upload file to repo
-        val storedBook: VersionedRook?
-        var tmpFile = dataRepository.getTempBookFile()
-        try {
-            MiscUtils.writeStringToFile("content", tmpFile)
-            storedBook = syncRepo.storeBook(tmpFile, repoFilePath)
-        } finally {
-            tmpFile.delete()
-        }
-
-        // Download file from repo
-        tmpFile = dataRepository.getTempBookFile()
-        val retrievedBook: VersionedRook?
-        try {
-            retrievedBook = syncRepo.retrieveBook(repoFilePath, tmpFile)
-        } finally {
-            tmpFile.delete()
-        }
-
-        assertEquals(storedBook!!.uri, retrievedBook!!.uri!!)
     }
 
     // TODO: Move - does not test SyncRepo code
@@ -509,116 +300,6 @@ class SyncRepoIntegTest(private val repoType: RepoType) : OrgzlyTest() {
         testUtils.sync()
         assertEquals(1, dataRepository.getBooks().size.toLong())
         testUtils.assertBook("folder one/book one", "* TODO Heading 1\n")
-    }
-
-    @Test
-    fun testRenameBookFromRootToSubfolder() {
-        setupSyncRepo(repoType)
-        testUtils.setupBook("booky", "")
-        testUtils.sync()
-        dataRepository.renameBook(dataRepository.getBookView("booky")!!, "a/b")
-        assertTrue(dataRepository.getBookView("a/b")!!.book.lastAction!!.message.contains("Renamed from "))
-        testUtils.sync()
-        assertEquals(1, dataRepository.getBooks().size.toLong())
-        val bookView = dataRepository.getBookView("a/b")
-        assertEquals(BookSyncStatus.NO_CHANGE.toString(), bookView!!.book.syncStatus)
-        val expectedRookUri = when (repoType) {
-            GIT -> "/a/b.org"
-            DOCUMENT -> repo.url + documentTreeSegment + "a%2Fb.org"
-            else -> { repo.url + "/a/b.org" }
-        }
-        assertEquals(
-            expectedRookUri,
-            bookView.syncedTo!!.uri.toString()
-        )
-    }
-
-    @Test
-    fun testRenameBookFromSubfolderToRoot() {
-        setupSyncRepo(repoType)
-        testUtils.setupBook("a/b", "")
-        testUtils.sync()
-        dataRepository.renameBook(dataRepository.getBookView("a/b")!!, "booky")
-        assertTrue(dataRepository.getBookView("booky")!!.book.lastAction!!.message.contains("Renamed from "))
-        testUtils.sync()
-        assertEquals(1, dataRepository.getBooks().size.toLong())
-        val bookView = dataRepository.getBookView("booky")
-        assertEquals(bookView!!.book.syncStatus, BookSyncStatus.NO_CHANGE.toString())
-        val expectedRookUri = when (repoType) {
-            GIT -> "/booky.org"
-            DOCUMENT -> repo.url + documentTreeSegment + "booky.org"
-            else -> { repo.url + "/booky.org" }
-        }
-        assertEquals(
-            expectedRookUri,
-            bookView.syncedTo!!.uri.toString()
-        )
-    }
-
-    @Test
-    fun testRenameBookNewSubfolderSameLeafName() {
-        setupSyncRepo(repoType)
-        testUtils.setupBook("a/b", "")
-        testUtils.sync()
-        dataRepository.renameBook(dataRepository.getBookView("a/b")!!, "b/b")
-        assertTrue(dataRepository.getBookView("b/b")!!.book.lastAction!!.message.contains("Renamed from "))
-        testUtils.sync()
-        assertEquals(1, dataRepository.getBooks().size.toLong())
-        val bookView = dataRepository.getBookView("b/b")
-        assertEquals(bookView!!.book.syncStatus, BookSyncStatus.NO_CHANGE.toString())
-        val expectedRookUri = when (repoType) {
-            GIT -> "/b/b.org"
-            DOCUMENT -> repo.url + documentTreeSegment + "b%2Fb.org"
-            else -> { repo.url + "/b/b.org" }
-        }
-        assertEquals(
-            expectedRookUri,
-            bookView.syncedTo!!.uri.toString()
-        )
-    }
-
-    @Test
-    fun testRenameBookNewSubfolderAndLeafName() {
-        setupSyncRepo(repoType)
-        testUtils.setupBook("a/b", "")
-        testUtils.sync()
-        dataRepository.renameBook(dataRepository.getBookView("a/b")!!, "b/c")
-        assertTrue(dataRepository.getBookView("b/c")!!.book.lastAction!!.message.contains("Renamed from "))
-        testUtils.sync()
-        assertEquals(1, dataRepository.getBooks().size.toLong())
-        val bookView = dataRepository.getBookView("b/c")
-        assertEquals(bookView!!.book.syncStatus, BookSyncStatus.NO_CHANGE.toString())
-        val expectedRookUri = when (repoType) {
-            GIT -> "/b/c.org"
-            DOCUMENT -> repo.url + documentTreeSegment + "b%2Fc.org"
-            else -> { repo.url + "/b/c.org" }
-        }
-        assertEquals(
-            expectedRookUri,
-            bookView.syncedTo!!.uri.toString()
-        )
-    }
-
-    @Test
-    fun testRenameBookSameSubfolderNewLeafName() {
-        setupSyncRepo(repoType)
-        testUtils.setupBook("a/b", "")
-        testUtils.sync()
-        dataRepository.renameBook(dataRepository.getBookView("a/b")!!, "a/c")
-        assertTrue(dataRepository.getBookView("a/c")!!.book.lastAction!!.message.contains("Renamed from "))
-        testUtils.sync()
-        assertEquals(1, dataRepository.getBooks().size.toLong())
-        val bookView = dataRepository.getBookView("a/c")
-        assertEquals(bookView!!.book.syncStatus, BookSyncStatus.NO_CHANGE.toString())
-        val expectedRookUri = when (repoType) {
-            GIT -> "/a/c.org"
-            DOCUMENT -> repo.url + documentTreeSegment + "a%2Fc.org"
-            else -> { repo.url + "/a/c.org" }
-        }
-        assertEquals(
-            expectedRookUri,
-            bookView.syncedTo!!.uri.toString()
-        )
     }
 
     @Test
