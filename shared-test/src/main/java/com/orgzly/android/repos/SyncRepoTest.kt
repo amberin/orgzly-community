@@ -2,6 +2,7 @@ package com.orgzly.android.repos
 
 import android.annotation.SuppressLint
 import android.net.Uri
+import android.os.Build
 import androidx.documentfile.provider.DocumentFile
 import com.orgzly.android.BookName
 import com.orgzly.android.util.MiscUtils
@@ -36,7 +37,11 @@ interface SyncRepoTest {
     companion object {
 
         const val repoDirName = "orgzly-android-test"
-        private const val treeDocumentFileExtraSegment = "/document/raw%3A%2Fstorage%2Femulated%2F0%2FDownload%2F$repoDirName%2F"
+        private var treeDocumentFileExtraSegment = if (Build.VERSION.SDK_INT < 30) {
+            "/document/raw%3A%2Fstorage%2Femulated%2F0%2FDownload%2F$repoDirName%2F"
+        } else {
+            "/document/primary%3A$repoDirName%2F"
+        }
 
         fun testGetBooks_singleOrgFile(repoManipulationPoint: Any, syncRepo: SyncRepo) {
             // Given
