@@ -4,9 +4,14 @@ import android.net.Uri;
 import android.os.SystemClock;
 
 
-import com.orgzly.android.data.DbRepoBookRepository;
+import androidx.test.core.app.ApplicationProvider;
 
+import com.orgzly.android.data.DbRepoBookRepository;
+import com.orgzly.android.prefs.AppPreferences;
+
+import java.io.ByteArrayInputStream;
 import java.io.File;
+import java.io.FileInputStream;
 import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.io.InputStream;
@@ -25,10 +30,16 @@ public class MockRepo implements SyncRepo {
     private static final long SLEEP_FOR_STORE_BOOK = 200;
     private static final long SLEEP_FOR_DELETE_BOOK = 100;
 
+    public static final String IGNORE_RULES_PREF_KEY = "ignore_rules";
+
+    private String ignoreRules;
+
     private DatabaseRepo databaseRepo;
 
     public MockRepo(RepoWithProps repoWithProps, DbRepoBookRepository dbRepo) {
         databaseRepo = new DatabaseRepo(repoWithProps, dbRepo);
+        ignoreRules = AppPreferences.repoPropsMap(ApplicationProvider.getApplicationContext(),
+                repoWithProps.getRepo().getId()).get(IGNORE_RULES_PREF_KEY);
     }
 
     @Override
@@ -60,7 +71,11 @@ public class MockRepo implements SyncRepo {
 
     @Override
     public InputStream openRepoFileInputStream(String fileName) throws IOException {
-        throw new FileNotFoundException();
+        if (fileName.equals(RepoIgnoreNode.IGNORE_FILE) && ignoreRules != null) {
+            return new ByteArrayInputStream(ignoreRules.getBytes());
+        } else {
+            throw new FileNotFoundException();
+        }
     }
 
     @Override
