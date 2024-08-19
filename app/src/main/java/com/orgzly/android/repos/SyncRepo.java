@@ -42,6 +42,14 @@ public interface SyncRepo {
     InputStream openRepoFileInputStream(String fileName) throws IOException;
 
     /**
+     * Open a file in the repository for reading. Originally added for parsing the .orgzlyignore
+     * file.
+     * @param fileName The file to open
+     * @throws IOException
+     */
+    InputStream openRepoFileInputStream(String fileName) throws IOException;
+
+    /**
      * Uploads book storing it under given filename under repo's url.
      * @param file The contents of this file should be stored at the remote location/repo
      * @param repositoryPath The contents ({@code file}) should be stored under this
