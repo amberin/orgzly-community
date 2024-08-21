@@ -1,18 +1,10 @@
 package com.orgzly.android.repos;
 
-import static androidx.test.espresso.Espresso.onView;
 import static androidx.test.espresso.action.ViewActions.click;
-import static androidx.test.espresso.action.ViewActions.longClick;
-import static androidx.test.espresso.assertion.ViewAssertions.matches;
-import static androidx.test.espresso.matcher.ViewMatchers.isDisplayed;
 import static androidx.test.espresso.matcher.ViewMatchers.withId;
 import static androidx.test.espresso.matcher.ViewMatchers.withText;
-import static com.orgzly.android.espresso.util.EspressoUtils.contextualToolbarOverflowMenu;
 import static com.orgzly.android.espresso.util.EspressoUtils.onBook;
-import static com.orgzly.android.espresso.util.EspressoUtils.onSnackbar;
-import static com.orgzly.android.espresso.util.EspressoUtils.sync;
 import static org.hamcrest.Matchers.allOf;
-import static org.hamcrest.Matchers.endsWith;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNotNull;
@@ -25,8 +17,6 @@ import static org.junit.Assume.assumeTrue;
 import android.net.Uri;
 import android.os.Build;
 
-import androidx.test.core.app.ActivityScenario;
-
 import com.orgzly.R;
 import com.orgzly.android.BookFormat;
 import com.orgzly.android.BookName;
@@ -38,7 +28,6 @@ import com.orgzly.android.db.entity.NoteView;
 import com.orgzly.android.db.entity.Repo;
 import com.orgzly.android.sync.BookNamesake;
 import com.orgzly.android.sync.BookSyncStatus;
-import com.orgzly.android.ui.main.MainActivity;
 import com.orgzly.android.util.EncodingDetect;
 import com.orgzly.android.util.MiscUtils;
 
@@ -420,7 +409,7 @@ public class SyncTest extends OrgzlyTest {
         vrooks = repo.getBooks();
 
         assertEquals(1, vrooks.size());
-        assertEquals("Booky", BookName.getInstance(context, vrooks.get(0)).getName());
+        assertEquals("Booky", BookName.fromRook(vrooks.get(0)).getName());
 
         long mtime = vrooks.get(0).getMtime();
         String rev = vrooks.get(0).getRevision();
@@ -434,7 +423,7 @@ public class SyncTest extends OrgzlyTest {
         vrooks = repo.getBooks();
 
         assertEquals(1, vrooks.size());
-        assertEquals("BookyRenamed", BookName.getInstance(context, vrooks.get(0)).getName());
+        assertEquals("BookyRenamed", BookName.fromRook(vrooks.get(0)).getName());
         assertEquals("mock://repo-a/BookyRenamed.org", vrooks.get(0).getUri().toString());
         assertTrue(mtime < vrooks.get(0).getMtime());
         assertNotSame(rev, vrooks.get(0).getRevision());
@@ -464,7 +453,7 @@ public class SyncTest extends OrgzlyTest {
 
         assertEquals(1, repo.getBooks().size());
         assertEquals(repo.getUri() + "/notebook-renamed.org", repo.getBooks().get(0).getUri().toString());
-        assertEquals("notebook-renamed.org", BookName.getInstance(context, repo.getBooks().get(0)).getFileName());
+        assertEquals("notebook-renamed.org", BookName.fromRook(repo.getBooks().get(0)).getFileName());
 
         LocalStorage.deleteRecursive(new File(repoDir));
     }
