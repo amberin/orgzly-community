@@ -537,6 +537,7 @@ public class QueryFragmentTest extends OrgzlyTest {
         scenario = ActivityScenario.launch(MainActivity.class);
 
         onView(allOf(withText("notebook-1"), isDisplayed())).perform(click());
+        SystemClock.sleep(200);
         searchForTextCloseKeyboard("d.today .i.done .o.d");
         onView(withId(R.id.fragment_query_search_view_flipper)).check(matches(isDisplayed()));
         onNoteInSearch(0, R.id.item_head_title_view).check(matches(withText("Note B")));
