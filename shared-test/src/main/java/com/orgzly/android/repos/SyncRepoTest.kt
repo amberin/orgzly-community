@@ -58,7 +58,7 @@ interface SyncRepoTest {
             assertEquals(1, books.size)
             assertEquals(expectedRookUri, books[0].uri.toString())
             assertEquals(fileContent, retrieveBookDestinationFile.readText())
-            assertEquals(fileName, BookName.getFileName(syncRepo.uri, books[0].uri))
+            assertEquals(fileName, BookName.getRepoRelativePath(syncRepo.uri, books[0].uri))
         }
 
         fun testGetBooks_singleFileInSubfolder(repoManipulationPoint: Any, syncRepo: SyncRepo) {
@@ -75,7 +75,7 @@ interface SyncRepoTest {
             // Then
             assertEquals(1, books.size)
             assertEquals(expectedRookUri, books[0].uri.toString())
-            assertEquals(repoFilePath, BookName.getFileName(syncRepo.uri, books[0].uri))
+            assertEquals(repoFilePath, BookName.getRepoRelativePath(syncRepo.uri, books[0].uri))
             assertEquals(fileContent, retrieveBookDestinationFile.readText())
         }
 
@@ -123,7 +123,7 @@ interface SyncRepoTest {
             val books = syncRepo.books
             // Then
             assertEquals(1, books.size.toLong())
-            assertEquals("file three", BookName.fromFileName(BookName.getFileName(syncRepo.uri, books[0].uri)).name)
+            assertEquals("file three", BookName.fromRepoRelativePath(BookName.getRepoRelativePath(syncRepo.uri, books[0].uri)).name)
         }
 
         fun testStoreBook_expectedUri(syncRepo: SyncRepo) {

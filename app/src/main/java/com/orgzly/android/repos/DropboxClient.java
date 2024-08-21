@@ -220,18 +220,18 @@ public class DropboxClient {
         return list;
     }
 
-    private Uri getFullUriFromRelativePath(Uri repoUri, String relativePath) {
-        String encodedFileName = Uri.encode(relativePath, "/");
-        return Uri.withAppendedPath(repoUri, encodedFileName);
+    private Uri getFullUriFromRelativePath(Uri repoUri, String repoRelativePath) {
+        String encodedPath = Uri.encode(repoRelativePath, "/");
+        return Uri.withAppendedPath(repoUri, encodedPath);
     }
 
     /**
      * Download file from Dropbox and store it to a local file.
      */
-    public VersionedRook download(Uri repoUri, String relativePath, File localFile) throws IOException {
+    public VersionedRook download(Uri repoUri, String repoRelativePath, File localFile) throws IOException {
         linkedOrThrow();
 
-        Uri uri = getFullUriFromRelativePath(repoUri, relativePath);
+        Uri uri = getFullUriFromRelativePath(repoUri, repoRelativePath);
 
         OutputStream out = new BufferedOutputStream(new FileOutputStream(localFile));
 
@@ -263,10 +263,10 @@ public class DropboxClient {
         }
     }
 
-    public InputStream streamFile(Uri repoUri, String fileName) throws IOException {
+    public InputStream streamFile(Uri repoUri, String repoRelativePath) throws IOException {
         linkedOrThrow();
 
-        Uri uri = repoUri.buildUpon().appendPath(fileName).build();
+        Uri uri = repoUri.buildUpon().appendPath(repoRelativePath).build();
         FileMetadata metadata;
         String rev;
         DbxDownloader<FileMetadata> downloader;
