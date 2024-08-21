@@ -45,24 +45,24 @@ public class DropboxRepo implements SyncRepo {
     }
 
     @Override
-    public VersionedRook retrieveBook(String repositoryPath, File file) throws IOException {
-        return client.download(repoUri, repositoryPath, file);
+    public VersionedRook retrieveBook(String repoRelativePath, File file) throws IOException {
+        return client.download(repoUri, repoRelativePath, file);
     }
 
     @Override
-    public InputStream openRepoFileInputStream(String fileName) throws IOException {
-        return client.streamFile(repoUri, fileName);
+    public InputStream openRepoFileInputStream(String repoRelativePath) throws IOException {
+        return client.streamFile(repoUri, repoRelativePath);
     }
 
     @Override
-    public VersionedRook storeBook(File file, String repositoryPath) throws IOException {
-        return client.upload(file, repoUri, repositoryPath);
+    public VersionedRook storeBook(File file, String repoRelativePath) throws IOException {
+        return client.upload(file, repoUri, repoRelativePath);
     }
 
     @Override
     public VersionedRook renameBook(Uri oldFullUri, String newName) throws IOException {
-        BookName oldBookName = BookName.fromFileName(BookName.getFileName(repoUri, oldFullUri));
-        String newRelativePath = BookName.fileName(newName, oldBookName.getFormat());
+        BookName oldBookName = BookName.fromRepoRelativePath(BookName.getRepoRelativePath(repoUri, oldFullUri));
+        String newRelativePath = BookName.repoRelativePath(newName, oldBookName.getFormat());
         String newEncodedRelativePath = Uri.encode(newRelativePath, "/");
         Uri newFullUri = repoUri.buildUpon().appendEncodedPath(newEncodedRelativePath).build();
         return client.move(repoUri, oldFullUri, newFullUri);

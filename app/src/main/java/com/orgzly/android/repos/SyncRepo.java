@@ -31,23 +31,23 @@ public interface SyncRepo {
     /**
      * Download the latest available revision of the book and store its content to {@code File}.
      */
-    VersionedRook retrieveBook(String repositoryPath, File destination) throws IOException;
+    VersionedRook retrieveBook(String repoRelativePath, File destination) throws IOException;
 
     /**
      * Open a file in the repository for reading. Originally added for parsing the .orgzlyignore
      * file.
-     * @param fileName The file to open
+     * @param repoRelativePath The file to open
      * @throws IOException
      */
-    InputStream openRepoFileInputStream(String fileName) throws IOException;
+    InputStream openRepoFileInputStream(String repoRelativePath) throws IOException;
 
     /**
      * Uploads book storing it under given filename under repo's url.
      * @param file The contents of this file should be stored at the remote location/repo
-     * @param repositoryPath The contents ({@code file}) should be stored under this
+     * @param repoRelativePath The contents ({@code file}) should be stored under this
      *                       (non-encoded) name
      */
-    VersionedRook storeBook(File file, String repositoryPath) throws IOException;
+    VersionedRook storeBook(File file, String repoRelativePath) throws IOException;
 
     /**
      *

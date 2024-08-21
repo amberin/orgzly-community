@@ -64,14 +64,14 @@ public class MockRepo implements SyncRepo {
     }
 
     @Override
-    public VersionedRook retrieveBook(String repositoryPath, File file) throws IOException {
+    public VersionedRook retrieveBook(String repoRelativePath, File file) throws IOException {
         SystemClock.sleep(SLEEP_FOR_RETRIEVE_BOOK);
-        return databaseRepo.retrieveBook(repositoryPath, file);
+        return databaseRepo.retrieveBook(repoRelativePath, file);
     }
 
     @Override
-    public InputStream openRepoFileInputStream(String fileName) throws IOException {
-        if (fileName.equals(RepoIgnoreNode.IGNORE_FILE) && ignoreRules != null) {
+    public InputStream openRepoFileInputStream(String repoRelativePath) throws IOException {
+        if (repoRelativePath.equals(RepoIgnoreNode.IGNORE_FILE) && ignoreRules != null) {
             return new ByteArrayInputStream(ignoreRules.getBytes());
         } else {
             throw new FileNotFoundException();
@@ -79,9 +79,9 @@ public class MockRepo implements SyncRepo {
     }
 
     @Override
-    public VersionedRook storeBook(File file, String repositoryPath) throws IOException {
+    public VersionedRook storeBook(File file, String repoRelativePath) throws IOException {
         SystemClock.sleep(SLEEP_FOR_STORE_BOOK);
-        return databaseRepo.storeBook(file, repositoryPath);
+        return databaseRepo.storeBook(file, repoRelativePath);
     }
 
     @Override
