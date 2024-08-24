@@ -8,6 +8,7 @@ import com.orgzly.android.BookName;
 import com.orgzly.android.NotesOrgExporter;
 import com.orgzly.android.OrgzlyTest;
 import com.orgzly.android.db.entity.Book;
+import com.orgzly.android.db.entity.BookView;
 import com.orgzly.android.db.entity.Repo;
 import com.orgzly.android.sync.SyncUtils;
 import com.orgzly.android.util.MiscUtils;
@@ -52,13 +53,13 @@ public class LocalDbRepoTest extends OrgzlyTest {
         long now = System.currentTimeMillis();
 
         /* Write local book's content to a temporary file. */
-        Book book = dataRepository.getBook("local-book-1");
+        BookView bookView = dataRepository.getBookView("local-book-1");
         File tmpFile = dataRepository.getTempBookFile();
 
         try {
-            new NotesOrgExporter(dataRepository).exportBook(book, tmpFile);
+            new NotesOrgExporter(dataRepository).exportBook(bookView.getBook(), tmpFile);
             repo = testUtils.repoInstance(RepoType.MOCK, "mock://repo-a");
-            repo.storeBook(tmpFile, BookName.fileName(book.getName(), BookFormat.ORG));
+            repo.storeBook(tmpFile, BookName.getRepoRelativePath(bookView));
         } finally {
             tmpFile.delete();
         }
