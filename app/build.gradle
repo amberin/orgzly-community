@@ -12,8 +12,8 @@ android {
         targetSdkVersion 34
         versionCode 219
         versionName "1.8.27-beta.2"
-        applicationId = "com.orgzlyrevived"
-        resValue "string", "application_id", "com.orgzlyrevived"
+        applicationId = "com.orgzlyreviveddev"
+        resValue "string", "application_id", "com.orgzlyreviveddev"
 
         testInstrumentationRunner "com.orgzly.android.OrgzlyTestRunner"
         // testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
