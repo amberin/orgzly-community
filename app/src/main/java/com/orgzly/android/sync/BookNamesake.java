@@ -104,6 +104,9 @@ public class BookNamesake {
                 " | Remotes:" + versionedRooks.size() + "]";
     }
 
+    public void setStatus(BookSyncStatus newStatus) {
+        status = newStatus;
+    }
 
     /**
      * States to consider:

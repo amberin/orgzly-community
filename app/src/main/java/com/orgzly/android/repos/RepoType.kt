@@ -1,7 +1,5 @@
 package com.orgzly.android.repos
 
-import java.lang.IllegalArgumentException
-
 enum class RepoType(val id: Int) {
     MOCK(1),
     DROPBOX(2),
@@ -9,6 +7,12 @@ enum class RepoType(val id: Int) {
     DOCUMENT(4),
     WEBDAV(5),
     GIT(6);
+
+    fun isIntegrallySynced(): Boolean {
+        return this in listOf(
+            GIT
+        )
+    }
 
     companion object {
         @JvmStatic

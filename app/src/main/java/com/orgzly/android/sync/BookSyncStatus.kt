@@ -2,6 +2,7 @@ package com.orgzly.android.sync
 
 import com.orgzly.R
 import com.orgzly.android.App
+import com.orgzly.android.git.GitFileSynchronizer
 
 // TODO: Write tests for *all* cases.
 enum class BookSyncStatus {
@@ -20,6 +21,7 @@ enum class BookSyncStatus {
     CONFLICT_BOTH_BOOK_AND_ROOK_MODIFIED,
     CONFLICT_BOOK_WITH_LINK_AND_ROOK_BUT_NEVER_SYNCED_BEFORE,
     CONFLICT_LAST_SYNCED_ROOK_AND_LATEST_ROOK_ARE_DIFFERENT,
+    CONFLICT_SAVED_TO_TEMP_BRANCH,
 
     /* Book can be loaded. */
     NO_BOOK_ONE_ROOK, // TODO: Can this happen? We always load dummy.
@@ -75,6 +77,9 @@ enum class BookSyncStatus {
 
             CONFLICT_LAST_SYNCED_ROOK_AND_LATEST_ROOK_ARE_DIFFERENT ->
                 return "Last synced notebook and latest remote notebook differ"
+
+            CONFLICT_SAVED_TO_TEMP_BRANCH ->
+                return "Sync conflict; pushed to branch \"${GitFileSynchronizer.CONFLICT_BRANCH}\""
 
             NO_BOOK_ONE_ROOK, DUMMY_WITHOUT_LINK_AND_ONE_ROOK, BOOK_WITH_LINK_AND_ROOK_MODIFIED, DUMMY_WITH_LINK ->
                 return context.getString(R.string.sync_status_loaded, "$arg")

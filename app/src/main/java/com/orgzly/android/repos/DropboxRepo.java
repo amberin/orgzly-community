@@ -4,8 +4,11 @@ import android.content.Context;
 import android.net.Uri;
 
 import androidx.annotation.NonNull;
+import androidx.annotation.Nullable;
 
 import com.orgzly.android.BookName;
+import com.orgzly.android.data.DataRepository;
+import com.orgzly.android.sync.SyncState;
 
 import java.io.File;
 import java.io.IOException;
@@ -66,6 +69,17 @@ public class DropboxRepo implements SyncRepo {
         String newEncodedRelativePath = Uri.encode(newRelativePath, "/");
         Uri newFullUri = repoUri.buildUpon().appendEncodedPath(newEncodedRelativePath).build();
         return client.move(repoUri, oldFullUri, newFullUri);
+    }
+
+    @Nullable
+    @Override
+    public SyncState syncRepo(DataRepository dataRepository) throws IOException {
+        return null;
+    }
+
+    @Override
+    public RepoType getType() {
+        return RepoType.DROPBOX;
     }
 
     @Override
