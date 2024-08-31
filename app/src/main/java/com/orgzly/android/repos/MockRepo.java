@@ -4,14 +4,16 @@ import android.net.Uri;
 import android.os.SystemClock;
 
 
+import androidx.annotation.Nullable;
 import androidx.test.core.app.ApplicationProvider;
 
+import com.orgzly.android.data.DataRepository;
 import com.orgzly.android.data.DbRepoBookRepository;
 import com.orgzly.android.prefs.AppPreferences;
+import com.orgzly.android.sync.SyncState;
 
 import java.io.ByteArrayInputStream;
 import java.io.File;
-import java.io.FileInputStream;
 import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.io.InputStream;
@@ -88,6 +90,17 @@ public class MockRepo implements SyncRepo {
     public VersionedRook renameBook(Uri oldFullUri, String newName) throws IOException {
         SystemClock.sleep(SLEEP_FOR_STORE_BOOK);
         return databaseRepo.renameBook(oldFullUri, newName);
+    }
+
+    @Nullable
+    @Override
+    public SyncState syncRepo(DataRepository dataRepository) throws IOException {
+        return null;
+    }
+
+    @Override
+    public RepoType getType() {
+        return RepoType.MOCK;
     }
 
     @Override

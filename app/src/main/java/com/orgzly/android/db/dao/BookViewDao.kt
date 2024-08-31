@@ -14,6 +14,9 @@ abstract class BookViewDao {
     @Query("$QUERY WHERE books.name = :name GROUP BY books.id")
     abstract fun get(name: String): BookView?
 
+    @Query("$QUERY WHERE link_repo_id IS NULL GROUP BY books.id")
+    abstract fun getWithoutLink(): List<BookView>
+
     @Query("$QUERY GROUP BY books.id ORDER BY $ORDER_BY_NAME")
     abstract fun getAllFOrderByNameLiveData(): LiveData<List<BookView>>
 

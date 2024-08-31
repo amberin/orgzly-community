@@ -23,6 +23,12 @@ abstract class BookDao : BaseDao<Book> {
     @Query("SELECT * FROM books WHERE last_action_type = :type")
     abstract fun getWithActionType(type: BookAction.Type): List<Book>
 
+    @Query("SELECT * FROM books WHERE is_modified = 1")
+    abstract fun getAllModified(): List<Book>
+
+    @Query("SELECT * FROM books")
+    abstract fun getAll(): List<Book>
+
     @Insert
     abstract fun insertBooks(vararg books: Book): LongArray
 

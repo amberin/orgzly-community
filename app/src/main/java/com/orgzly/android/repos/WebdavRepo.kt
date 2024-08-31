@@ -10,6 +10,8 @@ import com.burgstaller.okhttp.digest.CachingAuthenticator
 import com.burgstaller.okhttp.digest.Credentials
 import com.burgstaller.okhttp.digest.DigestAuthenticator
 import com.orgzly.android.BookName
+import com.orgzly.android.data.DataRepository
+import com.orgzly.android.sync.SyncState
 import com.thegrizzlylabs.sardineandroid.DavResource
 import com.thegrizzlylabs.sardineandroid.impl.OkHttpSardine
 import okhttp3.OkHttpClient
@@ -249,6 +251,14 @@ class WebdavRepo(
 
         sardine.move(oldFullUri.toUrl(), newFullUrl)
         return sardine.list(newFullUrl).first().toVersionedRook()
+    }
+
+    override fun syncRepo(dataRepository: DataRepository?): SyncState? {
+        TODO("Not yet implemented")
+    }
+
+    override fun getType(): RepoType {
+        return RepoType.WEBDAV
     }
 
     override fun delete(uri: Uri) {

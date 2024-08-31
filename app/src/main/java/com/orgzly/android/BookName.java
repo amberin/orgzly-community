@@ -108,6 +108,10 @@ public class BookName {
         }
     }
 
+    public static String getNameFromUris(Uri repoUri, Uri fileUri) {
+        return fromRepoRelativePath(getRepoRelativePath(repoUri, fileUri)).getName();
+    }
+
     public static BookName fromRepoRelativePath(String repoRelativePath) {
         if (repoRelativePath != null) {
             Matcher m = PATTERN.matcher(repoRelativePath);

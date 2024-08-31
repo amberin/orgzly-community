@@ -225,8 +225,24 @@ class DataRepository @Inject constructor(
         }
     }
 
+    fun getBookViewsWithoutLink(): List<BookView> {
+        return db.bookView().getWithoutLink()
+    }
     fun getBooksWithError(): List<Book> {
         return db.book().getWithActionType(BookAction.Type.ERROR)
+    }
+
+    fun getModifiedBooksLinkedToRepo(repoId: Long): List<Book> {
+        val allModifiedBooks = db.book().getAllModified()
+        return allModifiedBooks.filter { book ->
+            getBookView(book.id)?.linkRepo?.id == repoId
+        }
+    }
+
+    fun getBooksLinkedToRepo(repoId: Long): List<Book> {
+        return db.book().getAll().filter {book ->
+            getBookView(book.id)?.linkRepo?.id == repoId
+        }
     }
 
     fun getBookView(name: String): BookView? {
@@ -447,6 +463,10 @@ class DataRepository @Inject constructor(
 
     fun removeBookSyncedTo(bookId: Long) {
         db.bookSync().delete(bookId)
+    }
+
+    fun setBookIsNotModified(bookId: Long) {
+        db.book().setIsNotModified(setOf(bookId))
     }
 
     private fun updateBookIsModified(bookId: Long, isModified: Boolean, time: Long = System.currentTimeMillis()) {
@@ -2347,7 +2367,35 @@ class DataRepository @Inject constructor(
         }
     }
 
-    fun getSyncRepos(): List<SyncRepo> {
+    fun getNonIntegrallySyncedRepos(): List<SyncRepo> {
+        val list = ArrayList<SyncRepo>()
+        for ((id, type, url) in getRepos()) {
+            if (type.isIntegrallySynced())
+                continue
+            try {
+                list.add(getRepoInstance(id, type, url))
+            } catch (e: Exception) {
+                e.printStackTrace()
+            }
+        }
+        return list
+    }
+
+    fun getIntegrallySyncedRepos(): List<SyncRepo> {
+        val list = ArrayList<SyncRepo>()
+        for ((id, type, url) in getRepos()) {
+            if (!type.isIntegrallySynced())
+                continue
+            try {
+                list.add(getRepoInstance(id, type, url))
+            } catch (e: Exception) {
+                e.printStackTrace()
+            }
+        }
+        return list
+    }
+
+    fun getAllSyncRepos(): List<SyncRepo> {
         val list = ArrayList<SyncRepo>()
         for ((id, type, url) in getRepos()) {
             try {
@@ -2355,7 +2403,6 @@ class DataRepository @Inject constructor(
             } catch (e: Exception) {
                 e.printStackTrace()
             }
-
         }
         return list
     }

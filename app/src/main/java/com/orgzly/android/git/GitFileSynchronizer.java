@@ -7,6 +7,8 @@ import android.content.Context;
 import android.net.Uri;
 import android.util.Log;
 
+import androidx.annotation.Nullable;
+
 import com.orgzly.BuildConfig;
 import com.orgzly.R;
 import com.orgzly.android.App;
@@ -16,16 +18,25 @@ import com.orgzly.android.util.MiscUtils;
 import org.eclipse.jgit.api.Git;
 import org.eclipse.jgit.api.ListBranchCommand;
 import org.eclipse.jgit.api.MergeResult;
+import org.eclipse.jgit.api.RebaseCommand;
+import org.eclipse.jgit.api.RebaseResult;
 import org.eclipse.jgit.api.ResetCommand;
 import org.eclipse.jgit.api.Status;
 import org.eclipse.jgit.api.errors.GitAPIException;
+import org.eclipse.jgit.diff.DiffEntry;
 import org.eclipse.jgit.lib.Constants;
 import org.eclipse.jgit.lib.ObjectId;
+import org.eclipse.jgit.lib.ObjectReader;
 import org.eclipse.jgit.lib.Ref;
 import org.eclipse.jgit.lib.Repository;
 import org.eclipse.jgit.revwalk.RevCommit;
+import org.eclipse.jgit.revwalk.RevTree;
 import org.eclipse.jgit.revwalk.RevWalk;
 import org.eclipse.jgit.transport.PushResult;
+import org.eclipse.jgit.transport.RefSpec;
+import org.eclipse.jgit.transport.RemoteRefUpdate;
+import org.eclipse.jgit.treewalk.AbstractTreeIterator;
+import org.eclipse.jgit.treewalk.CanonicalTreeParser;
 import org.eclipse.jgit.treewalk.TreeWalk;
 
 import java.io.File;
@@ -41,7 +52,7 @@ import java.util.TimeZone;
 public class GitFileSynchronizer {
     private final static String TAG = GitFileSynchronizer.class.getName();
     public final static String PRE_SYNC_MARKER_BRANCH = "orgzly-pre-sync-marker";
-
+    public final static String CONFLICT_BRANCH = "ORGZLY_CONFLICT";
     private final Git git;
     private final GitPreferences preferences;
     private final Context context;
@@ -63,11 +74,37 @@ public class GitFileSynchronizer {
         MiscUtils.copyFile(workTreeFile(repositoryPath), destination);
     }
 
+    public void hardResetToRemoteHead() throws GitAPIException {
+        git.reset().setMode(ResetCommand.ResetType.HARD).setRef("origin/" + preferences.branchName()).call();
+    }
+
     public InputStream openRepoFileInputStream(String repositoryPath) throws FileNotFoundException {
         return new FileInputStream(workTreeFile(repositoryPath));
     }
 
-    private void fetch() throws IOException {
+    private AbstractTreeIterator prepareTreeParser(RevCommit commit) throws IOException {
+        // from the commit we can build the tree which allows us to construct the TreeParser
+        Repository repo = git.getRepository();
+        try (RevWalk walk = new RevWalk(repo)) {
+            RevTree tree = walk.parseTree(commit.getTree().getId());
+            CanonicalTreeParser treeParser = new CanonicalTreeParser();
+            try (ObjectReader reader = repo.newObjectReader()) {
+                treeParser.reset(reader, tree.getId());
+            }
+            walk.dispose();
+            return treeParser;
+        }
+    }
+
+    public List<DiffEntry> getCommitDiff(RevCommit oldCommit, RevCommit newCommit) throws GitAPIException, IOException {
+        return git.diff()
+                .setShowNameAndStatusOnly(true)
+                .setOldTree(prepareTreeParser(oldCommit))
+                .setNewTree(prepareTreeParser(newCommit))
+                .call();
+    }
+
+    public RevCommit fetch() throws IOException {
         try {
             if (BuildConfig.LOG_DEBUG) {
                 LogUtils.d(TAG, String.format("Fetching Git repo from %s", preferences.remoteUri()));
@@ -78,9 +115,11 @@ public class GitFileSynchronizer {
                             .setRemoveDeletedRefs(true))
                     .call();
         } catch (GitAPIException e) {
-            e.printStackTrace();
+            Log.e(TAG, e.toString());
             throw new IOException(e.getMessage());
         }
+        String currentBranch = git.getRepository().getBranch();
+        return getCommit("origin/" + currentBranch);
     }
 
     public void checkoutSelected() throws GitAPIException {
@@ -96,9 +135,27 @@ public class GitFileSynchronizer {
                             git.getRepository().getBranch()));
             return doMerge(mergeTarget);
         } catch (GitAPIException e) {
-            e.printStackTrace();
+            Log.e(TAG, e.toString());
         }
         return false;
+    }
+
+    public RevCommit getRemoteHead() throws IOException {
+        return getCommit("origin/" + git.getRepository().getBranch());
+    }
+
+    public RebaseResult rebase() throws IOException {
+        ensureRepoIsClean();
+        RebaseResult result;
+        try {
+            result = git.rebase().setUpstream("origin/" + git.getRepository().getBranch()).call();
+            if (!result.getStatus().isSuccessful()) {
+                git.rebase().setOperation(RebaseCommand.Operation.ABORT).call();
+            }
+        } catch (GitAPIException e) {
+            throw new RuntimeException(e);
+        }
+        return result;
     }
 
     private String getShortHash(ObjectId hash) {
@@ -111,7 +168,7 @@ public class GitFileSynchronizer {
         return shortHash;
     }
 
-    private String createMergeBranchName(String repositoryPath, ObjectId commitHash) {
+    private String createConflictBranchName(String repositoryPath, ObjectId commitHash) {
         String shortCommitHash = getShortHash(commitHash);
         repositoryPath = repositoryPath.replace(" ", "_");
         String now = new SimpleDateFormat("yyyy-MM-dd_HHmmss").format(Calendar.getInstance(TimeZone.getTimeZone("UTC")).getTime());
@@ -134,7 +191,7 @@ public class GitFileSynchronizer {
         if (BuildConfig.LOG_DEBUG) {
             LogUtils.d(TAG, String.format("originalBranch is set to %s", originalBranch));
         }
-        String mergeBranch = createMergeBranchName(repoRelativePath, fileRevision);
+        String mergeBranch = createConflictBranchName(repoRelativePath, fileRevision);
         if (BuildConfig.LOG_DEBUG) {
             LogUtils.d(TAG, String.format("originalBranch is set to %s", originalBranch));
             LogUtils.d(TAG, String.format("Temporary mergeBranch is set to %s", mergeBranch));
@@ -234,11 +291,71 @@ public class GitFileSynchronizer {
         } catch (IOException ignored) {}
 
         if (localHead != null && !localHead.equals(remoteHead)) {
-            tryPush();
+            push();
         }
     }
 
-    public void tryPush() {
+    public void pushToConflictBranch() {
+        RefSpec refSpec = new RefSpec("HEAD:refs/heads/" + CONFLICT_BRANCH);
+        final var pushCommand = transportSetter().setTransport(git.push().setRefSpecs(refSpec).setForce(true));
+        final Object monitor = new Object();
+        App.EXECUTORS.diskIO().execute(() -> {
+            try {
+                Iterable<PushResult> results = (Iterable<PushResult>) pushCommand.call();
+                if (!results.iterator().next().getMessages().isEmpty()) {
+                    if (currentActivity != null) {
+                        showSnackbar(currentActivity, results.iterator().next().getMessages());
+                    }
+                }
+                synchronized (monitor) {
+                    monitor.notify();
+                }
+            } catch (GitAPIException e) {
+                if (currentActivity != null) {
+                    showSnackbar(currentActivity, String.format("Failed to push to conflict branch: %s", e.getMessage()));
+                }
+            }
+        });
+        synchronized (monitor) {
+            try {
+                monitor.wait();
+            } catch (InterruptedException e) {
+                e.printStackTrace();
+            }
+        }
+    }
+
+    public RemoteRefUpdate pushWithResult() throws Exception {
+        final var pushCommand = transportSetter().setTransport(
+                git.push().setRemote(preferences.remoteName()));
+        final Object monitor = new Object();
+        final RemoteRefUpdate[] result = new RemoteRefUpdate[1];
+        final Exception[] exception = new Exception[1];
+
+        App.EXECUTORS.diskIO().execute(() -> {
+            try {
+                Iterable<PushResult> results = (Iterable<PushResult>) pushCommand.call();
+                result[0] = results.iterator().next().getRemoteUpdates().iterator().next();
+                synchronized (monitor) {
+                    monitor.notify();
+                }
+            } catch (Exception e) {
+                exception[0] = e;
+            }
+        });
+        synchronized (monitor) {
+            try {
+                monitor.wait();
+            } catch (InterruptedException e) {
+                Log.e(TAG, e.toString());
+            }
+        }
+        if (exception[0] != null)
+            throw exception[0];
+        return result[0];
+    }
+
+    public void push() {
         final var pushCommand = transportSetter().setTransport(
                 git.push().setRemote(preferences.remoteName()));
         final Object monitor = new Object();
@@ -342,7 +459,7 @@ public class GitFileSynchronizer {
                 .setListMode(ListBranchCommand.ListMode.REMOTE)
                 .call();
         if (remoteBranches.isEmpty()) {
-            tryPush();
+            push();
         }
     }
 
@@ -423,6 +540,19 @@ public class GitFileSynchronizer {
         }
     }
 
+    public void writeFileAndAddToIndex(File sourceFile, String repoRelativePath) throws IOException {
+        if (repoHasUnstagedChanges())
+            throw new IOException("Git working tree is in an unclean state; refusing to update.");
+        ensureDirectoryHierarchy(repoRelativePath);
+        File destinationFile = workTreeFile(repoRelativePath);
+        MiscUtils.copyFile(sourceFile, destinationFile);
+        try {
+            git.add().addFilepattern(repoRelativePath).call();
+        } catch (GitAPIException e) {
+            throw new RuntimeException(e);
+        }
+    }
+
     private void commit(String message) throws GitAPIException {
         git.commit().setMessage(message).call();
     }
@@ -443,7 +573,7 @@ public class GitFileSynchronizer {
     }
 
     public RevCommit getLastCommitOfFile(Uri uri) throws GitAPIException {
-        String repoRelativePath = uri.toString().replaceFirst("^/", "");
+        String repoRelativePath = uri.getPath();
         return git.log().setMaxCount(1).addPath(repoRelativePath).call().iterator().next();
     }
 
@@ -458,6 +588,38 @@ public class GitFileSynchronizer {
         } catch (GitAPIException e) {
             return false;
         }
+    }
+
+    private boolean repoHasUnstagedChanges() {
+        Status status;
+        try {
+            status = git.status().call();
+        } catch (GitAPIException e) {
+            throw new RuntimeException(e);
+        }
+        return (status.getModified().size() > 0 ||
+                status.getUntracked().size() > 0 ||
+                status.getUntrackedFolders().size() > 0);
+    }
+
+    /**
+     * If any changes have been staged, commit them, otherwise do nothing.
+     * @throws IOException
+     */
+    @Nullable
+    public RevCommit commitAnyStagedChanges() throws IOException {
+        if (!gitRepoIsClean()) {
+            if (repoHasUnstagedChanges())
+                throw new IOException("Git working tree is in an unclean state; refusing to " +
+                        "update.");
+            try {
+                commit("Orgzly update");
+                return currentHead();
+            } catch (GitAPIException e) {
+                throw new RuntimeException(e);
+            }
+        }
+        return null;
     }
 
     private void ensureRepoIsClean() throws IOException {
@@ -480,7 +642,7 @@ public class GitFileSynchronizer {
 
     public boolean deleteFileFromRepo(Uri uri) throws IOException {
         if (mergeWithRemote()) {
-            String repoRelativePath = uri.toString().replaceFirst("^/", "");
+            String repoRelativePath = uri.getPath();
             try {
                 git.rm().addFilepattern(repoRelativePath).call();
                 if (!gitRepoIsClean())
