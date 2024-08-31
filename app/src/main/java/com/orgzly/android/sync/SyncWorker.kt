@@ -17,7 +17,9 @@ import com.orgzly.android.data.logs.AppLogsRepository
 import com.orgzly.android.db.entity.BookAction
 import com.orgzly.android.prefs.AppPreferences
 import com.orgzly.android.reminders.RemindersScheduler
-import com.orgzly.android.repos.*
+import com.orgzly.android.repos.DirectoryRepo
+import com.orgzly.android.repos.RepoUtils
+import com.orgzly.android.repos.SyncRepo
 import com.orgzly.android.ui.notifications.SyncNotifications
 import com.orgzly.android.ui.util.getAlarmManager
 import com.orgzly.android.ui.util.haveNetworkConnection
@@ -96,7 +98,9 @@ class SyncWorker(val context: Context, val params: WorkerParameters) :
 
         val syncStartTime = System.currentTimeMillis()
 
-        syncRepos()?.let { return it }
+        syncIntegrallySyncedRepos()?.let { return it }
+
+        syncNamesakes()?.let { return it }
 
         RemindersScheduler.notifyDataSetChanged(App.getAppContext())
         ListWidgetProvider.notifyDataSetChanged(App.getAppContext())
@@ -139,7 +143,7 @@ class SyncWorker(val context: Context, val params: WorkerParameters) :
 
         val autoSync = params.inputData.getBoolean(SyncRunner.IS_AUTO_SYNC, false)
 
-        val repos = dataRepository.getSyncRepos()
+        val repos = dataRepository.getAllSyncRepos()
 
         /* Do nothing if it's auto-sync and there are no repos or they require connection. */
         if (autoSync) {
@@ -195,8 +199,21 @@ class SyncWorker(val context: Context, val params: WorkerParameters) :
         return null
     }
 
-    private suspend fun syncRepos(): SyncState? {
+    private fun syncIntegrallySyncedRepos(): SyncState? {
+        val repos = dataRepository.getIntegrallySyncedRepos()
+        if (repos.isEmpty())
+            return null
+        for (repo: SyncRepo in repos) {
+            repo.syncRepo(dataRepository)?.let { return it }
+        }
+        return null
+    }
+
+    private suspend fun syncNamesakes(): SyncState? {
         if (BuildConfig.LOG_DEBUG) LogUtils.d(TAG)
+
+        if (dataRepository.getNonIntegrallySyncedRepos().isEmpty())
+            return null
 
         sendProgress(SyncState.getInstance(SyncState.Type.COLLECTING_BOOKS))
 
@@ -218,38 +235,10 @@ class SyncWorker(val context: Context, val params: WorkerParameters) :
 
         sendProgress(SyncState.getInstance(SyncState.Type.BOOKS_COLLECTED, total = namesakes.size))
 
-        /* Because android sometimes drops milliseconds on reported file lastModified,
-         * wait until the next full second
-         */
-        //            if (isTriggeredAutomatically) {
-        //                long now = System.currentTimeMillis();
-        //                long nowMsPart = now % 1000;
-        //                SystemClock.sleep(1000 - nowMsPart);
-        //            }
-
-        /* If there are namesakes in Git repos with conflict status, make
-         * sure to sync them first, so that any conflict branches are
-         * created as early as possible. Otherwise, we risk committing
-         * changes on master which we cannot see on the conflict branch.
-         */
-        val orderedNamesakes = LinkedHashMap<String, BookNamesake>()
-        val lowPriorityNamesakes = LinkedHashMap<String, BookNamesake>()
-        for (namesake in namesakes.values) {
-            if (namesake.rooks.isNotEmpty() &&
-                namesake.rooks[0].repoType == RepoType.GIT &&
-                namesake.status == BookSyncStatus.CONFLICT_BOTH_BOOK_AND_ROOK_MODIFIED
-            ) {
-                orderedNamesakes[namesake.name] = namesake
-            } else {
-                lowPriorityNamesakes[namesake.name] = namesake
-            }
-        }
-        orderedNamesakes.putAll(lowPriorityNamesakes)
-
         /*
          * Update books' statuses, before starting to sync them.
          */
-        for (namesake in orderedNamesakes.values) {
+        for (namesake in namesakes.values) {
             dataRepository.setBookLastActionAndSyncStatus(namesake.book.book.id, BookAction.forNow(
                 BookAction.Type.PROGRESS, context.getString(R.string.syncing_in_progress)))
         }
@@ -257,7 +246,7 @@ class SyncWorker(val context: Context, val params: WorkerParameters) :
         /*
          * Start syncing name by name.
          */
-        for ((curr, namesake) in orderedNamesakes.values.withIndex()) {
+        for ((curr, namesake) in namesakes.values.withIndex()) {
             /* If task has been canceled, just mark the remaining books as such. */
             if (isStopped) {
                 dataRepository.setBookLastActionAndSyncStatus(
@@ -288,14 +277,6 @@ class SyncWorker(val context: Context, val params: WorkerParameters) :
 
         if (isStopped) {
             return SyncState.getInstance(SyncState.Type.CANCELED)
-        }
-
-        val repos = dataRepository.getSyncRepos()
-
-        for (repo in repos) {
-            if (repo is TwoWaySyncRepo) {
-                repo.tryPushIfHeadDiffersFromRemote()
-            }
         }
 
         return null

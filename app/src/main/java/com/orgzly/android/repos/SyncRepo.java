@@ -2,6 +2,11 @@ package com.orgzly.android.repos;
 
 import android.net.Uri;
 
+import androidx.annotation.Nullable;
+
+import com.orgzly.android.data.DataRepository;
+import com.orgzly.android.sync.SyncState;
+
 import java.io.File;
 import java.io.IOException;
 import java.io.InputStream;
@@ -57,6 +62,17 @@ public interface SyncRepo {
      * @throws IOException
      */
     VersionedRook renameBook(Uri oldFullUri, String newName) throws IOException;
+
+    /**
+     * Syncs all books linked to the repo, ignoring all other local books. If a repo
+     * rook without a namesake is found, an attempt must be made to create and link a namesake.
+     * @param dataRepository To know which books are modified and linked to this repo
+     * @return A SyncState if any problems were encountered
+     */
+    @Nullable
+    SyncState syncRepo(DataRepository dataRepository) throws Exception;
+
+    RepoType getType();
 
     // VersionedRook moveBook(Uri from, Uri uri) throws IOException;
 

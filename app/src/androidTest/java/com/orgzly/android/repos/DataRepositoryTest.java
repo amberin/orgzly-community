@@ -57,7 +57,7 @@ public class DataRepositoryTest extends OrgzlyTest {
         testUtils.setupBook("local-book-1", "");
 
         assertEquals("Local books", 1, dataRepository.getBooks().size());
-        assertEquals("Remote books", 3, SyncUtils.getBooksFromAllRepos(dataRepository, null).size());
+        assertEquals("Remote books", 3, SyncUtils.getBooksFromNonIntegrallySyncedRepos(dataRepository, null).size());
     }
 
     @Test
@@ -67,7 +67,7 @@ public class DataRepositoryTest extends OrgzlyTest {
         testUtils.setupRook(repo, "mock://repo-a/remote-book-2.org", "", "1abcdef", 1300067156000L);
         testUtils.setupRook(repo, "mock://repo-a/remote-book-3.org", "", "2abcdef", 1200067156000L);
 
-        VersionedRook vrook = SyncUtils.getBooksFromAllRepos(dataRepository, null).get(0);
+        VersionedRook vrook = SyncUtils.getBooksFromNonIntegrallySyncedRepos(dataRepository, null).get(0);
 
         dataRepository.loadBookFromRepo(vrook);
 

@@ -23,22 +23,14 @@ object SyncUtils {
      */
     @Throws(IOException::class)
     @JvmStatic
-    fun getBooksFromAllRepos(dataRepository: DataRepository, repos: List<SyncRepo>? = null): List<VersionedRook> {
+    fun getBooksFromNonIntegrallySyncedRepos(dataRepository: DataRepository, repos: List<SyncRepo>? = null): List<VersionedRook> {
         val result = ArrayList<VersionedRook>()
 
-        val repoList = repos ?: dataRepository.getSyncRepos()
+        val repoList = repos ?: dataRepository.getAllSyncRepos()
 
         for (repo in repoList) {
-            if (repo is GitRepo && repo.isUnchanged) {
-                for (book in dataRepository.getBooks()) {
-                    if (book.hasLink() && book.linkRepo!!.url == repo.uri.toString() && book.hasSync()) {
-                        result.add(book.syncedTo!!)
-                    }
-                }
-                if (result.isNotEmpty()) {
-                    continue
-                }
-            }
+            if (repo.type.isIntegrallySynced())
+                continue // Skip integrally synced repos
             val libBooks = repo.books
             /* Each book in repository. */
             result.addAll(libBooks)
@@ -57,13 +49,16 @@ object SyncUtils {
     fun groupAllNotebooksByName(dataRepository: DataRepository): Map<String, BookNamesake> {
         if (BuildConfig.LOG_DEBUG) LogUtils.d(TAG, "Collecting all local and remote books ...")
 
-        val repos = dataRepository.getSyncRepos()
+        val repos = dataRepository.getAllSyncRepos()
 
-        val localBooks = dataRepository.getBooks()
-        val versionedRooks = getBooksFromAllRepos(dataRepository, repos)
+        val syncableLocalBooks = dataRepository.getBooks().filterNot {
+            it.hasLink() && it.linkRepo?.type?.isIntegrallySynced() == true
+        }
+
+        val versionedRooks = getBooksFromNonIntegrallySyncedRepos(dataRepository, repos)
 
         /* Group local and remote books by name. */
-        val namesakes = BookNamesake.getAll(localBooks, versionedRooks)
+        val namesakes = BookNamesake.getAll(syncableLocalBooks, versionedRooks)
 
         /* If there is no local book, create empty "dummy" one. */
         for (namesake in namesakes.values) {
@@ -121,6 +116,7 @@ object SyncUtils {
             BookSyncStatus.CONFLICT_BOTH_BOOK_AND_ROOK_MODIFIED,
             BookSyncStatus.CONFLICT_BOOK_WITH_LINK_AND_ROOK_BUT_NEVER_SYNCED_BEFORE,
             BookSyncStatus.CONFLICT_LAST_SYNCED_ROOK_AND_LATEST_ROOK_ARE_DIFFERENT,
+            BookSyncStatus.CONFLICT_SAVED_TO_TEMP_BRANCH,
             BookSyncStatus.ROOK_AND_VROOK_HAVE_DIFFERENT_REPOS,
             BookSyncStatus.ONLY_DUMMY,
             BookSyncStatus.BOOK_WITH_PREVIOUS_ERROR_AND_NO_LINK ->

@@ -1,6 +1,5 @@
 package com.orgzly.android
 
-import android.util.Log
 import com.orgzly.R
 import com.orgzly.android.data.DataRepository
 import com.orgzly.android.data.mappers.OrgMapper

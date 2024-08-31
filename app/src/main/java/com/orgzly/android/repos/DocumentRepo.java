@@ -6,12 +6,15 @@ import android.os.Build;
 import android.provider.DocumentsContract;
 import android.util.Log;
 
+import androidx.annotation.Nullable;
 import androidx.documentfile.provider.DocumentFile;
 
 import com.orgzly.BuildConfig;
 import com.orgzly.R;
 import com.orgzly.android.BookName;
+import com.orgzly.android.data.DataRepository;
 import com.orgzly.android.db.entity.Repo;
+import com.orgzly.android.sync.SyncState;
 import com.orgzly.android.util.LogUtils;
 import com.orgzly.android.util.MiscUtils;
 
@@ -281,6 +284,17 @@ public class DocumentRepo implements SyncRepo {
         }
 
         return new VersionedRook(repoId, RepoType.DOCUMENT, repoUri, newUri, rev, mtime);
+    }
+
+    @Nullable
+    @Override
+    public SyncState syncRepo(DataRepository dataRepository) throws IOException {
+        return null;
+    }
+
+    @Override
+    public RepoType getType() {
+        return RepoType.DOCUMENT;
     }
 
     @Override

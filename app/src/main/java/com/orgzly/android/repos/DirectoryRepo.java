@@ -4,9 +4,13 @@ import android.net.Uri;
 import android.os.Build;
 import android.util.Log;
 
+import androidx.annotation.Nullable;
+
 import com.orgzly.android.BookName;
 import com.orgzly.android.LocalStorage;
+import com.orgzly.android.data.DataRepository;
 import com.orgzly.android.db.entity.Repo;
+import com.orgzly.android.sync.SyncState;
 import com.orgzly.android.util.MiscUtils;
 import com.orgzly.android.util.UriUtils;
 
@@ -207,6 +211,17 @@ public class DirectoryRepo implements SyncRepo {
         long mtime = toFile.lastModified();
 
         return new VersionedRook(repoId, RepoType.DIRECTORY, repoUri, newUri, rev, mtime);
+    }
+
+    @Nullable
+    @Override
+    public SyncState syncRepo(DataRepository dataRepository) throws IOException {
+        return null;
+    }
+
+    @Override
+    public RepoType getType() {
+        return RepoType.DIRECTORY;
     }
 
     @Override

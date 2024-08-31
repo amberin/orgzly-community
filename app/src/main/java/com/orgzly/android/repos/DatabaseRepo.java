@@ -2,7 +2,11 @@ package com.orgzly.android.repos;
 
 import android.net.Uri;
 
+import androidx.annotation.Nullable;
+
+import com.orgzly.android.data.DataRepository;
 import com.orgzly.android.data.DbRepoBookRepository;
+import com.orgzly.android.sync.SyncState;
 import com.orgzly.android.util.MiscUtils;
 import com.orgzly.android.util.UriUtils;
 
@@ -76,6 +80,17 @@ public class DatabaseRepo implements SyncRepo {
     public VersionedRook renameBook(Uri oldFullUri, String newName) {
         Uri toUri = UriUtils.getUriForNewName(oldFullUri, newName);
         return dbRepo.renameBook(repoId, oldFullUri, toUri);
+    }
+
+    @Nullable
+    @Override
+    public SyncState syncRepo(DataRepository dataRepository) throws IOException {
+        return null;
+    }
+
+    @Override
+    public RepoType getType() {
+        return RepoType.MOCK;
     }
 
     @Override
