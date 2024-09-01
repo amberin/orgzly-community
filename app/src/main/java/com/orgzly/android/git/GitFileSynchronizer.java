@@ -43,6 +43,7 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.nio.file.FileAlreadyExistsException;
 import java.util.List;
+import java.util.Objects;
 
 public class GitFileSynchronizer {
     private final static String TAG = GitFileSynchronizer.class.getName();
@@ -113,10 +114,7 @@ public class GitFileSynchronizer {
     public boolean pull(GitTransportSetter transportSetter) throws IOException {
         ensureRepoIsClean();
         try {
-            fetch(transportSetter);
-            RevCommit mergeTarget = getCommit(
-                    String.format("%s/%s", preferences.remoteName(),
-                            git.getRepository().getBranch()));
+            RevCommit mergeTarget = fetch(transportSetter);
             return doMerge(mergeTarget);
         } catch (GitAPIException e) {
             Log.e(TAG, e.toString());
@@ -292,13 +290,12 @@ public class GitFileSynchronizer {
     }
 
     public RevCommit getCommit(String identifier) throws IOException {
-        if (isEmptyRepo()) {
-            return null;
-        }
         Ref target = git.getRepository().findRef(identifier);
         if (target == null) {
             return null;
         }
+        if (Objects.equals(identifier, Constants.HEAD) && isEmptyRepo())
+            return null;
         return new RevWalk(git.getRepository()).parseCommit(target.getObjectId());
     }
 

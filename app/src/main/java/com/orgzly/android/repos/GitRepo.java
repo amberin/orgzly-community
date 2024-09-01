@@ -1,10 +1,14 @@
 package com.orgzly.android.repos;
 
+import static java.nio.file.Files.createTempDirectory;
+
 import android.content.Context;
 import android.net.Uri;
+import android.os.Build;
 import android.util.Log;
 
 import androidx.annotation.Nullable;
+import androidx.annotation.RequiresApi;
 
 import com.orgzly.R;
 import com.orgzly.android.App;
@@ -24,6 +28,7 @@ import com.orgzly.android.prefs.RepoPreferences;
 import com.orgzly.android.sync.BookNamesake;
 import com.orgzly.android.sync.BookSyncStatus;
 import com.orgzly.android.sync.SyncState;
+import com.orgzly.android.util.MiscUtils;
 
 import org.eclipse.jgit.api.CloneCommand;
 import org.eclipse.jgit.api.Git;
@@ -45,6 +50,7 @@ import java.io.File;
 import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.io.InputStream;
+import java.nio.file.Files;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -197,6 +203,11 @@ public class GitRepo implements SyncRepo, TwoWaySyncRepo {
         return true;
     }
 
+    @Override
+    public boolean isIntegrallySynced() {
+        return true;
+    }
+
     /**
      * N.B: NOT called during regular GitRepo syncing, only during force-loading.
      * @param file The contents of this file should be stored at the remote location/repo
@@ -337,15 +348,12 @@ public class GitRepo implements SyncRepo, TwoWaySyncRepo {
     @Nullable
     @Override
     public SyncState syncRepo(DataRepository dataRepository) throws Exception {
-        // TODO: Add regression test for empty remote (no initial commit)
         RevCommit remoteHeadBeforeFetch = synchronizer.getRemoteHead();
         RevCommit newRemoteHead = null;
         List<Book> allLinkedBooks = dataRepository.getBooksLinkedToRepo(repoId);
         // If there are no books at all linked to the repo, make sure we
         // aren't missing anything (e.g. during first sync, right after cloning).
         if (allLinkedBooks.isEmpty()) {
-            // TODO: Add regression test to ensure that local "linkable" books are linked and
-            //  synced in this scenario
             for (VersionedRook vrook : getBooks()) {
                 BookView bookView = loadBook(dataRepository, vrook);
                 storeBookStatus(dataRepository, bookView, BookSyncStatus.NO_BOOK_ONE_ROOK);
@@ -610,4 +618,27 @@ public class GitRepo implements SyncRepo, TwoWaySyncRepo {
                 action,
                 status.toString());
     }
+
+    @RequiresApi(api = Build.VERSION_CODES.O)
+    @Override
+    public String writeFileToRepo(String content, String repoRelativePath) throws Exception {
+        File tempWorkDir = Files.createTempDirectory("orgzlytest").toFile();
+        Uri expectedRookUri = Uri.parse(Uri.encode(repoRelativePath, "/"));
+        try (Git repoClone = new CloneCommand().setURI(getUri().toString()).setDirectory(tempWorkDir).call()) {
+            var targetFile = new File(tempWorkDir, repoRelativePath);
+            targetFile.getParentFile().mkdirs();
+            MiscUtils.writeStringToFile(content, targetFile);
+            repoClone.add().addFilepattern(".").call();
+            repoClone.commit().setMessage("").call();
+            repoClone.push().call();
+        }
+        tempWorkDir.delete();
+        // Ensure Orgzly's working tree is updated. This is needed when testing getBooks(), which
+        // does not update the worktree on its own.
+        try (GitTransportSetter transportSetter = preferences.createTransportSetter()) {
+            synchronizer.pull(transportSetter);
+        }
+        return expectedRookUri.toString();
+    }
+
 }

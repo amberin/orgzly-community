@@ -155,6 +155,10 @@ class WebdavRepo(
         return true
     }
 
+    override fun isIntegrallySynced(): Boolean {
+        return false
+    }
+
     override fun getUri(): Uri {
         return uri
     }
@@ -263,6 +267,10 @@ class WebdavRepo(
 
     override fun delete(uri: Uri) {
         sardine.delete(uri.toUrl())
+    }
+
+    override fun writeFileToRepo(content: String?, repoRelativePath: String?): String {
+        TODO("Not yet implemented")
     }
 
     private fun DavResource.toVersionedRook(): VersionedRook {

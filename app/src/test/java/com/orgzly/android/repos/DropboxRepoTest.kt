@@ -50,7 +50,7 @@ class DropboxRepoTest : SyncRepoTest {
 
     @Test
     override fun testGetBooks_singleOrgFile() {
-        SyncRepoTest.testGetBooks_singleOrgFile(client, syncRepo)
+        SyncRepoTest.testGetBooks_singleOrgFile(syncRepo)
     }
 
     @Test
@@ -75,7 +75,7 @@ class DropboxRepoTest : SyncRepoTest {
 
     @Test
     override fun testGetBooks_ignoredExtensions() {
-        SyncRepoTest.testGetBooks_ignoredExtensions(client, syncRepo)
+        SyncRepoTest.testGetBooks_ignoredExtensions(syncRepo)
     }
 
     @Test
@@ -90,7 +90,7 @@ class DropboxRepoTest : SyncRepoTest {
 
     @Test
     override fun testStoreBook_producesSameUriAsGetBooks() {
-        SyncRepoTest.testStoreBook_producesSameUriAsGetBooks(client, syncRepo)
+        SyncRepoTest.testStoreBook_producesSameUriAsGetBooks(syncRepo)
     }
 
     @Test
@@ -105,7 +105,7 @@ class DropboxRepoTest : SyncRepoTest {
 
     @Test(expected = IOException::class)
     override fun testRenameBook_repoFileAlreadyExists() {
-        SyncRepoTest.testRenameBook_repoFileAlreadyExists(client, syncRepo)
+        SyncRepoTest.testRenameBook_repoFileAlreadyExists(syncRepo)
     }
 
     @Test
