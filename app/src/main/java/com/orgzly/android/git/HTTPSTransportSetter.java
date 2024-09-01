@@ -18,4 +18,8 @@ public class HTTPSTransportSetter implements GitTransportSetter {
         tc.setCredentialsProvider(new UsernamePasswordCredentialsProvider(username, password));
         return tc;
     }
+
+    public void close() {
+        // Nothing to do here; the HTTPS transport does not use persistent connections.
+    }
 }
