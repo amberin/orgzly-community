@@ -6,6 +6,8 @@ import com.orgzly.R;
 import com.orgzly.android.prefs.AppPreferences;
 import com.orgzly.android.prefs.RepoPreferences;
 
+import org.eclipse.jgit.api.TransportCommand;
+
 public class GitPreferencesFromRepoPrefs implements GitPreferences {
     private RepoPreferences repoPreferences;
 
@@ -22,7 +24,14 @@ public class GitPreferencesFromRepoPrefs implements GitPreferences {
                 String password = repoPreferences.getStringValue(R.string.pref_key_git_https_password, "");
                 return new HTTPSTransportSetter(username, password);
             case "file":
-                return tc -> tc;
+                return new GitTransportSetter() {
+                    @Override
+                    public TransportCommand setTransport(TransportCommand tc) {
+                        return tc;
+                    }
+                    @Override
+                    public void close() {}
+                };
             default:
                 return new GitSshKeyTransportSetter();
         }

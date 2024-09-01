@@ -3,20 +3,19 @@ package com.orgzly.android.git;
 import static com.orgzly.android.ui.AppSnackbarUtils.showSnackbar;
 
 import android.app.Activity;
-import android.content.Context;
 import android.net.Uri;
+import android.os.Build;
 import android.util.Log;
 
 import androidx.annotation.Nullable;
+import androidx.annotation.RequiresApi;
 
 import com.orgzly.BuildConfig;
-import com.orgzly.R;
 import com.orgzly.android.App;
 import com.orgzly.android.util.LogUtils;
 import com.orgzly.android.util.MiscUtils;
 
 import org.eclipse.jgit.api.Git;
-import org.eclipse.jgit.api.ListBranchCommand;
 import org.eclipse.jgit.api.MergeResult;
 import org.eclipse.jgit.api.RebaseCommand;
 import org.eclipse.jgit.api.RebaseResult;
@@ -25,7 +24,6 @@ import org.eclipse.jgit.api.Status;
 import org.eclipse.jgit.api.errors.GitAPIException;
 import org.eclipse.jgit.diff.DiffEntry;
 import org.eclipse.jgit.lib.Constants;
-import org.eclipse.jgit.lib.ObjectId;
 import org.eclipse.jgit.lib.ObjectReader;
 import org.eclipse.jgit.lib.Ref;
 import org.eclipse.jgit.lib.Repository;
@@ -37,36 +35,26 @@ import org.eclipse.jgit.transport.RefSpec;
 import org.eclipse.jgit.transport.RemoteRefUpdate;
 import org.eclipse.jgit.treewalk.AbstractTreeIterator;
 import org.eclipse.jgit.treewalk.CanonicalTreeParser;
-import org.eclipse.jgit.treewalk.TreeWalk;
 
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.io.InputStream;
-import java.text.SimpleDateFormat;
-import java.util.Calendar;
+import java.nio.file.FileAlreadyExistsException;
 import java.util.List;
-import java.util.TimeZone;
 
 public class GitFileSynchronizer {
     private final static String TAG = GitFileSynchronizer.class.getName();
-    public final static String PRE_SYNC_MARKER_BRANCH = "orgzly-pre-sync-marker";
     public final static String CONFLICT_BRANCH = "ORGZLY_CONFLICT";
     private final Git git;
     private final GitPreferences preferences;
-    private final Context context;
     private final Activity currentActivity = App.getCurrentActivity();
 
 
     public GitFileSynchronizer(Git g, GitPreferences prefs) {
         git = g;
         preferences = prefs;
-        context = App.getAppContext();
-    }
-
-    private GitTransportSetter transportSetter() {
-        return preferences.createTransportSetter();
     }
 
     public void retrieveLatestVersionOfFile(
@@ -104,16 +92,16 @@ public class GitFileSynchronizer {
                 .call();
     }
 
-    public RevCommit fetch() throws IOException {
+    public RevCommit fetch(GitTransportSetter transportSetter) throws IOException {
         try {
             if (BuildConfig.LOG_DEBUG) {
                 LogUtils.d(TAG, String.format("Fetching Git repo from %s", preferences.remoteUri()));
             }
-            transportSetter()
-                    .setTransport(git.fetch()
+            transportSetter.setTransport(
+                    git.fetch()
                             .setRemote(preferences.remoteName())
-                            .setRemoveDeletedRefs(true))
-                    .call();
+                            .setRemoveDeletedRefs(true)
+            ).call();
         } catch (GitAPIException e) {
             Log.e(TAG, e.toString());
             throw new IOException(e.getMessage());
@@ -122,14 +110,10 @@ public class GitFileSynchronizer {
         return getCommit("origin/" + currentBranch);
     }
 
-    public void checkoutSelected() throws GitAPIException {
-        git.checkout().setName(preferences.branchName()).call();
-    }
-
-    public boolean mergeWithRemote() throws IOException {
+    public boolean pull(GitTransportSetter transportSetter) throws IOException {
         ensureRepoIsClean();
         try {
-            fetch();
+            fetch(transportSetter);
             RevCommit mergeTarget = getCommit(
                     String.format("%s/%s", preferences.remoteName(),
                             git.getRepository().getBranch()));
@@ -158,103 +142,6 @@ public class GitFileSynchronizer {
         return result;
     }
 
-    private String getShortHash(ObjectId hash) {
-        String shortHash = hash.getName();
-        try {
-            shortHash = git.getRepository().newObjectReader().abbreviate(hash).name();
-        } catch(IOException e) {
-            Log.e(TAG, "Error while abbreviating commit hash " + hash.getName() + ", falling back to full hash");
-        }
-        return shortHash;
-    }
-
-    private String createConflictBranchName(String repositoryPath, ObjectId commitHash) {
-        String shortCommitHash = getShortHash(commitHash);
-        repositoryPath = repositoryPath.replace(" ", "_");
-        String now = new SimpleDateFormat("yyyy-MM-dd_HHmmss").format(Calendar.getInstance(TimeZone.getTimeZone("UTC")).getTime());
-        return "merge-" + repositoryPath + "-" + shortCommitHash + "-" + now;
-    }
-
-    public boolean updateAndCommitFileFromRevisionAndMerge(
-            File sourceFile, String repoRelativePath,
-            ObjectId fileRevision, RevCommit revision)
-            throws IOException {
-        ensureRepoIsClean();
-        if (updateAndCommitFileFromRevision(sourceFile, repoRelativePath, fileRevision)) {
-            if (BuildConfig.LOG_DEBUG) {
-                LogUtils.d(TAG, String.format("File '%s' committed without conflicts.", repoRelativePath));
-            }
-            return true;
-        }
-
-        String originalBranch = git.getRepository().getFullBranch();
-        if (BuildConfig.LOG_DEBUG) {
-            LogUtils.d(TAG, String.format("originalBranch is set to %s", originalBranch));
-        }
-        String mergeBranch = createConflictBranchName(repoRelativePath, fileRevision);
-        if (BuildConfig.LOG_DEBUG) {
-            LogUtils.d(TAG, String.format("originalBranch is set to %s", originalBranch));
-            LogUtils.d(TAG, String.format("Temporary mergeBranch is set to %s", mergeBranch));
-        }
-        try {
-            git.branchDelete().setBranchNames(mergeBranch).call();
-        } catch (GitAPIException ignored) {}
-        boolean mergeSucceeded = false;
-        try {
-            RevCommit mergeTarget = currentHead();
-            // Try to use our "pre sync marker" to find a good point in history for branching off.
-            RevCommit branchStartPoint = getCommit(PRE_SYNC_MARKER_BRANCH);
-            if (branchStartPoint == null) {
-                branchStartPoint = revision;
-            }
-            if (BuildConfig.LOG_DEBUG) {
-                LogUtils.d(TAG, String.format("branchStartPoint is set to %s", branchStartPoint));
-            }
-            git.checkout().setCreateBranch(true).setForceRefUpdate(true).
-                    setStartPoint(branchStartPoint).setName(mergeBranch).call();
-            if (!currentHead().equals(branchStartPoint))
-                throw new IOException("Failed to create new branch at " + branchStartPoint.toString());
-            if (!updateAndCommitFileFromRevision(sourceFile, repoRelativePath, fileRevision))
-                throw new IOException(
-                        String.format(
-                                "The provided file revision %s for %s is " +
-                                        "not the same as the one found in the provided commit %s.",
-                                fileRevision.toString(), repoRelativePath, revision.toString()));
-            mergeSucceeded = doMerge(mergeTarget);
-            if (mergeSucceeded) {
-                RevCommit merged = currentHead();
-                git.checkout().setName(originalBranch).call();
-                MergeResult result = git.merge().include(merged).call();
-                if (!result.getMergeStatus().isSuccessful()) {
-                    throw new IOException(String.format("Unexpected failure to merge '%s' into '%s'", merged.toString(), originalBranch));
-                }
-            }
-        } catch (GitAPIException e) {
-            e.printStackTrace();
-            throw new IOException("Failed to handle merge conflict: " + e.getMessage());
-        } finally {
-            if (mergeSucceeded) {
-                try {
-                    if (BuildConfig.LOG_DEBUG) {
-                        LogUtils.d(TAG, String.format("Checking out originalBranch '%s'", originalBranch));
-                    }
-                    git.checkout().setName(originalBranch).call();
-                } catch (GitAPIException e) {
-                    Log.w(TAG, String.format("Failed to checkout original branch '%s': %s", originalBranch, e.getMessage()));
-                }
-                try {
-                    if (BuildConfig.LOG_DEBUG) {
-                        LogUtils.d(TAG, String.format("Deleting temporary mergeBranch '%s'", mergeBranch));
-                    }
-                    git.branchDelete().setBranchNames(mergeBranch).call();
-                } catch (GitAPIException e) {
-                    Log.w(TAG, String.format("Failed to delete temporary mergeBranch '%s': %s", mergeBranch, e.getMessage()));
-                }
-            }
-        }
-        return mergeSucceeded;
-    }
-
     private boolean doMerge(RevCommit mergeTarget) throws IOException, GitAPIException {
         MergeResult result = git.merge().include(mergeTarget).call();
         if (result.getMergeStatus().equals(MergeResult.MergeStatus.CONFLICTING)) {
@@ -264,40 +151,9 @@ public class GitFileSynchronizer {
         return true;
     }
 
-    /**
-     * Try to push to remote if local and remote HEADs for the current branch
-     * point to different commits. This method was added to allow pushing only
-     * once per sync occasion: right after the "for namesake in namesakes"-loop
-     * in SyncService.doInBackground().
-     */
-    public void tryPushIfHeadDiffersFromRemote() {
-        String branchName = null;
-        String remoteName = null;
-        RevCommit localHead = null;
-        RevCommit remoteHead = null;
-        Repository repo = git.getRepository();
-
-        try {
-            branchName = repo.getBranch();
-            localHead = currentHead();
-            remoteName = preferences.remoteName();
-        } catch (IOException e) {
-            e.printStackTrace();
-        }
-
-        // Try to get the commit of the remote head with the same name as our local current head
-        try {
-            remoteHead = getCommit(remoteName + "/" + branchName);
-        } catch (IOException ignored) {}
-
-        if (localHead != null && !localHead.equals(remoteHead)) {
-            push();
-        }
-    }
-
-    public void pushToConflictBranch() {
+    public void pushToConflictBranch(GitTransportSetter transportSetter) {
         RefSpec refSpec = new RefSpec("HEAD:refs/heads/" + CONFLICT_BRANCH);
-        final var pushCommand = transportSetter().setTransport(git.push().setRefSpecs(refSpec).setForce(true));
+        final var pushCommand = transportSetter.setTransport(git.push().setRefSpecs(refSpec).setForce(true));
         final Object monitor = new Object();
         App.EXECUTORS.diskIO().execute(() -> {
             try {
@@ -325,8 +181,8 @@ public class GitFileSynchronizer {
         }
     }
 
-    public RemoteRefUpdate pushWithResult() throws Exception {
-        final var pushCommand = transportSetter().setTransport(
+    public RemoteRefUpdate pushWithResult(GitTransportSetter transportSetter) throws Exception {
+        final var pushCommand = transportSetter.setTransport(
                 git.push().setRemote(preferences.remoteName()));
         final Object monitor = new Object();
         final RemoteRefUpdate[] result = new RemoteRefUpdate[1];
@@ -355,8 +211,8 @@ public class GitFileSynchronizer {
         return result[0];
     }
 
-    public void push() {
-        final var pushCommand = transportSetter().setTransport(
+    public void push(GitTransportSetter transportSetter) {
+        final var pushCommand = transportSetter.setTransport(
                 git.push().setRemote(preferences.remoteName()));
         final Object monitor = new Object();
 
@@ -403,140 +259,14 @@ public class GitFileSynchronizer {
         git.reset().setMode(ResetCommand.ResetType.HARD).call();
     }
 
-    public boolean updateAndCommitFileFromRevision(
-            File sourceFile, String repoRelativePath, ObjectId revision) throws IOException {
-        ensureRepoIsClean();
-        ObjectId repositoryRevision = getFileRevision(repoRelativePath, currentHead());
-        if (repositoryRevision.equals(revision)) {
-            updateAndCommitFile(sourceFile, repoRelativePath);
-            return true;
-        }
-        return false;
-    }
-
-    public void setBranchAndGetLatest() throws IOException {
-        ensureRepoIsClean();
-        try {
-            // Point a "marker" branch to the current head, so that we know a good starting commit
-            // for merge conflict branches.
-            git.branchCreate().setName(PRE_SYNC_MARKER_BRANCH).setForce(true).call();
-        } catch (GitAPIException e) {
-            // We may end up here when syncing an empty Git repo for the first time. So don't
-            // panic, just log an info message.
-            Log.i(TAG, context.getString(R.string.git_sync_error_failed_set_marker_branch));
-        }
-        fetch();
-        try {
-            RevCommit current = currentHead();
-            if (current == null) {
-                Log.i(TAG, "Git repo does not seem to have any commits.");
-                return;
-            }
-            RevCommit mergeTarget = getCommit(
-                    String.format("%s/%s", preferences.remoteName(), git.getRepository().getBranch()));
-            if (mergeTarget != null) {
-                if (doMerge(mergeTarget)) {  // Try to merge with the remote head of the current branch.
-                    if (!git.getRepository().getBranch().equals(preferences.branchName())) {
-                        // We are not on the main branch. Make an attempt to return to it.
-                        attemptReturnToMainBranch();
-                    }
-                } else {
-                    throw new IOException(String.format("Failed to merge %s and %s",
-                            current.getName(), mergeTarget.getName()));
-                }
-            } else {
-                // We failed to find a corresponding remote head. Check if the repo is completely
-                // empty, and if so, push to it.
-                pushToRemoteIfEmpty();
-            }
-        } catch (GitAPIException e) {
-            throw new IOException(e.getMessage());
-        }
-    }
-
-    private void pushToRemoteIfEmpty() throws GitAPIException {
-        List<Ref> remoteBranches = git.branchList()
-                .setListMode(ListBranchCommand.ListMode.REMOTE)
-                .call();
-        if (remoteBranches.isEmpty()) {
-            push();
-        }
-    }
-
-    public boolean attemptReturnToMainBranch() throws IOException {
-        ensureRepoIsClean();
-        String originalBranch = git.getRepository().getBranch();
-        RevCommit mergeTarget = getCommit(
-                String.format("%s/%s", preferences.remoteName(), preferences.branchName()));
-        boolean backOnMainBranch = false;
-        try {
-            if (doMerge(mergeTarget)) {
-                RevCommit merged = currentHead();
-                checkoutSelected();
-                if (doMerge(merged)) {
-                    backOnMainBranch = true;
-                    git.branchDelete().setBranchNames(originalBranch);
-                }
-            }
-        } catch (Exception e) {
-            e.printStackTrace();
-        }
-        if (!backOnMainBranch) {
-            try {
-                git.checkout().setName(originalBranch).call();
-            } catch (GitAPIException ge) {
-                ge.printStackTrace();
-                throw new IOException("Error during checkout after failed merge attempt.");
-            }
-        }
-        return backOnMainBranch;
-    }
-
-    public void updateAndCommitExistingFile(File sourceFile, String repositoryPath) throws IOException {
-        ensureRepoIsClean();
-        File destinationFile = workTreeFile(repositoryPath);
-        if (!destinationFile.exists()) {
-            throw new FileNotFoundException("File " + destinationFile + " does not exist");
-        }
-        updateAndCommitFile(sourceFile, repositoryPath);
-    }
-
-    /**
-     * Add a new file to the repository, while ensuring that it didn't already exist.
-     * @param sourceFile This will become the contents of the added file
-     * @param repositoryPath Path inside the repo where the file should be added
-     * @throws IOException If the file already exists
-     */
-    public void addAndCommitNewFile(File sourceFile, String repositoryPath) throws IOException {
-        ensureRepoIsClean();
-        File destinationFile = workTreeFile(repositoryPath);
-        if (destinationFile.exists()) {
-            throw new IOException("Can't add new file " + repositoryPath + " that already exists.");
-        }
-        ensureDirectoryHierarchy(repositoryPath);
-        updateAndCommitFile(sourceFile, repositoryPath);
-    }
-
     private void ensureDirectoryHierarchy(String repositoryPath) throws IOException {
         if (repositoryPath.contains("/")) {
             File targetDir = workTreeFile(repositoryPath).getParentFile();
+            assert targetDir != null;
             if (!(targetDir.exists() || targetDir.mkdirs())) {
                 throw new IOException("The directory " + targetDir.getAbsolutePath() + " could " +
                         "not be created");
             }
-        }
-    }
-
-    private void updateAndCommitFile(
-            File sourceFile, String repoRelativePath) throws IOException {
-        File destinationFile = workTreeFile(repoRelativePath);
-        MiscUtils.copyFile(sourceFile, destinationFile);
-        try {
-            git.add().addFilepattern(repoRelativePath).call();
-            if (!gitRepoIsClean())
-                commit(String.format("Orgzly update: %s", repoRelativePath));
-        } catch (GitAPIException e) {
-            throw new IOException("Failed to commit changes.");
         }
     }
 
@@ -635,13 +365,8 @@ public class GitFileSynchronizer {
         return git.getRepository().exactRef(Constants.HEAD).getObjectId() == null;
     }
 
-    public ObjectId getFileRevision(String pathString, RevCommit commit) throws IOException {
-        return TreeWalk.forPath(
-                git.getRepository(), pathString, commit.getTree()).getObjectId(0);
-    }
-
-    public boolean deleteFileFromRepo(Uri uri) throws IOException {
-        if (mergeWithRemote()) {
+    public boolean deleteFileFromRepo(Uri uri, GitTransportSetter transportSetter) throws IOException {
+        if (pull(transportSetter)) {
             String repoRelativePath = uri.getPath();
             try {
                 git.rm().addFilepattern(repoRelativePath).call();
@@ -656,14 +381,16 @@ public class GitFileSynchronizer {
         }
     }
 
-    public boolean renameFileInRepo(String oldPath, String newPath) throws IOException {
+    @RequiresApi(api = Build.VERSION_CODES.O)
+    public boolean renameFileInRepo(String oldPath, String newPath,
+                                    GitTransportSetter transportSetter) throws IOException {
         ensureRepoIsClean();
-        if (mergeWithRemote()) {
+        if (pull(transportSetter)) {
             File oldFile = workTreeFile(oldPath);
             File newFile = workTreeFile(newPath);
             // Abort if destination file exists
             if (newFile.exists()) {
-                throw new IOException("Repository file " + newPath + " already exists.");
+                throw new FileAlreadyExistsException("Repository file " + newPath + " already exists.");
             }
             ensureDirectoryHierarchy(newPath);
             // Copy the file contents and add it to the index
