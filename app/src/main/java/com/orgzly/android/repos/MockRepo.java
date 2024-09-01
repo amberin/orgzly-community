@@ -55,6 +55,11 @@ public class MockRepo implements SyncRepo {
     }
 
     @Override
+    public boolean isIntegrallySynced() {
+        return false;
+    }
+
+    @Override
     public Uri getUri() {
         return databaseRepo.getUri();
     }
@@ -107,5 +112,10 @@ public class MockRepo implements SyncRepo {
     public void delete(Uri uri) throws IOException {
         SystemClock.sleep(SLEEP_FOR_DELETE_BOOK);
         databaseRepo.delete(uri);
+    }
+
+    @Override
+    public String writeFileToRepo(String content, String repoRelativePath) throws Exception {
+        throw new UnsupportedOperationException("Not implemented");
     }
 }

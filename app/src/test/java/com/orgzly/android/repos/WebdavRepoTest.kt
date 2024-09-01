@@ -53,7 +53,7 @@ class WebdavRepoTest : SyncRepoTest {
 
     @Test
     override fun testGetBooks_singleOrgFile() {
-        SyncRepoTest.testGetBooks_singleOrgFile(serverRootDir, syncRepo)
+        SyncRepoTest.testGetBooks_singleOrgFile(syncRepo)
     }
 
     @Test
@@ -78,7 +78,7 @@ class WebdavRepoTest : SyncRepoTest {
 
     @Test
     override fun testGetBooks_ignoredExtensions() {
-        SyncRepoTest.testGetBooks_ignoredExtensions(serverRootDir, syncRepo)
+        SyncRepoTest.testGetBooks_ignoredExtensions(syncRepo)
     }
 
     @Test
@@ -93,7 +93,7 @@ class WebdavRepoTest : SyncRepoTest {
 
     @Test
     override fun testStoreBook_producesSameUriAsGetBooks() {
-        SyncRepoTest.testStoreBook_producesSameUriAsGetBooks(serverRootDir, syncRepo)
+        SyncRepoTest.testStoreBook_producesSameUriAsGetBooks(syncRepo)
     }
 
     @Test
@@ -108,7 +108,7 @@ class WebdavRepoTest : SyncRepoTest {
 
     @Test(expected = IOException::class)
     override fun testRenameBook_repoFileAlreadyExists() {
-        SyncRepoTest.testRenameBook_repoFileAlreadyExists(serverRootDir, syncRepo)
+        SyncRepoTest.testRenameBook_repoFileAlreadyExists(syncRepo)
     }
 
     @Test

@@ -7,6 +7,8 @@ import androidx.annotation.Nullable;
 import com.orgzly.android.data.DataRepository;
 import com.orgzly.android.sync.SyncState;
 
+import org.eclipse.jgit.api.errors.GitAPIException;
+
 import java.io.File;
 import java.io.IOException;
 import java.io.InputStream;
@@ -19,6 +21,8 @@ public interface SyncRepo {
     boolean isConnectionRequired();
 
     boolean isAutoSyncSupported();
+
+    boolean isIntegrallySynced();
 
     /**
      * Unique URL.
@@ -79,4 +83,13 @@ public interface SyncRepo {
     void delete(Uri uri) throws IOException;
 
     String toString();
+
+    /**
+     * Add or update a file in the remote repository without touching Orgzly's working tree. Only
+     * intended for tests.
+     * @param content
+     * @param repoRelativePath
+     * @return The expected URI of the resulting rook
+     */
+    String writeFileToRepo(String content, String repoRelativePath) throws Exception;
 }

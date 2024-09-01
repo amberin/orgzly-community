@@ -1,7 +1,6 @@
 package com.orgzly.android.repos
 
 import android.annotation.SuppressLint
-import android.net.Uri
 import android.os.Build
 import androidx.documentfile.provider.DocumentFile
 import com.orgzly.android.BookName
@@ -43,16 +42,16 @@ interface SyncRepoTest {
             "/document/primary%3A$repoDirName%2F"
         }
 
-        fun testGetBooks_singleOrgFile(repoManipulationPoint: Any, syncRepo: SyncRepo) {
+        fun testGetBooks_singleOrgFile(syncRepo: SyncRepo) {
             // Given
             val fileContent = "\n\n...\n\n"
             val fileName = "Book one.org"
-            val expectedRookUri = writeFileToRepo(fileContent, syncRepo, repoManipulationPoint, fileName)
+            val expectedRookUri = syncRepo.writeFileToRepo(fileContent, fileName)
 
             // When
-            val books = syncRepo.books
             val retrieveBookDestinationFile = kotlin.io.path.createTempFile().toFile()
             syncRepo.retrieveBook(fileName, retrieveBookDestinationFile)
+            val books = syncRepo.books
 
             // Then
             assertEquals(1, books.size)
@@ -65,12 +64,12 @@ interface SyncRepoTest {
             // Given
             val repoFilePath = "Folder/Book one.org"
             val fileContent = "\n\n...\n\n"
-            val expectedRookUri = writeFileToRepo(fileContent, syncRepo, repoManipulationPoint, "Book one.org", "Folder")
+            val expectedRookUri = syncRepo.writeFileToRepo(fileContent, "Folder/Book one.org")
 
             // When
-            val books = syncRepo.books
             val retrieveBookDestinationFile = kotlin.io.path.createTempFile().toFile()
             syncRepo.retrieveBook(repoFilePath, retrieveBookDestinationFile)
+            val books = syncRepo.books
 
             // Then
             assertEquals(1, books.size)
@@ -82,8 +81,8 @@ interface SyncRepoTest {
         fun testGetBooks_allFilesAreIgnored(repoManipulationPoint: Any, syncRepo: SyncRepo) {
             // Given
             val ignoreFileContent = "*\n"
-            writeFileToRepo("...", syncRepo, repoManipulationPoint, "book one.org", "folder")
-            writeFileToRepo(ignoreFileContent, syncRepo, repoManipulationPoint, RepoIgnoreNode.IGNORE_FILE)
+            syncRepo.writeFileToRepo("...", "folder/book one.org")
+            syncRepo.writeFileToRepo(ignoreFileContent, RepoIgnoreNode.IGNORE_FILE)
             // When
             val books = syncRepo.books
             // Then
@@ -93,8 +92,8 @@ interface SyncRepoTest {
         fun testGetBooks_specificFileInSubfolderIsIgnored(repoManipulationPoint: Any, syncRepo: SyncRepo) {
             // Given
             val ignoreFileContent = "folder/book one.org\n"
-            writeFileToRepo("...", syncRepo, repoManipulationPoint, "book one.org", "folder")
-            writeFileToRepo(ignoreFileContent, syncRepo, repoManipulationPoint, RepoIgnoreNode.IGNORE_FILE)
+            syncRepo.writeFileToRepo("...", "folder/book one.org")
+            syncRepo.writeFileToRepo(ignoreFileContent, RepoIgnoreNode.IGNORE_FILE)
             // When
             val books = syncRepo.books
             // Then
@@ -105,19 +104,19 @@ interface SyncRepoTest {
             val folderName = "My Folder"
             val fileName = "My file.org"
             val ignoreFileContent = "folder/**\n!$folderName/$fileName\n"
-            writeFileToRepo("...", syncRepo, repoManipulationPoint, fileName, folderName)
-            writeFileToRepo(ignoreFileContent, syncRepo, repoManipulationPoint, RepoIgnoreNode.IGNORE_FILE)
+            syncRepo.writeFileToRepo("...", "$folderName/$fileName")
+            syncRepo.writeFileToRepo(ignoreFileContent, RepoIgnoreNode.IGNORE_FILE)
             // When
             val books = syncRepo.books
             // Then
             assertEquals(1, books.size)
         }
 
-        fun testGetBooks_ignoredExtensions(repoManipulationPoint: Any, syncRepo: SyncRepo) {
+        fun testGetBooks_ignoredExtensions(syncRepo: SyncRepo) {
             // Given
             val testBookContent = "\n\n...\n\n"
             for (fileName in arrayOf("file one.txt", "file two.o", "file three.org")) {
-                writeFileToRepo(testBookContent, syncRepo, repoManipulationPoint, fileName)
+                syncRepo.writeFileToRepo(testBookContent, fileName)
             }
             // When
             val books = syncRepo.books
@@ -155,12 +154,12 @@ interface SyncRepoTest {
             assertEquals(retrievedBook.uri, storedRook.uri)
         }
 
-        fun testStoreBook_producesSameUriAsGetBooks(repoManipulationPoint: Any, syncRepo: SyncRepo) {
+        fun testStoreBook_producesSameUriAsGetBooks(syncRepo: SyncRepo) {
             // Given
             val tmpFile = kotlin.io.path.createTempFile().toFile()
             val folderName = "A folder"
             val fileName = "A book.org"
-            writeFileToRepo("...", syncRepo, repoManipulationPoint, fileName, folderName)
+            syncRepo.writeFileToRepo("...", "$folderName/$fileName")
             // When
             val gottenBook = syncRepo.books[0]
             MiscUtils.writeStringToFile("......", tmpFile) // N.B. Different content to ensure the repo file is actually changed
@@ -245,10 +244,10 @@ interface SyncRepoTest {
             assertEquals(expectedRookUri, renamedVrook.uri.toString())
         }
 
-        fun testRenameBook_repoFileAlreadyExists(repoManipulationPoint: Any, syncRepo: SyncRepo) {
+        fun testRenameBook_repoFileAlreadyExists(syncRepo: SyncRepo) {
             // Given
             for (fileName in arrayOf("Original.org", "Renamed.org")) {
-                writeFileToRepo("...", syncRepo, repoManipulationPoint, fileName)
+                syncRepo.writeFileToRepo("...", fileName)
             }
             val retrievedBookFile = kotlin.io.path.createTempFile().toFile()
             // When
@@ -349,6 +348,12 @@ interface SyncRepoTest {
             assertEquals(expectedRookUri, renamedRook.uri.toString())
         }
 
+/*
+        */
+/**
+         * @return The rook's expected URI
+         *//*
+
         private fun writeFileToRepo(
             content: String,
             repo: SyncRepo,
@@ -406,6 +411,7 @@ interface SyncRepoTest {
             }
             return expectedRookUri
         }
+*/
 
         private fun updateGitRepo(workdir: File) {
             val git = Git(
