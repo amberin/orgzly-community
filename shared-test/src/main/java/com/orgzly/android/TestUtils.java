@@ -36,7 +36,7 @@ public class TestUtils {
     private DataRepository dataRepository;
     private DbRepoBookRepository dbRepoBookRepository;
 
-    TestUtils(DataRepository dataRepository, DbRepoBookRepository dbRepoBookRepository) {
+    public TestUtils(DataRepository dataRepository, DbRepoBookRepository dbRepoBookRepository) {
         this.dataRepository = dataRepository;
         this.dbRepoBookRepository = dbRepoBookRepository;
     }

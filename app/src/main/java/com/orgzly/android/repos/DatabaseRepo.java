@@ -42,6 +42,11 @@ public class DatabaseRepo implements SyncRepo {
     }
 
     @Override
+    public boolean isIntegrallySynced() {
+        return false;
+    }
+
+    @Override
     public Uri getUri() {
         return repoUri;
     }
@@ -101,5 +106,10 @@ public class DatabaseRepo implements SyncRepo {
     @Override
     public String toString() {
         return repoUri.toString();
+    }
+
+    @Override
+    public String writeFileToRepo(String content, String repoRelativePath) throws Exception {
+        throw new UnsupportedOperationException("Not implemented");
     }
 }

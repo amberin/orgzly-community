@@ -113,10 +113,7 @@ public class GitFileSynchronizer {
     public boolean pull(GitTransportSetter transportSetter) throws IOException {
         ensureRepoIsClean();
         try {
-            fetch(transportSetter);
-            RevCommit mergeTarget = getCommit(
-                    String.format("%s/%s", preferences.remoteName(),
-                            git.getRepository().getBranch()));
+            RevCommit mergeTarget = fetch(transportSetter);
             return doMerge(mergeTarget);
         } catch (GitAPIException e) {
             Log.e(TAG, e.toString());
@@ -292,13 +289,12 @@ public class GitFileSynchronizer {
     }
 
     public RevCommit getCommit(String identifier) throws IOException {
-        if (isEmptyRepo()) {
-            return null;
-        }
         Ref target = git.getRepository().findRef(identifier);
         if (target == null) {
             return null;
         }
+        if (identifier == Constants.HEAD && isEmptyRepo())
+            return null;
         return new RevWalk(git.getRepository()).parseCommit(target.getObjectId());
     }
 
