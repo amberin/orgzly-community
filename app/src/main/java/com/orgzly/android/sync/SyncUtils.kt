@@ -4,13 +4,10 @@ import androidx.core.net.toUri
 import com.orgzly.BuildConfig
 import com.orgzly.android.BookFormat
 import com.orgzly.android.BookName
-import com.orgzly.android.NotesOrgExporter
 import com.orgzly.android.data.DataRepository
 import com.orgzly.android.db.entity.BookAction
 import com.orgzly.android.db.entity.Repo
-import com.orgzly.android.repos.GitRepo
 import com.orgzly.android.repos.SyncRepo
-import com.orgzly.android.repos.TwoWaySyncRepo
 import com.orgzly.android.repos.VersionedRook
 import com.orgzly.android.util.LogUtils
 import java.io.IOException
@@ -84,23 +81,6 @@ object SyncUtils {
         val repoUrl: String
         val repositoryPath: String
         var bookAction: BookAction? = null
-
-        // FIXME: This is a pretty nasty hack that completely circumvents the existing code path
-        if (namesake.rooks.isNotEmpty()) {
-            val rook = namesake.rooks[0]
-            if (rook != null && namesake.status !== BookSyncStatus.NO_CHANGE) {
-                val repo = dataRepository.getRepoInstance(
-                    rook.repoId, rook.repoType, rook.repoUri.toString())
-                if (repo is GitRepo) {
-                    if (!handleTwoWaySync(dataRepository, repo as TwoWaySyncRepo, namesake)) {
-                        throw Exception("Merge conflict; saved to temporary branch.")
-                    }
-                    return BookAction.forNow(
-                        BookAction.Type.INFO,
-                        namesake.status.msg(String.format("branch '%s'", repo.currentBranch)))
-                }
-            }
-        }
 
         when (namesake.status!!) {
             BookSyncStatus.NO_CHANGE ->
@@ -176,46 +156,5 @@ object SyncUtils {
         }
 
         return bookAction
-    }
-
-    @Throws(IOException::class)
-    private fun handleTwoWaySync(dataRepository: DataRepository, repo: TwoWaySyncRepo, namesake: BookNamesake): Boolean {
-        val (book, _, _, currentRook) = namesake.book
-        val someRook = currentRook ?: namesake.rooks[0]
-        val newRook: VersionedRook?
-        var noNewMergeConflicts = true
-        // If there are only local changes, the GitRepo.syncBook method is overly complicated.
-        if (namesake.status == BookSyncStatus.BOOK_WITH_LINK_LOCAL_MODIFIED) {
-            val repoRelativePath = BookName.getRepoRelativePath(repo.getUri(), namesake.book.syncedTo!!.uri)
-            dataRepository.saveBookToRepo(namesake.book.linkRepo!!, repoRelativePath, namesake.book, BookFormat.ORG)
-        } else {
-            val dbFile = dataRepository.getTempBookFile()
-            try {
-                NotesOrgExporter(dataRepository).exportBook(book, dbFile)
-                val (newRook1, merged, loadFile) =
-                    repo.syncBook(someRook.uri, currentRook, dbFile)
-                noNewMergeConflicts = merged
-                newRook = newRook1
-                // We only need to write it if syncback is needed
-                if (loadFile != null) {
-                    val repoRelativePath = BookName.getRepoRelativePath(repo.getUri(), newRook.uri)
-                    val bookName = BookName.fromRepoRelativePath(repoRelativePath)
-                    if (BuildConfig.LOG_DEBUG) LogUtils.d(TAG, "Loading from file '$loadFile'")
-                    dataRepository.loadBookFromFile(
-                        bookName.name,
-                        bookName.format,
-                        loadFile,
-                        newRook)
-                    // TODO: db.book().updateIsModified(bookView.book.id, false)
-                    // Instead of:
-                    // dataRepository.updateBookMtime(loadedBook.getBook().getId(), 0);
-                }
-            } finally {
-                /* Delete temporary files. */
-                dbFile.delete()
-            }
-            dataRepository.updateBookLinkAndSync(book.id, newRook!!)
-        }
-        return noNewMergeConflicts
     }
 }

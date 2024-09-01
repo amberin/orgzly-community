@@ -6,7 +6,6 @@ import android.util.Log;
 
 import androidx.annotation.Nullable;
 
-import com.orgzly.BuildConfig;
 import com.orgzly.R;
 import com.orgzly.android.App;
 import com.orgzly.android.NotesOrgExporter;
@@ -25,7 +24,6 @@ import com.orgzly.android.prefs.RepoPreferences;
 import com.orgzly.android.sync.BookNamesake;
 import com.orgzly.android.sync.BookSyncStatus;
 import com.orgzly.android.sync.SyncState;
-import com.orgzly.android.util.LogUtils;
 
 import org.eclipse.jgit.api.CloneCommand;
 import org.eclipse.jgit.api.Git;
@@ -34,11 +32,9 @@ import org.eclipse.jgit.api.errors.JGitInternalException;
 import org.eclipse.jgit.diff.DiffEntry;
 import org.eclipse.jgit.ignore.IgnoreNode;
 import org.eclipse.jgit.lib.FileMode;
-import org.eclipse.jgit.lib.ObjectId;
 import org.eclipse.jgit.lib.ProgressMonitor;
 import org.eclipse.jgit.lib.StoredConfig;
 import org.eclipse.jgit.revwalk.RevCommit;
-import org.eclipse.jgit.revwalk.RevWalk;
 import org.eclipse.jgit.storage.file.FileRepositoryBuilder;
 import org.eclipse.jgit.transport.RemoteRefUpdate;
 import org.eclipse.jgit.treewalk.TreeWalk;
@@ -53,6 +49,7 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 
 public class GitRepo implements SyncRepo, TwoWaySyncRepo {
     private final static String TAG = GitRepo.class.getName();
@@ -80,11 +77,11 @@ public class GitRepo implements SyncRepo, TwoWaySyncRepo {
 
         // TODO: Build from info
 
-        return build(props.getRepo().getId(), prefs, false);
+        return build(props.getRepo().getId(), prefs);
     }
 
-    private static GitRepo build(long id, GitPreferences prefs, boolean clone) throws IOException {
-        Git git = ensureRepositoryExists(prefs, clone, null);
+    private static GitRepo build(long id, GitPreferences prefs) throws IOException {
+        Git git = ensureRepositoryExists(prefs, false, null);
 
         StoredConfig config = git.getRepository().getConfig();
         config.setString("remote", prefs.remoteName(), "url", prefs.remoteUri().toString());
@@ -127,7 +124,7 @@ public class GitRepo implements SyncRepo, TwoWaySyncRepo {
      */
     private static Git verifyExistingRepo(File directoryFile) throws IOException {
         if (!directoryFile.exists()) {
-            throw new IOException(String.format("The directory %s does not exist", directoryFile.toString()), new FileNotFoundException());
+            throw new IOException(String.format("The directory %s does not exist", directoryFile), new FileNotFoundException());
         }
 
         FileRepositoryBuilder frb = new FileRepositoryBuilder();
@@ -152,13 +149,13 @@ public class GitRepo implements SyncRepo, TwoWaySyncRepo {
     private static Git cloneRepo(Uri repoUri, File directoryFile, GitTransportSetter transportSetter,
                       ProgressMonitor pm) throws IOException {
         if (!directoryFile.exists()) {
-            throw new IOException(String.format("The directory %s does not exist", directoryFile.toString()), new FileNotFoundException());
+            throw new IOException(String.format("The directory %s does not exist", directoryFile), new FileNotFoundException());
         }
 
         // Using list() can be resource intensive if there's many files, but since we just call it
         // at the time of cloning once we should be fine for now
-        if (directoryFile.list().length != 0) {
-            throw new IOException(String.format("The directory must be empty"), new DirectoryNotEmpty(directoryFile));
+        if (Objects.requireNonNull(directoryFile.list()).length != 0) {
+            throw new IOException("The directory must be empty", new DirectoryNotEmpty(directoryFile));
         }
 
         try {
@@ -180,9 +177,9 @@ public class GitRepo implements SyncRepo, TwoWaySyncRepo {
         }
     }
 
-    private Git git;
-    private GitFileSynchronizer synchronizer;
-    private GitPreferences preferences;
+    private final Git git;
+    private final GitFileSynchronizer synchronizer;
+    private final GitPreferences preferences;
 
     public GitRepo(long id, Git g, GitPreferences prefs) {
         repoId = id;
@@ -209,23 +206,15 @@ public class GitRepo implements SyncRepo, TwoWaySyncRepo {
      * @throws IOException
      */
     public VersionedRook storeBook(File file, String repoRelativePath) throws IOException {
-        File destination = synchronizer.workTreeFile(repoRelativePath);
-
-        if (destination.exists()) {
-            synchronizer.updateAndCommitExistingFile(file, repoRelativePath);
-        } else {
-            synchronizer.addAndCommitNewFile(file, repoRelativePath);
+        synchronizer.writeFileAndAddToIndex(file, repoRelativePath);
+        synchronizer.commitAnyStagedChanges();
+        try (GitTransportSetter transportSetter = preferences.createTransportSetter()) {
+            synchronizer.push(transportSetter);
+        } catch (Exception e) {
+            Log.e(TAG, e.toString());
+            throw new RuntimeException(e);
         }
-        synchronizer.push();
         return currentVersionedRook(Uri.EMPTY.buildUpon().path(repoRelativePath).build());
-    }
-
-    private RevWalk walk() {
-        return new RevWalk(git.getRepository());
-    }
-
-    RevCommit getCommitFromRevisionString(String revisionString) throws IOException {
-        return walk().parseCommit(ObjectId.fromString(revisionString));
     }
 
     /**
@@ -238,9 +227,16 @@ public class GitRepo implements SyncRepo, TwoWaySyncRepo {
     @Override
     public VersionedRook retrieveBook(String repoRelativePath, File destination) throws IOException {
         Uri sourceUri = Uri.EMPTY.buildUpon().path(repoRelativePath).build();
-        synchronizer.fetch();
+        try (GitTransportSetter transportSetter = preferences.createTransportSetter()) {
+            synchronizer.fetch(transportSetter);
+        } catch (Exception e) {
+            Log.e(TAG, e.toString());
+            throw new RuntimeException(e);
+        }
         try {
             // Reset our entire working tree to the remote head
+            // TODO: Introduce helper method for loading remote changes which can be called both
+            //  here and during regular syncing.
             synchronizer.hardResetToRemoteHead();
         } catch (GitAPIException e) {
             throw new RuntimeException(e);
@@ -312,23 +308,36 @@ public class GitRepo implements SyncRepo, TwoWaySyncRepo {
     }
 
     public void delete(Uri uri) throws IOException {
-        if (synchronizer.deleteFileFromRepo(uri)) synchronizer.push();
+        try (GitTransportSetter transportSetter = preferences.createTransportSetter()) {
+            synchronizer.fetch(transportSetter);
+            if (synchronizer.deleteFileFromRepo(uri, transportSetter))
+                synchronizer.push(transportSetter);
+        } catch (Exception e) {
+            Log.e(TAG, e.toString());
+            throw new RuntimeException(e);
+        }
     }
 
     public VersionedRook renameBook(Uri oldFullUri, String newName) throws IOException {
         String oldPath = oldFullUri.getPath();
         String newPath = BookName.repoRelativePath(newName, BookFormat.ORG);
-        if (synchronizer.renameFileInRepo(oldPath, newPath)) {
-            synchronizer.push();
-            return currentVersionedRook(Uri.EMPTY.buildUpon().path(newPath).build());
-        } else {
-            return null;
+        try (GitTransportSetter transportSetter = preferences.createTransportSetter()) {
+            if (synchronizer.renameFileInRepo(oldPath, newPath, transportSetter)) {
+                synchronizer.push(transportSetter);
+                return currentVersionedRook(Uri.EMPTY.buildUpon().path(newPath).build());
+            } else {
+                return null;
+            }
+        } catch (Exception e) {
+            Log.e(TAG, e.toString());
+            throw new IOException(e);
         }
     }
 
     @Nullable
     @Override
     public SyncState syncRepo(DataRepository dataRepository) throws Exception {
+        // TODO: Add regression test for empty remote (no initial commit)
         RevCommit remoteHeadBeforeFetch = synchronizer.getRemoteHead();
         RevCommit newRemoteHead = null;
         List<Book> allLinkedBooks = dataRepository.getBooksLinkedToRepo(repoId);
@@ -397,65 +406,64 @@ public class GitRepo implements SyncRepo, TwoWaySyncRepo {
             namesake.setStatus(BookSyncStatus.BOOK_WITH_LINK_LOCAL_MODIFIED);
         }
         boolean rebaseWasAttempted = false;
-        if (!syncedBooks.isEmpty()) {
-            RevCommit newCommit = synchronizer.commitAnyStagedChanges();
-            for (BookNamesake namesake : syncedBooks.values()) {
-                if (newCommit != null) {
-                    Uri fileUri =
-                            Uri.EMPTY.buildUpon().path(BookName.getRepoRelativePath(namesake.getBook())).build();
-                    VersionedRook vrook = new VersionedRook(repoId, repoType, getUri(),
-                            fileUri, newCommit.name(), (long) newCommit.getCommitTime() * 1000);
-                    dataRepository.updateBookLinkAndSync(namesake.getBook().getBook().getId(),
-                            vrook);
+        // We know we must connect to the remote at some point, whether we have local changes or
+        // not. Let's do it here.
+        try (GitTransportSetter transportSetter = preferences.createTransportSetter()) {
+            if (!syncedBooks.isEmpty()) {
+                RevCommit newCommit = synchronizer.commitAnyStagedChanges();
+                for (BookNamesake namesake : syncedBooks.values()) {
+                    if (newCommit != null) {
+                        Uri fileUri = Uri.EMPTY.buildUpon().path(BookName.getRepoRelativePath(namesake.getBook())).build();
+                        VersionedRook vrook = new VersionedRook(repoId, repoType, getUri(), fileUri, newCommit.name(), (long) newCommit.getCommitTime() * 1000);
+                        dataRepository.updateBookLinkAndSync(namesake.getBook().getBook().getId(), vrook);
+                    }
+                    dataRepository.setBookIsNotModified(namesake.getBook().getBook().getId());
                 }
-                dataRepository.setBookIsNotModified(namesake.getBook().getBook().getId());
-            }
-            // Try pushing
-            RemoteRefUpdate pushResult = synchronizer.pushWithResult();
-            if (pushResult == null)
-                throw new IOException("Git push failed unexpectedly");
-            switch (pushResult.getStatus()) {
-                case OK:
-                case UP_TO_DATE:
-                    for (BookNamesake namesake : syncedBooks.values()) {
-                        storeBookStatus(dataRepository, namesake.getBook(), namesake.getStatus());
-                    }
-                    break;
-                case REJECTED_NONFASTFORWARD:
-                case REJECTED_REMOTE_CHANGED:
-                    // Try rebasing on latest remote head
-                    newRemoteHead = synchronizer.fetch();
-                    switch (synchronizer.rebase().getStatus()) {
-                        case FAST_FORWARD: // Only remote changes
-                        case OK: // Remote and local changes
-                            if (!syncedBooks.isEmpty()) {
-                                synchronizer.push();
-                                for (BookNamesake namesake : syncedBooks.values()) {
-                                    storeBookStatus(
-                                        dataRepository,
-                                        namesake.getBook(),
-                                        namesake.getStatus()
-                                    );
+                // Try pushing
+                RemoteRefUpdate pushResult = synchronizer.pushWithResult(transportSetter);
+                if (pushResult == null) throw new IOException("Git push failed unexpectedly");
+                switch (pushResult.getStatus()) {
+                    case OK:
+                    case UP_TO_DATE:
+                        for (BookNamesake namesake : syncedBooks.values()) {
+                            storeBookStatus(dataRepository, namesake.getBook(), namesake.getStatus());
+                        }
+                        break;
+                    case REJECTED_NONFASTFORWARD:
+                    case REJECTED_REMOTE_CHANGED:
+                        // Try rebasing on latest remote head
+                        newRemoteHead = synchronizer.fetch(transportSetter);
+                        switch (synchronizer.rebase().getStatus()) {
+                            case FAST_FORWARD: // Only remote changes
+                            case OK: // Remote and local changes
+                                if (!syncedBooks.isEmpty()) {
+                                    synchronizer.push(transportSetter);
+                                    for (BookNamesake namesake : syncedBooks.values()) {
+                                        storeBookStatus(dataRepository, namesake.getBook(), namesake.getStatus());
+                                    }
                                 }
-                            }
-                            break;
-                        default:
-                            // Rebase failed; push to conflict branch
-                            synchronizer.pushToConflictBranch();
-                            for (BookNamesake namesake : syncedBooks.values()) {
-                                namesake.setStatus(BookSyncStatus.CONFLICT_SAVED_TO_TEMP_BRANCH);
-                                storeBookStatus(dataRepository, namesake.getBook(), namesake.getStatus());
-                            }
-                    }
-                    rebaseWasAttempted = true;
-                    break;
-                default:
-                    throw new IOException("Error during git push: " + pushResult.getMessage());
+                                break;
+                            default:
+                                // Rebase failed; push to conflict branch
+                                synchronizer.pushToConflictBranch(transportSetter);
+                                for (BookNamesake namesake : syncedBooks.values()) {
+                                    namesake.setStatus(BookSyncStatus.CONFLICT_SAVED_TO_TEMP_BRANCH);
+                                    storeBookStatus(dataRepository, namesake.getBook(), namesake.getStatus());
+                                }
+                        }
+                        rebaseWasAttempted = true;
+                        break;
+                    default:
+                        throw new IOException("Error during git push: " + pushResult.getMessage());
+                }
+            } else {
+                // No local changes, but fetch is needed to discover remote changes
+                newRemoteHead = synchronizer.fetch(transportSetter);
             }
-        } else {
-            // No local changes, but fetch is needed to discover remote changes
-            newRemoteHead = synchronizer.fetch();
-        }
+        } catch (Exception e) {
+            Log.e(TAG, e.toString());
+            throw new RuntimeException(e);
+        } // Connection to remote is closed here; we have both pushed and fetched, if needed.
         if (newRemoteHead != null && !newRemoteHead.name().equals(remoteHeadBeforeFetch.name())) {
             // There are remote changes.
             // Ensure we have rebased on the remote head.
@@ -601,44 +609,5 @@ public class GitRepo implements SyncRepo, TwoWaySyncRepo {
         dataRepository.setBookLastActionAndSyncStatus(bookView.getBook().getId(),
                 action,
                 status.toString());
-    }
-
-    @Override
-    public TwoWaySyncResult syncBook(
-            Uri uri, VersionedRook current, File fromDB) throws IOException {
-        String repoRelativePath = uri.getPath().replaceFirst("^/", "");
-        boolean merged = true;
-        if (current != null) {
-            RevCommit rookCommit = getCommitFromRevisionString(current.getRevision());
-            if (BuildConfig.LOG_DEBUG) {
-                LogUtils.d(TAG, String.format("Syncing file %s, rookCommit: %s", repoRelativePath, rookCommit));
-            }
-            merged = synchronizer.updateAndCommitFileFromRevisionAndMerge(
-                    fromDB, repoRelativePath,
-                    synchronizer.getFileRevision(repoRelativePath, rookCommit),
-                    rookCommit);
-
-            if (merged) {
-                // Our change was successfully merged. Make an attempt
-                // to return to the main branch, if we are not on it.
-                if (!git.getRepository().getBranch().equals(preferences.branchName())) {
-                    synchronizer.attemptReturnToMainBranch();
-                }
-            }
-        } else {
-            Log.w(TAG, "Unable to find previous commit, loading from repository.");
-        }
-        File writeBackFile = synchronizer.workTreeFile(repoRelativePath);
-        return new TwoWaySyncResult(
-                currentVersionedRook(Uri.EMPTY.buildUpon().path(repoRelativePath).build()), merged,
-                writeBackFile);
-    }
-
-    public void tryPushIfHeadDiffersFromRemote() {
-        synchronizer.tryPushIfHeadDiffersFromRemote();
-    }
-
-    public String getCurrentBranch() throws IOException {
-        return git.getRepository().getBranch();
     }
 }
