@@ -1,6 +1,7 @@
 package com.orgzly.android.repos
 
 import android.content.Context
+import android.net.Uri
 import androidx.core.net.toUri
 import androidx.test.core.app.ApplicationProvider
 import androidx.test.ext.junit.runners.AndroidJUnit4
@@ -9,69 +10,96 @@ import com.orgzly.android.TestUtils
 import com.orgzly.android.data.DataRepository
 import com.orgzly.android.data.DbRepoBookRepository
 import com.orgzly.android.db.OrgzlyDatabase
-import com.orgzly.android.db.OrgzlyDatabase.Companion.forFile
 import com.orgzly.android.db.entity.BookAction
-import com.orgzly.android.db.entity.Repo
 import com.orgzly.android.git.GitFileSynchronizer
 import com.orgzly.android.git.GitPreferencesFromRepoPrefs
 import com.orgzly.android.prefs.AppPreferences
 import com.orgzly.android.prefs.RepoPreferences
+import com.orgzly.android.util.MiscUtils
+import org.eclipse.jgit.api.CloneCommand
 import org.eclipse.jgit.api.Git
 import org.junit.After
-import org.junit.Assert.assertEquals
-import org.junit.Assert.assertNotNull
-import org.junit.Assert.assertTrue
+import org.junit.Assert
 import org.junit.Before
 import org.junit.Test
 import org.junit.runner.RunWith
 import java.io.File
-import java.io.IOException
+import java.nio.file.Files
 import kotlin.io.path.createTempDirectory
 
 @RunWith(AndroidJUnit4::class)
 class GitRepoTest : SyncRepoTest {
 
-    private lateinit var gitWorkingTree: File
+    private lateinit var workingCloneDir: File
+    private lateinit var workingClone: Git
     private lateinit var bareRepoDir: File
     private lateinit var gitFileSynchronizer: GitFileSynchronizer
-    private lateinit var repo: Repo
-    private lateinit var syncRepo: SyncRepo
-    private var context: Context = ApplicationProvider.getApplicationContext()
     private lateinit var dataRepository: DataRepository
     private lateinit var testUtils: TestUtils
+    private lateinit var gitPreferences: GitPreferencesFromRepoPrefs
+    private lateinit var mSyncRepo: SyncRepo
 
     @Before
     fun setup() {
         // Setup TestUtils
-        val database = forFile(context, OrgzlyDatabase.NAME_FOR_TESTS)
+        val context: Context = ApplicationProvider.getApplicationContext()
+        val database = OrgzlyDatabase.forFile(context, OrgzlyDatabase.NAME_FOR_TESTS)
         val dbRepoBookRepository = DbRepoBookRepository(database)
         val localStorage = LocalStorage(context)
         val repoFactory = RepoFactory(context, dbRepoBookRepository)
         dataRepository = DataRepository(
             context, database, repoFactory, context.resources, localStorage
         )
-        dataRepository.clearDatabase()
         testUtils = TestUtils(dataRepository, dbRepoBookRepository)
+        dataRepository.clearDatabase()
         // Setup repo
         bareRepoDir = createTempDirectory().toFile()
         Git.init().setBare(true).setDirectory(bareRepoDir).call()
         AppPreferences.gitIsEnabled(context, true)
-        repo = testUtils.setupRepo(RepoType.GIT, "file://$bareRepoDir")
+        val repo = testUtils.setupRepo(RepoType.GIT, "file://$bareRepoDir")
         val repoPreferences = RepoPreferences(context, repo.id, repo.url.toUri())
-        val gitPreferences = GitPreferencesFromRepoPrefs(repoPreferences)
-        gitWorkingTree = File(gitPreferences.repositoryFilepath())
-        gitWorkingTree.mkdirs()
-        val git = GitRepo.ensureRepositoryExists(gitPreferences, true, null)
-        gitFileSynchronizer = GitFileSynchronizer(git, gitPreferences)
+        gitPreferences = GitPreferencesFromRepoPrefs(repoPreferences)
+        val orgzlyCloneDir = File(gitPreferences.repositoryFilepath())
+        orgzlyCloneDir.mkdirs()
+        val orgzlyRepoClone = GitRepo.ensureRepositoryExists(gitPreferences, true, null)
+        gitFileSynchronizer = GitFileSynchronizer(orgzlyRepoClone, gitPreferences)
         val repoPropsMap = HashMap<String, String>()
         val repoWithProps = RepoWithProps(repo, repoPropsMap)
-        syncRepo = GitRepo.getInstance(repoWithProps, context)
+        mSyncRepo = GitRepo.getInstance(repoWithProps, context)
+        // Setup working clone
+        workingCloneDir = Files.createTempDirectory("orgzlytest").toFile()
+        workingClone = CloneCommand().setURI(syncRepo.uri.toString()).setDirectory(workingCloneDir).call()
     }
 
     @After
     fun tearDown() {
-        gitWorkingTree.deleteRecursively()
+        if (this::workingCloneDir.isInitialized)
+            workingCloneDir.deleteRecursively()
         bareRepoDir.deleteRecursively()
+    }
+
+    override var syncRepo: SyncRepo
+        get() = mSyncRepo
+        set(value) {}
+    override val repoManipulationPoint: Any
+        get() = workingCloneDir
+
+    override fun writeFileToRepo(content: String, repoRelativePath: String): String {
+        val expectedRookUri = Uri.parse(Uri.encode(repoRelativePath, "/"))
+        val targetFile = File(workingCloneDir, repoRelativePath)
+        targetFile.parentFile!!.mkdirs()
+        MiscUtils.writeStringToFile(content, targetFile)
+        workingClone.add().addFilepattern(".").call()
+        workingClone.commit().setMessage("").call()
+        workingClone.push().call()
+        // Ensure Orgzly's working tree is updated. This is needed for testing getBooks(), which
+        // does not update the worktree on its own.
+        gitPreferences.createTransportSetter().use { transportSetter ->
+            gitFileSynchronizer.pull(
+                transportSetter
+            )
+        }
+        return expectedRookUri.toString()
     }
 
     /**
@@ -83,9 +111,9 @@ class GitRepoTest : SyncRepoTest {
         testUtils.setupBook("A Book", "...")
         syncRepo.syncRepo(dataRepository)
         val bookView = dataRepository.getBooks()[0]
-        assertEquals(repo.url, bookView.linkRepo!!.url)
-        assertNotNull(bookView.syncedTo?.revision)
-        assertTrue(bookView.book.lastAction!!.message.contains("Saved to "))
+        Assert.assertEquals(syncRepo.uri.toString(), bookView.linkRepo!!.url)
+        Assert.assertNotNull(bookView.syncedTo?.revision)
+        Assert.assertTrue(bookView.book.lastAction!!.message.contains("Saved to "))
     }
 
     @Test
@@ -97,8 +125,8 @@ class GitRepoTest : SyncRepoTest {
         syncRepo.syncRepo(dataRepository)
 
         val bookView = dataRepository.getBooks()[0]
-        assertEquals(BookAction.Type.ERROR, bookView.book.lastAction!!.type)
-        assertTrue(bookView.book.lastAction!!.message.contains("multiple repositories"))
+        Assert.assertEquals(BookAction.Type.ERROR, bookView.book.lastAction!!.type)
+        Assert.assertTrue(bookView.book.lastAction!!.message.contains("multiple repositories"))
     }
 
     /**
@@ -108,90 +136,5 @@ class GitRepoTest : SyncRepoTest {
     @Test
     fun testSyncRepo_firstSyncAfterCloning() {
         return // TODO
-    }
-
-    @Test
-    override fun testGetBooks_singleOrgFile() {
-        SyncRepoTest.testGetBooks_singleOrgFile(syncRepo)
-    }
-
-    @Test
-    override fun testGetBooks_singleFileInSubfolder() {
-        SyncRepoTest.testGetBooks_singleFileInSubfolder(gitWorkingTree, syncRepo)
-    }
-
-    @Test
-    override fun testGetBooks_allFilesAreIgnored() {
-        SyncRepoTest.testGetBooks_allFilesAreIgnored(gitWorkingTree, syncRepo)
-    }
-
-    @Test
-    override fun testGetBooks_specificFileInSubfolderIsIgnored() {
-        SyncRepoTest.testGetBooks_specificFileInSubfolderIsIgnored(gitWorkingTree, syncRepo)
-    }
-
-    @Test
-    override fun testGetBooks_specificFileIsUnignored() {
-        SyncRepoTest.testGetBooks_specificFileIsUnignored(gitWorkingTree, syncRepo)
-    }
-
-    @Test
-    override fun testGetBooks_ignoredExtensions() {
-        SyncRepoTest.testGetBooks_ignoredExtensions(syncRepo)
-    }
-
-    @Test
-    override fun testStoreBook_expectedUri() {
-        SyncRepoTest.testStoreBook_expectedUri(syncRepo)
-    }
-
-    @Test
-    override fun testStoreBook_producesSameUriAsRetrieveBook() {
-        SyncRepoTest.testStoreBook_producesSameUriAsRetrieveBook(syncRepo)
-    }
-
-    @Test
-    override fun testStoreBook_producesSameUriAsGetBooks() {
-        SyncRepoTest.testStoreBook_producesSameUriAsGetBooks(syncRepo)
-    }
-
-    @Test
-    override fun testStoreBook_inSubfolder() {
-        SyncRepoTest.testStoreBook_inSubfolder(gitWorkingTree, syncRepo)
-    }
-
-    @Test
-    override fun testRenameBook_expectedUri() {
-        SyncRepoTest.testRenameBook_expectedUri(syncRepo)
-    }
-
-    @Test(expected = IOException::class)
-    override fun testRenameBook_repoFileAlreadyExists() {
-        SyncRepoTest.testRenameBook_repoFileAlreadyExists(syncRepo)
-    }
-
-    @Test
-    override fun testRenameBook_fromRootToSubfolder() {
-        SyncRepoTest.testRenameBook_fromRootToSubfolder(syncRepo)
-    }
-
-    @Test
-    override fun testRenameBook_fromSubfolderToRoot() {
-        SyncRepoTest.testRenameBook_fromSubfolderToRoot(syncRepo)
-    }
-
-    @Test
-    override fun testRenameBook_newSubfolderSameLeafName() {
-        SyncRepoTest.testRenameBook_newSubfolderSameLeafName(syncRepo)
-    }
-
-    @Test
-    override fun testRenameBook_newSubfolderAndLeafName() {
-        SyncRepoTest.testRenameBook_newSubfolderAndLeafName(syncRepo)
-    }
-
-    @Test
-    override fun testRenameBook_sameSubfolderNewLeafName() {
-        SyncRepoTest.testRenameBook_sameSubfolderNewLeafName(syncRepo)
     }
 }
