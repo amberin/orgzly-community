@@ -43,6 +43,7 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.nio.file.FileAlreadyExistsException;
 import java.util.List;
+import java.util.Objects;
 
 public class GitFileSynchronizer {
     private final static String TAG = GitFileSynchronizer.class.getName();
@@ -293,7 +294,7 @@ public class GitFileSynchronizer {
         if (target == null) {
             return null;
         }
-        if (identifier == Constants.HEAD && isEmptyRepo())
+        if (Objects.equals(identifier, Constants.HEAD) && isEmptyRepo())
             return null;
         return new RevWalk(git.getRepository()).parseCommit(target.getObjectId());
     }
