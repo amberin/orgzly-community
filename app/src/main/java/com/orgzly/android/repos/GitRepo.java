@@ -372,7 +372,6 @@ public class GitRepo implements SyncRepo, TwoWaySyncRepo {
             }
         }
         // Link and add any orphan books, if possible
-        // TODO: Add regression test to ensure we don't re-link books which were deleted in repo
         for (BookView bookView : dataRepository.getBookViewsWithoutLink()) {
             if (dataRepository.getRepos().size() > 1) {
                 storeBookStatus(dataRepository, bookView,
@@ -431,38 +430,39 @@ public class GitRepo implements SyncRepo, TwoWaySyncRepo {
                 RemoteRefUpdate pushResult = synchronizer.pushWithResult(transportSetter);
                 if (pushResult == null) throw new IOException("Git push failed unexpectedly");
                 switch (pushResult.getStatus()) {
-                    case OK:
-                    case UP_TO_DATE:
+                    case OK, UP_TO_DATE -> {
                         for (BookNamesake namesake : syncedBooks.values()) {
-                            storeBookStatus(dataRepository, namesake.getBook(), namesake.getStatus());
+                            storeBookStatus(dataRepository, namesake.getBook(),
+                                    namesake.getStatus());
                         }
-                        break;
-                    case REJECTED_NONFASTFORWARD:
-                    case REJECTED_REMOTE_CHANGED:
+                    }
+                    case REJECTED_NONFASTFORWARD, REJECTED_REMOTE_CHANGED -> {
                         // Try rebasing on latest remote head
                         newRemoteHead = synchronizer.fetch(transportSetter);
-                        switch (synchronizer.rebase().getStatus()) {
-                            case FAST_FORWARD: // Only remote changes
-                            case OK: // Remote and local changes
+                        switch (synchronizer.rebase().getStatus()) { // Only remote changes
+                            case FAST_FORWARD, OK -> { // Remote and local changes
                                 if (!syncedBooks.isEmpty()) {
                                     synchronizer.push(transportSetter);
                                     for (BookNamesake namesake : syncedBooks.values()) {
-                                        storeBookStatus(dataRepository, namesake.getBook(), namesake.getStatus());
+                                        storeBookStatus(dataRepository, namesake.getBook(),
+                                                namesake.getStatus());
                                     }
                                 }
-                                break;
-                            default:
+                            }
+                            default -> {
                                 // Rebase failed; push to conflict branch
                                 synchronizer.pushToConflictBranch(transportSetter);
                                 for (BookNamesake namesake : syncedBooks.values()) {
                                     namesake.setStatus(BookSyncStatus.CONFLICT_SAVED_TO_TEMP_BRANCH);
-                                    storeBookStatus(dataRepository, namesake.getBook(), namesake.getStatus());
+                                    storeBookStatus(dataRepository, namesake.getBook(),
+                                            namesake.getStatus());
                                 }
+                            }
                         }
                         rebaseWasAttempted = true;
-                        break;
-                    default:
-                        throw new IOException("Error during git push: " + pushResult.getMessage());
+                    }
+                    default ->
+                            throw new IOException("Error during git push: " + pushResult.getMessage());
                 }
             } else {
                 // No local changes, but fetch is needed to discover remote changes
@@ -486,7 +486,7 @@ public class GitRepo implements SyncRepo, TwoWaySyncRepo {
                 BookSyncStatus status = null;
                 BookView bookView = null;
                 switch (changedFile.getChangeType()) {
-                    case MODIFY: {
+                    case MODIFY -> {
                         BookNamesake alreadyChanged =
                                 syncedBooks.get(BookName.fromRepoRelativePath(changedFile.getNewPath()).getName());
                         if (alreadyChanged != null) {
@@ -504,32 +504,29 @@ public class GitRepo implements SyncRepo, TwoWaySyncRepo {
                             namesake.setStatus(status);
                             syncedBooks.put(namesake.getName(), namesake);
                         }
-                        break;
                     }
-                    case ADD: {
+                    case ADD -> {
                         if (BookName.isSupportedFormatFileName(changedFile.getNewPath())) {
                             bookView = loadBook(dataRepository, changedFile.getNewPath());
                             status = BookSyncStatus.NO_BOOK_ONE_ROOK;
                         }
-                        break;
                     }
-                    case DELETE: {
-                        // TODO: Add regression test to make sure we don't re-create deleted repo
-                        //  files
+                    case DELETE -> {
                         String repoRelativePath = changedFile.getOldPath();
-                        bookView = dataRepository.getBookView(BookName.fromRepoRelativePath(repoRelativePath).getName()); // TODO: Test this
+                        bookView =
+                                dataRepository.getBookView(BookName.fromRepoRelativePath(repoRelativePath).getName());
                         assert bookView != null;
-                        // Just remove the book's repo link; don't delete the book
+                        // Just remove the repo link and update book status; don't delete the book
                         dataRepository.setLink(bookView.getBook().getId(), null);
                         status = BookSyncStatus.ROOK_NO_LONGER_EXISTS;
                         // Avoid setting the NO_CHANGE status later
                         syncedBooks.put(bookView.getBook().getName(),
                                 new BookNamesake(bookView.getBook().getName()));
-                        break;
                     }
+
                     // TODO: Handle RENAME, COPY
-                    default:
-                        throw new IOException("Unsupported remote change in Git repo (file renamed or copied)");
+                    default ->
+                            throw new IOException("Unsupported remote change in Git repo (file renamed or copied)");
                 }
                 if (status != null && bookView != null) {
                     storeBookStatus(dataRepository, bookView, status);
