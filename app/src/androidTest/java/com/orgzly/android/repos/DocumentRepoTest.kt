@@ -16,20 +16,26 @@ import com.orgzly.R
 import com.orgzly.android.OrgzlyTest
 import com.orgzly.android.db.entity.Repo
 import com.orgzly.android.espresso.util.EspressoUtils
+import com.orgzly.android.repos.SyncRepoTest.Companion.repoDirName
+import com.orgzly.android.repos.SyncRepoTest.Companion.treeDocumentFileExtraSegment
 import com.orgzly.android.ui.repos.ReposActivity
+import com.orgzly.android.util.MiscUtils
 import org.hamcrest.core.AllOf
 import org.junit.After
 import org.junit.Assert
 import org.junit.Before
-import org.junit.Test
-import java.io.IOException
+import kotlin.io.path.Path
 
 class DocumentRepoTest : SyncRepoTest, OrgzlyTest() {
 
-    private lateinit var documentTreeSegment: String
     private lateinit var repo: Repo
-    private lateinit var syncRepo: SyncRepo
     private lateinit var repoDirectory: DocumentFile
+    private lateinit var mSyncRepo: SyncRepo
+    private var treeDocumentFileUrl = if (Build.VERSION.SDK_INT < 30) {
+        "content://com.android.providers.downloads.documents/tree/raw%3A%2Fstorage%2Femulated%2F0%2FDownload%2F$repoDirName"
+    } else {
+        "content://com.android.externalstorage.documents/tree/primary%3A$repoDirName"
+    }
 
     @Before
     override fun setUp() {
@@ -45,138 +51,33 @@ class DocumentRepoTest : SyncRepoTest, OrgzlyTest() {
         }
     }
 
-    @Test
-    override fun testGetBooks_singleOrgFile() {
-        SyncRepoTest.testGetBooks_singleOrgFile(repoDirectory, syncRepo)
-    }
+    override var syncRepo: SyncRepo
+        get() = mSyncRepo
+        set(value) {}
+    override val repoManipulationPoint: Any
+        get() = repoDirectory
 
-    @Test
-    override fun testGetBooks_singleFileInSubfolderWhenEnabled() {
-        SyncRepoTest.testGetBooks_singleFileInSubfolderWhenEnabled(repoDirectory, syncRepo)
-    }
-
-    @Test
-    override fun testGetBooks_singleFileInSubfolderWhenDisabled() {
-        SyncRepoTest.testGetBooks_singleFileInSubfolderWhenDisabled(repoDirectory, syncRepo)
-    }
-
-    @Test
-    override fun testGetBooks_allFilesAreIgnored() {
-        SyncRepoTest.testGetBooks_allFilesAreIgnored(repoDirectory, syncRepo)
-    }
-
-    @Test
-    override fun testGetBooks_specificFileInSubfolderIsIgnored() {
-        SyncRepoTest.testGetBooks_specificFileInSubfolderIsIgnored(repoDirectory, syncRepo)
-    }
-
-    @Test
-    override fun testGetBooks_specificFileIsUnignored() {
-        SyncRepoTest.testGetBooks_specificFileIsUnignored(repoDirectory, syncRepo)
-    }
-
-    @Test
-    override fun testGetBooks_ignoredExtensions() {
-        SyncRepoTest.testGetBooks_ignoredExtensions(repoDirectory, syncRepo)
-    }
-
-    @Test
-    override fun testStoreBook_expectedUri() {
-        SyncRepoTest.testStoreBook_expectedUri(syncRepo)
-    }
-
-    @Test
-    override fun testStoreBook_producesSameUriAsRetrieveBookWithSubfolder() {
-        SyncRepoTest.testStoreBook_producesSameUriAsRetrieveBookWithSubfolder(syncRepo)
-    }
-
-    @Test
-    override fun testStoreBook_producesSameUriAsRetrieveBookWithoutSubfolder() {
-        SyncRepoTest.testStoreBook_producesSameUriAsRetrieveBookWithoutSubfolder(syncRepo)
-    }
-
-    @Test
-    override fun testStoreBook_producesSameUriAsGetBooks() {
-        SyncRepoTest.testStoreBook_producesSameUriAsGetBooks(repoDirectory, syncRepo)
-    }
-
-    @Test
-    override fun testStoreBook_inSubfolder() {
-        SyncRepoTest.testStoreBook_inSubfolder(repoDirectory, syncRepo)
-    }
-
-    @Test(expected = IOException::class)
-    override fun testStoreBook_inSubfolderWhenDisabled() {
-        SyncRepoTest.testStoreBook_inSubfolderWhenDisabled(syncRepo)
-    }
-
-    @Test
-    override fun testRenameBook_expectedUri() {
-        SyncRepoTest.testRenameBook_expectedUri(syncRepo)
-    }
-
-    @Test(expected = IOException::class)
-    override fun testRenameBook_repoFileAlreadyExists() {
-        SyncRepoTest.testRenameBook_repoFileAlreadyExists(repoDirectory, syncRepo)
-    }
-
-    @Test
-    override fun testRenameBook_fromRootToSubfolderWhenEnabled() {
-        SyncRepoTest.testRenameBook_fromRootToSubfolderWhenEnabled(syncRepo)
-    }
-
-    @Test(expected = IOException::class)
-    override fun testRenameBook_fromRootToSubfolderWhenDisabled() {
-        SyncRepoTest.testRenameBook_fromRootToSubfolderWhenDisabled(syncRepo)
-    }
-
-    @Test
-    override fun testRenameBook_fromSubfolderToRoot() {
-        SyncRepoTest.testRenameBook_fromSubfolderToRoot(syncRepo)
-    }
-
-    @Test
-    override fun testRenameBook_newSubfolderSameLeafName() {
-        SyncRepoTest.testRenameBook_newSubfolderSameLeafName(syncRepo)
-    }
-
-    @Test
-    override fun testRenameBook_newSubfolderAndLeafName() {
-        SyncRepoTest.testRenameBook_newSubfolderAndLeafName(syncRepo)
-    }
-
-    @Test
-    override fun testRenameBook_sameSubfolderNewLeafName() {
-        SyncRepoTest.testRenameBook_sameSubfolderNewLeafName(syncRepo)
-    }
-
-    private fun setupDocumentRepo(extraDir: String? = null) {
-        val repoDirName = SyncRepoTest.repoDirName
-        documentTreeSegment = if (Build.VERSION.SDK_INT < 30) {
-            "/document/raw%3A%2Fstorage%2Femulated%2F0%2FDownload%2F$repoDirName%2F"
-        } else {
-            "/document/primary%3A$repoDirName%2F"
+    override fun writeFileToRepo(content: String, repoRelativePath: String): String {
+        val targetPath = Path(repoRelativePath)
+        var expectedRookUri = mSyncRepo.uri.toString() + treeDocumentFileExtraSegment + Uri.encode(repoRelativePath)
+        var targetDir = repoDirectory
+        if (repoRelativePath.contains("/")) {
+            targetDir = targetDir.createDirectory(targetPath.parent.toString())!!
+            expectedRookUri = mSyncRepo.uri.toString() + treeDocumentFileExtraSegment + Uri.encode(repoRelativePath)
         }
-        var treeDocumentFileUrl = if (Build.VERSION.SDK_INT < 30) {
-            "content://com.android.providers.downloads.documents/tree/raw%3A%2Fstorage%2Femulated%2F0%2FDownload%2F$repoDirName"
-        } else {
-            "content://com.android.externalstorage.documents/tree/primary%3A$repoDirName"
-        }
-        if (extraDir != null) {
-            treeDocumentFileUrl = "$treeDocumentFileUrl%2F" + Uri.encode(extraDir)
-        }
+        MiscUtils.writeStringToDocumentFile(content, targetPath.fileName.toString(), targetDir.uri)
+        return expectedRookUri
+    }
+
+    private fun setupDocumentRepo() {
         repoDirectory = DocumentFile.fromTreeUri(context, treeDocumentFileUrl.toUri())!!
         repo = if (!repoDirectory.exists()) {
-            if (extraDir != null) {
-                setupDocumentRepoInUi(extraDir)
-            } else {
-                setupDocumentRepoInUi(repoDirName)
-            }
+            setupDocumentRepoInUi()
             dataRepository.getRepos()[0]
         } else {
             testUtils.setupRepo(RepoType.DOCUMENT, treeDocumentFileUrl)
         }
-        syncRepo = testUtils.repoInstance(RepoType.DOCUMENT, repo.url, repo.id)
+        mSyncRepo = testUtils.repoInstance(RepoType.DOCUMENT, repo.url, repo.id)
         Assert.assertEquals(treeDocumentFileUrl, repo.url)
     }
 
@@ -186,7 +87,7 @@ class DocumentRepoTest : SyncRepoTest, OrgzlyTest() {
      * a different repo URL, making some tests fail. If you are running locally, you must work
      * around this by wiping the device's data between test suite runs.
      */
-    private fun setupDocumentRepoInUi(repoDirName: String) {
+    private fun setupDocumentRepoInUi() {
         ActivityScenario.launch(ReposActivity::class.java).use {
             Espresso.onView(ViewMatchers.withId(R.id.activity_repos_directory))
                 .perform(ViewActions.click())
