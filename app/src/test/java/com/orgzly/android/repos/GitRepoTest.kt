@@ -15,11 +15,14 @@ import com.orgzly.android.git.GitFileSynchronizer
 import com.orgzly.android.git.GitPreferencesFromRepoPrefs
 import com.orgzly.android.prefs.AppPreferences
 import com.orgzly.android.prefs.RepoPreferences
+import com.orgzly.android.sync.BookSyncStatus
 import com.orgzly.android.util.MiscUtils
 import org.eclipse.jgit.api.CloneCommand
 import org.eclipse.jgit.api.Git
 import org.junit.After
-import org.junit.Assert
+import org.junit.Assert.assertEquals
+import org.junit.Assert.assertNotNull
+import org.junit.Assert.assertTrue
 import org.junit.Before
 import org.junit.Test
 import org.junit.runner.RunWith
@@ -104,16 +107,16 @@ class GitRepoTest : SyncRepoTest {
 
     /**
      * Ensure we support syncing to a new, empty Git repo.
-     * Also tests that a book without a link is linked and synced, if possible.
+     * Also verifies that a book without a link is linked and synced, if possible.
      */
     @Test
     fun testSyncRepo_repoHasNoCommits() {
         testUtils.setupBook("A Book", "...")
         syncRepo.syncRepo(dataRepository)
         val bookView = dataRepository.getBooks()[0]
-        Assert.assertEquals(syncRepo.uri.toString(), bookView.linkRepo!!.url)
-        Assert.assertNotNull(bookView.syncedTo?.revision)
-        Assert.assertTrue(bookView.book.lastAction!!.message.contains("Saved to "))
+        assertEquals(syncRepo.uri.toString(), bookView.linkRepo!!.url)
+        assertNotNull(bookView.syncedTo?.revision)
+        assertTrue(bookView.book.lastAction!!.message.contains("Saved to "))
     }
 
     @Test
@@ -125,8 +128,8 @@ class GitRepoTest : SyncRepoTest {
         syncRepo.syncRepo(dataRepository)
 
         val bookView = dataRepository.getBooks()[0]
-        Assert.assertEquals(BookAction.Type.ERROR, bookView.book.lastAction!!.type)
-        Assert.assertTrue(bookView.book.lastAction!!.message.contains("multiple repositories"))
+        assertEquals(BookAction.Type.ERROR, bookView.book.lastAction!!.type)
+        assertTrue(bookView.book.lastAction!!.message.contains("multiple repositories"))
     }
 
     /**
@@ -135,6 +138,37 @@ class GitRepoTest : SyncRepoTest {
      */
     @Test
     fun testSyncRepo_firstSyncAfterCloning() {
-        return // TODO
+        writeFileToRepo("...", "Book one.org") // N.B. This helper method also performs "git pull" in the working tree
+        syncRepo.syncRepo(dataRepository)
+        assertEquals(1, dataRepository.getBooks().size)
+    }
+
+    @Test
+    fun testSyncRepo_fileWasDeletedOnRemote() {
+        // Ensure we have a synced book
+        testUtils.setupBook("Book one", "...")
+        syncRepo.syncRepo(dataRepository)
+        var bookView = dataRepository.getBooks()[0]
+        assertEquals(true, bookView.hasSync())
+        assertEquals(mSyncRepo.uri.toString(), dataRepository.getBooks()[0].linkRepo!!.url)
+        // Delete the file in our separate repo clone and push the change
+        workingClone.pull().call()
+        workingClone.rm().addFilepattern("Book one.org").setCached(false).call()
+        workingClone.commit().setMessage("").call()
+        workingClone.push().call()
+        // Sync and verify status
+        syncRepo.syncRepo(dataRepository)
+        bookView = dataRepository.getBooks()[0]
+        assertEquals(null, bookView.linkRepo)
+        assertEquals(BookAction.Type.ERROR, bookView.book.lastAction!!.type)
+        assertEquals(BookSyncStatus.ROOK_NO_LONGER_EXISTS.toString(), bookView.book.syncStatus)
+        // hasSync should still return true, to help understand the book's state during the next sync
+        assertEquals(true, bookView.hasSync())
+        // Sync again and verify status
+        syncRepo.syncRepo(dataRepository)
+        bookView = dataRepository.getBooks()[0]
+        assertEquals(null, bookView.linkRepo)
+        assertEquals(BookAction.Type.ERROR, bookView.book.lastAction!!.type)
+        assertEquals(BookSyncStatus.BOOK_WITH_PREVIOUS_ERROR_AND_NO_LINK.toString(), bookView.book.syncStatus)
     }
 }
