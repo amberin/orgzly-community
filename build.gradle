@@ -49,15 +49,15 @@ buildscript {
 
     versions.loremipsum = '1.0'
 
-    versions.dagger = '2.44'
+    versions.dagger = '2.52'
 
-    versions.gson = '2.10'
+    versions.gson = '2.11.0'
 
     versions.dropbox_core_sdk = '5.4.4'
 
     versions.juniversalchardet = '1.0.3'
 
-    versions.joda_time = '2.12.0'
+    versions.joda_time = '2.12.7'
 
     versions.glide = '4.14.2'
 
