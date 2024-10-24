@@ -16,8 +16,8 @@
 #   public *;
 #}
 
--keep class com.orgzly.android.db.NotesClipboard.Entry {<fields>;}
--keep class com.orgzly.android.db.entity.NoteProperty {<fields>;}
+-keep class com.google.gson.reflect.TypeToken { *; }
+-keep class * extends com.google.gson.reflect.TypeToken
 
 # Keep line numbers and file names
 -keepattributes SourceFile,LineNumberTable
