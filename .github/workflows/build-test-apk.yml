@@ -1,4 +1,4 @@
-name: Build pre-release artifacts and draft Github release
+name: Build test APKs and store artifacts
 
 on:
   # Allows you to run this workflow manually from the Actions tab
