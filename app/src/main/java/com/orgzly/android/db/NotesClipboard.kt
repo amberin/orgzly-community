@@ -54,7 +54,7 @@ data class NotesClipboard(val entries: List<Entry> = emptyList()) {
                 try {
                     val data = MiscUtils.readStringFromFile(dataFile())
 
-                    val notes = Gson().fromJson(data, mutableListOf<Entry>()::class.java)
+                    val notes: MutableList<Entry> = Gson().fromJson(data, Array<Entry>::class.java).toMutableList()
 
                     return NotesClipboard(notes)
                 } catch (e: Exception) {
