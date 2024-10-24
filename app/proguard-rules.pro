@@ -16,6 +16,7 @@
 #   public *;
 #}
 
+-keepclassmembernames class com.orgzly.android.db.NotesClipboard.Entry {<fields>;}
 
 # Keep line numbers and file names
 -keepattributes SourceFile,LineNumberTable
