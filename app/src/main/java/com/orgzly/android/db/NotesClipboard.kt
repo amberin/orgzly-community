@@ -1,7 +1,6 @@
 package com.orgzly.android.db
 
 import com.google.gson.Gson
-import com.google.gson.reflect.TypeToken
 import com.orgzly.android.App
 import com.orgzly.android.data.DataRepository
 import com.orgzly.android.db.entity.Note
@@ -55,7 +54,7 @@ data class NotesClipboard(val entries: List<Entry> = emptyList()) {
                 try {
                     val data = MiscUtils.readStringFromFile(dataFile())
 
-                    val notes = Gson().fromJson(data, object : TypeToken<MutableList<Entry>>() {})
+                    val notes = Gson().fromJson(data, mutableListOf<Entry>()::class.java)
 
                     return NotesClipboard(notes)
                 } catch (e: Exception) {
