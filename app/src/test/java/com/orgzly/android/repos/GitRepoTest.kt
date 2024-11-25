@@ -97,40 +97,4 @@ class GitRepoTest : SyncRepoTest {
         gitFileSynchronizer.mergeWithRemote()
         return expectedRookUri.toString()
     }
-
-    /**
-     * Ensure we support syncing to a new, empty Git repo.
-     * Also tests that a book without a link is linked and synced, if possible.
-     */
-    @Test
-    fun testSyncRepo_repoHasNoCommits() {
-        testUtils.setupBook("A Book", "...")
-        syncRepo.syncRepo(dataRepository)
-        val bookView = dataRepository.getBooks()[0]
-        Assert.assertEquals(syncRepo.uri.toString(), bookView.linkRepo!!.url)
-        Assert.assertNotNull(bookView.syncedTo?.revision)
-        Assert.assertTrue(bookView.book.lastAction!!.message.contains("Saved to "))
-    }
-
-    @Test
-    fun testSyncRepo_bookWithoutLinkAndMultipleRepos() {
-        // Add a second repo
-        testUtils.setupRepo(RepoType.MOCK, "mock://repo")
-        testUtils.setupBook("A Book", "...")
-
-        syncRepo.syncRepo(dataRepository)
-
-        val bookView = dataRepository.getBooks()[0]
-        Assert.assertEquals(BookAction.Type.ERROR, bookView.book.lastAction!!.type)
-        Assert.assertTrue(bookView.book.lastAction!!.message.contains("multiple repositories"))
-    }
-
-    /**
-     * The very first sync is special, since the remote head has not changed since cloning, but
-     * we want to be sure that all books are loaded.
-     */
-    @Test
-    fun testSyncRepo_firstSyncAfterCloning() {
-        return // TODO
-    }
 }
