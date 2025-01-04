@@ -16,7 +16,7 @@ import com.google.android.material.snackbar.Snackbar
 import com.orgzly.R
 import com.orgzly.android.OrgzlyTest
 import com.orgzly.android.espresso.util.EspressoUtils.denyAlarmsAndRemindersSpecialPermission
-import com.orgzly.android.espresso.util.EspressoUtils.grantAlarmsAndRemindersPermission
+import com.orgzly.android.espresso.util.EspressoUtils.grantAlarmsAndRemindersSpecialPermission
 import com.orgzly.android.espresso.util.EspressoUtils.onBook
 import com.orgzly.android.espresso.util.EspressoUtils.onNoteInBook
 import com.orgzly.android.espresso.util.EspressoUtils.onSnackbar
@@ -82,7 +82,7 @@ class RemindersPermissionTest : OrgzlyTest() {
     @Test
     fun testScheduleTodoReminderWithExactAlarmPermission() {
         Assume.assumeTrue(Build.VERSION.SDK_INT >= 31)
-        grantAlarmsAndRemindersPermission()
+        grantAlarmsAndRemindersSpecialPermission()
         onNoteInBook(1).perform(click())
         onView(withId(R.id.scheduled_button)).check(matches(withText("")))
         onView(withId(R.id.scheduled_button)).perform(click())
