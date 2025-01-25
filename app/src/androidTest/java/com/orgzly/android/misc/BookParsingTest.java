@@ -176,7 +176,7 @@ public class BookParsingTest extends OrgzlyTest {
         """;
         TestedBook testedBook = onBook(content);
         testedBook.onLoad().isWhenSaved(content);
-        assertEquals(testedBook.book, dataRepository.findNoteOrBookHavingProperty("foo", "bar"));
+        assertEquals(testedBook.book, dataRepository.findNotesOrBooksHavingProperty("foo", "bar"));
     }
 
     /**
@@ -197,8 +197,8 @@ public class BookParsingTest extends OrgzlyTest {
         """;
         TestedBook testedBook = onBook(content);
         testedBook.onLoad().isWhenSaved(content);
-        assertEquals(testedBook.book, dataRepository.findNoteOrBookHavingProperty("foo", "bar"));
-        assertEquals(testedBook.book, dataRepository.findNoteOrBookHavingProperty("bar", "foo"));
+        assertEquals(testedBook.book, dataRepository.findNotesOrBooksHavingProperty("foo", "bar"));
+        assertEquals(testedBook.book, dataRepository.findNotesOrBooksHavingProperty("bar", "foo"));
     }
 
     /**
@@ -220,12 +220,12 @@ public class BookParsingTest extends OrgzlyTest {
         """;
         TestedBook testedBook = onBook(content);
         testedBook.onLoad().isWhenSaved(content);
-        assertEquals(testedBook.book, dataRepository.findNoteOrBookHavingProperty("foo",
+        assertEquals(testedBook.book, dataRepository.findNotesOrBooksHavingProperty("foo",
                 "secondvalue"));
-        assertEquals(testedBook.book, dataRepository.findNoteOrBookHavingProperty("bar",
+        assertEquals(testedBook.book, dataRepository.findNotesOrBooksHavingProperty("bar",
                 "secondvalue"));
-        assertNull(dataRepository.findNoteOrBookHavingProperty("foo", "firstvalue"));
-        assertNull(dataRepository.findNoteOrBookHavingProperty("bar", "firstvalue"));
+        assertNull(dataRepository.findNotesOrBooksHavingProperty("foo", "firstvalue"));
+        assertNull(dataRepository.findNotesOrBooksHavingProperty("bar", "firstvalue"));
     }
 
     @Test
@@ -243,16 +243,16 @@ public class BookParsingTest extends OrgzlyTest {
         """;
         TestedBook testedBook = onBook(content);
         testedBook.onLoad().isWhenSaved(content);
-        assertEquals(testedBook.book, dataRepository.findNoteOrBookHavingProperty("foo",
+        assertEquals(testedBook.book, dataRepository.findNotesOrBooksHavingProperty("foo",
                 "secondvalue"));
-        assertEquals(testedBook.book, dataRepository.findNoteOrBookHavingProperty("bar",
+        assertEquals(testedBook.book, dataRepository.findNotesOrBooksHavingProperty("bar",
                 "secondvalue"));
-        assertEquals(testedBook.book, dataRepository.findNoteOrBookHavingProperty("FOO",
+        assertEquals(testedBook.book, dataRepository.findNotesOrBooksHavingProperty("FOO",
                 "secondvalue"));
-        assertEquals(testedBook.book, dataRepository.findNoteOrBookHavingProperty("BAR",
+        assertEquals(testedBook.book, dataRepository.findNotesOrBooksHavingProperty("BAR",
                 "secondvalue"));
-        assertNull(dataRepository.findNoteOrBookHavingProperty("foo", "firstvalue"));
-        assertNull(dataRepository.findNoteOrBookHavingProperty("bar", "firstvalue"));
+        assertNull(dataRepository.findNotesOrBooksHavingProperty("foo", "firstvalue"));
+        assertNull(dataRepository.findNotesOrBooksHavingProperty("bar", "firstvalue"));
     }
 
     /*
